@@ -1,0 +1,48 @@
+"use client";
+
+import Link from "next/link";
+import { siteConfig } from "@/lib/site";
+
+export function SiteFooter() {
+  const year = new Date().getFullYear();
+
+  return (
+    <footer className="w-full min-w-0 max-w-full border-t border-border bg-card">
+      <div className="w-full min-w-0 max-w-full px-4 py-8 md:px-6 lg:px-8">
+        <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
+          <div>
+            <p className="font-semibold text-primary">{siteConfig.name}</p>
+            <p className="mt-1 max-w-md text-sm text-muted">{siteConfig.description}</p>
+          </div>
+          <div className="flex flex-wrap gap-4 text-sm text-muted">
+            <Link href="/about" className="hover:text-primary">
+              关于我们
+            </Link>
+            <a
+              href={`mailto:hello@${new URL(siteConfig.url).host}`}
+              className="hover:text-primary"
+            >
+              联系
+            </a>
+          </div>
+        </div>
+        <p className="mt-6 text-center text-xs text-muted md:text-left">
+          © {year} {siteConfig.name} · {siteConfig.url.replace(/^https?:\/\//, "")}
+          <span className="mx-2" aria-hidden>
+            ·
+          </span>
+          Powered by{" "}
+          <a
+            href="https://gansa.top"
+            className="font-medium text-muted underline-offset-4 hover:text-primary hover:underline"
+            target="_blank"
+            rel="noreferrer"
+          >
+            GanSa Tech.
+          </a>{" "}
+          干撒科技
+        </p>
+      </div>
+    </footer>
+  );
+}

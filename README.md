@@ -1,36 +1,74 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 数字伊犁（shuziyili）
 
-## Getting Started
+民间便民门户：**前端**与**后端 API** 分目录存放、**可分开部署**；域名生产环境为 **https://shuziyili.com**。
 
-First, run the development server:
+## 目录结构
+
+| 目录 | 说明 |
+|------|------|
+| [`web/`](./web/) | Next.js 站点：SSR/SEO、顶栏一级 + 旅游侧栏二级、伊犁蓝与明暗主题 |
+| [`api/`](./api/) | Spring Boot：`/api/v1` REST，供 `web` 服务端拉取数据 |
+| [`.cursor/`](./.cursor/) | Cursor / Agent 约定（`AGENTS.md` 等）；根目录 `AGENTS.md` 仅作跳转 |
+
+可选：将 `web/`、`api/` 分别推到独立 Git 仓库（`shuziyili-web` / `shuziyili-api`），与「分仓」策略一致；本仓库作为**本地一体开发**的父目录亦可。
+
+## 本地开发
+
+### 一键启动（推荐顺序）
+
+为避免每次都“手动记命令”，仓库提供了启动说明脚本：
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+cp scripts/dev.example.sh scripts/dev.sh
+chmod +x scripts/dev.sh
+./scripts/dev.sh
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+注意：`scripts/dev.sh` 已在 `.gitignore` 中忽略，你可以在里面写 `export`（例如 COS 密钥），不会提交到仓库。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 前端（web）
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+cd web
+npm install
+npm run dev
+```
 
-## Learn More
+默认 <http://localhost:3000>。生产 canonical 见 `web/.env.example` 中的 `NEXT_PUBLIC_SITE_URL`。
 
-To learn more about Next.js, take a look at the following resources:
+### 后端（api）
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+需 **JDK 11+**（当前工程为 Spring Boot 2.7 + Java 11；若本机已是 JDK 17，可后续再升级到 Boot 3）。
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+cd api
+./mvnw spring-boot:run
+```
 
-## Deploy on Vercel
+默认 <http://localhost:8080>，健康检查：<http://localhost:8080/api/v1/health>。
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+首次使用若无 `mvnw`，可在 `api` 目录执行：`mvn -N wrapper:wrapper`（需本机已装 Maven），或直接用 IDE 导入 Maven 项目运行 `ShuziyiliApplication`。
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+本地覆盖配置（含 COS 密钥、或本地数据库覆盖等）见 `api/src/main/resources/application-local.yml.example`：
+
+```bash
+cd api/src/main/resources
+cp application-local.yml.example application-local.yml
+```
+
+启动时带上 `dev,local`：
+
+```bash
+cd api
+export SPRING_PROFILES_ACTIVE=dev,local
+./mvnw spring-boot:run
+```
+
+`application-local.yml` 已在 `.gitignore` 中忽略，用于本机密钥与配置，不会提交到仓库。
+
+## 部署关系（概念）
+
+- 浏览器访问 **`www.shuziyili.com`** → 部署 **web**
+- **web** 服务端请求 **`api.shuziyili.com`**（或同域反代 `/api`）→ 部署 **api**
+
+具体网关、CORS 与 `NEXT_PUBLIC_SITE_URL` / 服务端 `API_BASE_URL` 在上线前在各自环境变量中配置。

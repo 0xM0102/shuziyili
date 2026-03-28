@@ -1,0 +1,20 @@
+-- 增加 CMS 字段 + Banner 表（MySQL 8+）
+
+ALTER TABLE articles
+  ADD COLUMN summary VARCHAR(800) NOT NULL DEFAULT '' AFTER title,
+  ADD COLUMN content LONGTEXT NOT NULL AFTER summary,
+  ADD COLUMN cover_url VARCHAR(1024) NULL AFTER content,
+  ADD COLUMN created_at BIGINT NOT NULL DEFAULT 0 AFTER status;
+
+CREATE TABLE IF NOT EXISTS banners (
+  id BIGINT NOT NULL AUTO_INCREMENT,
+  title VARCHAR(200) NOT NULL,
+  image_url VARCHAR(1024) NOT NULL,
+  link_url VARCHAR(1024) NULL,
+  enabled BIT(1) NOT NULL,
+  sort_order INT NOT NULL,
+  created_at BIGINT NOT NULL,
+  updated_at BIGINT NOT NULL,
+  PRIMARY KEY (id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

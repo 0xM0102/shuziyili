@@ -1,41 +1,39 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
-
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
 .DS_Store
+
+# Next.js（web）
+web/node_modules/
+web/.next/
+web/out/
+
+# Java（api）
+api/target/
+api/data/
+api/.idea/
+*.iml
+
+# 环境变量（勿提交密钥）
+.env
+.env.local
+.env*.local
+web/.env.local
+
+# Vue 管理后台（生产环境变量，勿提交）
+admin/node_modules/
+admin/dist/
+admin/.env.production.local
+
+# 本地数据库配置（复制自 application-local.yml.example）
+api/src/main/resources/application-local.yml
+
+# API 本地启动脚本（可含 export 密钥）
+api/scripts/run-dev-with-cos.sh
+
+# 根目录本地一键启动脚本（可含 export 密钥）
+scripts/dev.sh
+
+# 日志与调试
+npm-debug.log*
 *.pem
 
-# debug
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnpm-debug.log*
-
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
-.vercel
-
-# typescript
+# TypeScript（根目录若再有 TS 工具）
 *.tsbuildinfo
-next-env.d.ts

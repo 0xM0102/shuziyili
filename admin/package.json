@@ -1,0 +1,31 @@
+{
+  "name": "shuziyili-admin",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "vite",
+    "build": "vue-tsc -b && vite build",
+    "preview": "vite preview",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "ant-design-vue": "^4",
+    "pinia": "^3",
+    "vue": "^3.5.0",
+    "vue-router": "^4.5.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9",
+    "@types/node": "^20",
+    "@vitejs/plugin-vue": "^6",
+    "eslint": "^9",
+    "eslint-plugin-vue": "^10",
+    "globals": "^16",
+    "typescript": "^5",
+    "typescript-eslint": "^8",
+    "vite": "^7",
+    "vue-eslint-parser": "^10",
+    "vue-tsc": "^3"
+  }
+}
+

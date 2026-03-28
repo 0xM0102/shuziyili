@@ -1,0 +1,36 @@
+/** 与后端 ApiResponse.message 错误码对应（见 PortalAuthService / StaffAuthService 等） */
+export function mapApiMessage(code: string | null | undefined): string {
+  const m: Record<string, string> = {
+    invalid: "账号格式不正确",
+    empty: "请输入账号",
+    weak_password: "密码至少 6 位",
+    not_found: "账号不存在",
+    wrong_password: "密码错误",
+    already_exists: "该账号已注册，请使用正确密码登录",
+    unauthorized: "未登录或登录已过期",
+    forbidden: "权限不足",
+    registration_disabled: "账号不存在，请联系管理员创建账号",
+    sms_not_available: "短信服务暂不可用（本地可看 API 日志中的验证码）",
+    too_many_requests: "操作频繁，请稍后再试",
+    invalid_code: "验证码格式不正确",
+    code_invalid: "验证码不正确",
+    code_expired: "验证码已过期，请重新获取",
+    code_used: "验证码已使用，请重新获取",
+    invalid_role: "无效角色",
+    invalid_profile: "资料格式不正确（长度或头像链接需为 http/https）",
+    invalid_slot: "无效的 Banner 分类位",
+    slot_taken: "该副 Banner 位已存在记录（右上/右下仅 1 条）",
+    network_error: "无法连接服务器，请确认 API 已启动（默认 http://localhost:8080）",
+    parse_error: "服务器返回数据异常",
+    http_0: "请求失败",
+    cos_not_configured: "COS 未配置：请检查 api/src/main/resources/application-local.yml 或环境变量（SecretId/SecretKey）并重启 API",
+    empty_file: "请选择要上传的文件",
+    file_too_large: "文件过大（最大 10MB）",
+    unsupported_type: "仅支持 jpg / png / gif / webp",
+    upload_failed: "上传失败，请稍后重试",
+    delete_failed: "删除失败，请稍后重试",
+    invalid_key: "无效的对象键",
+    empty_key: "缺少对象键",
+  };
+  return m[code ?? ""] ?? (code ? `错误：${code}` : "请求失败");
+}
