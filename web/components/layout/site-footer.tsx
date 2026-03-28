@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { siteConfig } from "@/lib/site";
+import { SiteWordmark } from "@/components/brand/site-wordmark";
 
 export function SiteFooter() {
   const year = new Date().getFullYear();
@@ -11,12 +12,18 @@ export function SiteFooter() {
       <div className="w-full min-w-0 max-w-full px-4 py-8 md:px-6 lg:px-8">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <p className="font-semibold text-primary">{siteConfig.name}</p>
+            <div>
+              <SiteWordmark className="h-6 w-auto text-primary md:h-7" />
+              <span className="sr-only">{siteConfig.name}</span>
+            </div>
             <p className="mt-1 max-w-md text-sm text-muted">{siteConfig.description}</p>
           </div>
           <div className="flex flex-wrap gap-4 text-sm text-muted">
             <Link href="/about" className="hover:text-primary">
               关于我们
+            </Link>
+            <Link href="/cookies" className="hover:text-primary">
+              Cookie 说明
             </Link>
             <a
               href={`mailto:hello@${new URL(siteConfig.url).host}`}

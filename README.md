@@ -7,7 +7,8 @@
 | 目录 | 说明 |
 |------|------|
 | [`web/`](./web/) | Next.js 站点：SSR/SEO、顶栏一级 + 旅游侧栏二级、伊犁蓝与明暗主题 |
-| [`api/`](./api/) | Spring Boot：`/api/v1` REST，供 `web` 服务端拉取数据 |
+| [`admin/`](./admin/) | Vue + Vite 管理后台（操作员登录，默认端口 5174） |
+| [`api/`](./api/) | Spring Boot：`/api/v1` REST，供 `web` / `admin` 调用 |
 | [`.cursor/`](./.cursor/) | Cursor / Agent 约定（`AGENTS.md` 等）；根目录 `AGENTS.md` 仅作跳转 |
 
 可选：将 `web/`、`api/` 分别推到独立 Git 仓库（`shuziyili-web` / `shuziyili-api`），与「分仓」策略一致；本仓库作为**本地一体开发**的父目录亦可。
@@ -38,10 +39,11 @@ npm run dev
 
 ### 后端（api）
 
-需 **JDK 11+**（当前工程为 Spring Boot 2.7 + Java 11；若本机已是 JDK 17，可后续再升级到 Boot 3）。
+需 **JDK 11+**、**MySQL 8**（开发与生产统一用 MySQL + Flyway，见 `api/README.md`）。
 
 ```bash
 cd api
+docker compose up -d   # 可选：起本机 MySQL（root/root，库 shuziyili）
 ./mvnw spring-boot:run
 ```
 
@@ -49,22 +51,7 @@ cd api
 
 首次使用若无 `mvnw`，可在 `api` 目录执行：`mvn -N wrapper:wrapper`（需本机已装 Maven），或直接用 IDE 导入 Maven 项目运行 `ShuziyiliApplication`。
 
-本地覆盖配置（含 COS 密钥、或本地数据库覆盖等）见 `api/src/main/resources/application-local.yml.example`：
-
-```bash
-cd api/src/main/resources
-cp application-local.yml.example application-local.yml
-```
-
-启动时带上 `dev,local`：
-
-```bash
-cd api
-export SPRING_PROFILES_ACTIVE=dev,local
-./mvnw spring-boot:run
-```
-
-`application-local.yml` 已在 `.gitignore` 中忽略，用于本机密钥与配置，不会提交到仓库。
+本地覆盖（COS 密钥、数据库密码等）：复制 `api/src/main/resources/application-local.yml.example` 为 `application-local.yml`（已在 `.gitignore`）。默认 profile 已包含 `dev` + `local`，一般无需再设 `SPRING_PROFILES_ACTIVE`。
 
 ## 部署关系（概念）
 

@@ -69,21 +69,25 @@
 
 ## 五、相关 HTTP 接口（后端已实现）
 
+门户注册须验证码；登录支持「密码」或「验证码」。`identifier` 为规范化后的手机号或邮箱。
+
 | 方法 | 路径 | 说明 |
 | ---- | ---- | ---- |
-| POST | `/api/v1/auth/sms/send` | 登录验证码（仅已存在用户） |
-| POST | `/api/v1/auth/sms/login` | 短信登录 |
-| POST | `/api/v1/auth/sms/register/send` | 注册验证码（仅系统尚无用户时） |
-| POST | `/api/v1/auth/sms/register` | 短信注册（手机号 + 验证码 + 密码，首用户为 admin） |
+| POST | `/api/v1/auth/register/send` | 发送注册验证码，body：`{ "identifier": "…" }` |
+| POST | `/api/v1/auth/register` | 注册，body：`{ "identifier", "code", "password" }` |
+| POST | `/api/v1/auth/login/send` | 发送登录验证码（账号须已存在） |
+| POST | `/api/v1/auth/login/code` | 验证码登录，body：`{ "identifier", "code" }` |
+| POST | `/api/v1/auth/login` | 密码登录，body：`{ "identifier", "password" }` |
 
-请求体字段与 `AuthController` 中 `SmsSendReq` / `SmsLoginReq` / `SmsRegisterReq` 一致。
+手机走 `SmsSender` 发短信；邮箱走 `EmailSender`（默认 `LogEmailSender` 打日志，生产请接 SMTP/邮件服务）。
 
 ---
 
 ## 六、接入第三方时的实现要点
 
-1. 新建类实现 `com.shuziyili.module.sms.SmsSender`。
+1. 新建类实现 `com.shuziyili.module.sms.SmsSender`（手机号短信）。
 2. 在 `sendVerificationCode(phone, scene, code)` 内：
    - `scene` 为 `login` 时调用「登录」模版 ID；
    - `scene` 为 `register` 时调用「注册」模版 ID。
 3. 使用 `@Primary` 或调整 `@Component` 优先级，使该实现替代默认的 `LogSmsSender`（开发环境可保留日志实现便于调试）。
+4. 邮箱验证码：实现 `com.shuziyili.module.sms.EmailSender` 并替代 `LogEmailSender`。

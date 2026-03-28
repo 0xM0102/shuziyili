@@ -147,21 +147,13 @@ onMounted(() => void refresh());
 </script>
 
 <template>
-  <a-card title="后台账号" :bordered="true">
+  <a-card :bordered="true">
     <template #extra>
       <a-space>
         <a-button size="small" @click="refresh">刷新</a-button>
         <a-button type="primary" size="small" @click="createOpen = true">新建操作员</a-button>
       </a-space>
     </template>
-
-    <a-alert
-      type="info"
-      show-icon
-      message="说明"
-      description="此处为可登录本管理后台的操作员（admin/editor），与门户注册用户无关。门户客户在「平台用户」中查看。"
-      style="margin-bottom: 12px"
-    />
 
     <a-table
       :columns="columns"

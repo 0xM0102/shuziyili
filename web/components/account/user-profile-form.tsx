@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import type { LangCode } from "@/lib/i18n";
 import { uiText } from "@/lib/i18n";
 import { updateProfile, type AuthSession } from "@/lib/auth-client";
+import { toast } from "@/lib/toast";
 
 const profileErrorZh: Record<string, string> = {
   unauthorized: "登录已失效，请重新登录。",
@@ -17,32 +18,29 @@ const profileErrorEn: Record<string, string> = {
   unknown: "Could not save. Try again later.",
 };
 
-export function UserProfileForm({
-  session,
-  lang,
-  onSaved,
-}: {
+type FormProps = {
   session: AuthSession;
   lang: LangCode;
   onSaved?: () => void;
-}) {
+};
+
+/** 用 key 随 session 版本重置本地表单状态，避免在 effect 里同步 setState（eslint react-hooks/set-state-in-effect）。 */
+export function UserProfileForm(props: FormProps) {
+  const { session } = props;
+  const formKey = `${session.identifier}:${session.updatedAt}`;
+  return <UserProfileFormBody key={formKey} {...props} />;
+}
+
+function UserProfileFormBody({ session, lang, onSaved }: FormProps) {
   const t = uiText[lang];
   const errMap = lang === "zh" ? profileErrorZh : profileErrorEn;
 
-  const [displayName, setDisplayName] = useState("");
-  const [nickname, setNickname] = useState("");
-  const [avatarUrl, setAvatarUrl] = useState("");
-  const [bio, setBio] = useState("");
+  const [displayName, setDisplayName] = useState(() => session.displayName ?? "");
+  const [nickname, setNickname] = useState(() => session.nickname ?? "");
+  const [avatarUrl, setAvatarUrl] = useState(() => session.avatarUrl ?? "");
+  const [bio, setBio] = useState(() => session.bio ?? "");
   const [saving, setSaving] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
-
-  useEffect(() => {
-    setDisplayName(session.displayName ?? "");
-    setNickname(session.nickname ?? "");
-    setAvatarUrl(session.avatarUrl ?? "");
-    setBio(session.bio ?? "");
-    setProfileError(null);
-  }, [session]);
 
   async function handleSave() {
     setSaving(true);
@@ -50,9 +48,12 @@ export function UserProfileForm({
     const r = await updateProfile({ displayName, nickname, avatarUrl, bio });
     setSaving(false);
     if (!r.ok) {
-      setProfileError(errMap[r.error] ?? errMap.unknown);
+      const msg = errMap[r.error] ?? errMap.unknown;
+      setProfileError(msg);
+      toast.error(msg);
       return;
     }
+    toast.success(lang === "zh" ? "资料已保存" : "Profile saved");
     onSaved?.();
   }
 

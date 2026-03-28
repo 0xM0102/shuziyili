@@ -21,7 +21,8 @@ public class SmsCodeEntity {
   @GeneratedValue(strategy = GenerationType.IDENTITY)
   private Long id;
 
-  @Column(nullable = false, length = 32)
+  /** 规范化后的手机号或邮箱（与 Flyway V10 列宽一致） */
+  @Column(nullable = false, length = 255)
   private String phone;
 
   @Column(nullable = false, length = 32)
@@ -29,6 +30,10 @@ public class SmsCodeEntity {
 
   @Column(nullable = false, length = 64)
   private String codeHash;
+
+  /** 验证码明文；仅当开启 {@code shuziyili.auth.store-plain-otp} 时写入，生产建议关闭。 */
+  @Column(name = "plain_code", length = 8)
+  private String plainCode;
 
   @Column(nullable = false)
   private long createdAt;
@@ -72,6 +77,14 @@ public class SmsCodeEntity {
 
   public void setCodeHash(String codeHash) {
     this.codeHash = codeHash;
+  }
+
+  public String getPlainCode() {
+    return plainCode;
+  }
+
+  public void setPlainCode(String plainCode) {
+    this.plainCode = plainCode;
   }
 
   public long getCreatedAt() {

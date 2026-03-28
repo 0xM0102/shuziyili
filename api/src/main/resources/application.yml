@@ -38,6 +38,10 @@ shuziyili:
   # 腾讯云 COS（密钥务必用环境变量，勿提交仓库）
   # 短信接入：实现 com.shuziyili.module.sms.SmsSender（模版申报文案见 api/docs/sms-templates.md）
 
+  # 是否在 sms_codes.plain_code 写入验证码明文（管理后台可见）。生产务必 false：SHUZIYILI_STORE_PLAIN_OTP=false
+  auth:
+    store-plain-otp: ${SHUZIYILI_STORE_PLAIN_OTP:true}
+
   cos:
     enabled: ${SHUZIYILI_COS_ENABLED:true}
     secret-id: ${SHUZIYILI_COS_SECRET_ID:}

@@ -119,12 +119,12 @@ function fmtSize(n: number) {
       <a-upload :before-upload="beforeUpload" :show-upload-list="false" accept="image/jpeg,image/png,image/gif,image/webp">
         <a-button type="primary" :loading="uploading">选择图片上传</a-button>
       </a-upload>
-      <div style="margin-top: 8px; color: #999; font-size: 12px">
-        支持 jpg / png / gif / webp，单文件最大 10MB；路径规则：<code>{{ cfg?.keyPrefix ?? "uploads/" }}yyyy/MM/dd/随机名.后缀</code>
-      </div>
+      <p v-if="cfg" class="upload-hint">
+        路径前缀：<code>{{ cfg.keyPrefix }}yyyy/MM/dd/…</code>
+      </p>
     </a-card>
 
-    <a-card title="媒体库" :bordered="true">
+    <a-card :bordered="true">
       <template #extra>
         <a-button size="small" @click="refresh">刷新</a-button>
       </template>
@@ -159,3 +159,15 @@ function fmtSize(n: number) {
     </a-card>
   </a-space>
 </template>
+
+<style scoped>
+.upload-hint {
+  margin-top: 8px;
+  margin-bottom: 0;
+  font-size: 12px;
+  color: #999;
+}
+.upload-hint code {
+  font-size: 11px;
+}
+</style>

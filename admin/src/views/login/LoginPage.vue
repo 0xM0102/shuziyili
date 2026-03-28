@@ -55,7 +55,7 @@ const submit = async () => {
   <div class="wrap">
     <div class="card">
       <div class="brand">
-        <div class="dot" />
+        <img src="/yl_logo.svg" alt="" class="logo" width="40" height="40" />
         <div class="text">
           <div class="name">数字伊犁</div>
           <div class="sub">管理后台</div>
@@ -64,12 +64,24 @@ const submit = async () => {
 
       <a-form layout="vertical" @submit.prevent="submit">
         <a-form-item label="操作员账号">
-          <a-input v-model:value="username" size="large" placeholder="请输入邮箱或手机号" />
+          <a-input
+            v-model:value="username"
+            size="large"
+            placeholder="请输入邮箱或手机号"
+            @press-enter="submit"
+          />
         </a-form-item>
         <a-form-item label="密码">
-          <a-input-password v-model:value="password" size="large" placeholder="请输入密码" />
+          <a-input-password
+            v-model:value="password"
+            size="large"
+            placeholder="请输入密码"
+            @press-enter="submit"
+          />
         </a-form-item>
-        <a-button type="primary" size="large" block :loading="loading" @click="submit">登录</a-button>
+        <a-button type="primary" html-type="submit" size="large" block :loading="loading">
+          登录
+        </a-button>
       </a-form>
 
       <div class="hint">
@@ -102,11 +114,9 @@ const submit = async () => {
   gap: 10px;
   margin-bottom: 14px;
 }
-.dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 999px;
-  background: #2174ff;
+.logo {
+  flex-shrink: 0;
+  object-fit: contain;
 }
 .name {
   font-weight: 800;

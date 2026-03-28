@@ -23,15 +23,6 @@ public class AuthController {
     this.portalAuthService = portalAuthService;
   }
 
-  @PostMapping("/register")
-  public ResponseEntity<ApiResponse<Map<String, String>>> register(@RequestBody AuthReq req) {
-    if (req == null) {
-      return ResponseEntity.ok(ApiResponse.fail("empty"));
-    }
-    ApiResponse<Map<String, String>> resp = portalAuthService.register(req.identifier, req.password);
-    return ResponseEntity.ok(resp);
-  }
-
   @PostMapping("/login")
   public ResponseEntity<ApiResponse<Map<String, String>>> login(@RequestBody AuthReq req) {
     if (req == null) {
@@ -41,46 +32,45 @@ public class AuthController {
     return ResponseEntity.ok(resp);
   }
 
-  @PostMapping("/sms/send")
-  public ResponseEntity<ApiResponse<Map<String, String>>> sendLoginSms(@RequestBody SmsSendReq req) {
-    if (req == null || req.phone == null || req.phone.trim().isEmpty()) {
+  /** 发送注册验证码（邮箱或手机号） */
+  @PostMapping("/register/send")
+  public ResponseEntity<ApiResponse<Map<String, String>>> sendRegisterCode(
+      @RequestBody IdentifierReq req) {
+    if (req == null || req.identifier == null || req.identifier.trim().isEmpty()) {
       return ResponseEntity.ok(ApiResponse.fail("empty"));
     }
-    ApiResponse<Map<String, String>> resp = portalAuthService.sendLoginSmsCode(req.phone);
+    ApiResponse<Map<String, String>> resp = portalAuthService.sendRegisterCode(req.identifier);
     return ResponseEntity.ok(resp);
   }
 
-  @PostMapping("/sms/login")
-  public ResponseEntity<ApiResponse<Map<String, String>>> smsLogin(@RequestBody SmsLoginReq req) {
-    if (req == null || req.phone == null || req.phone.trim().isEmpty()) {
+  /** 验证码 + 密码完成注册 */
+  @PostMapping("/register")
+  public ResponseEntity<ApiResponse<Map<String, String>>> register(@RequestBody RegisterWithCodeReq req) {
+    if (req == null) {
       return ResponseEntity.ok(ApiResponse.fail("empty"));
-    }
-    if (req.code == null || req.code.trim().isEmpty()) {
-      return ResponseEntity.ok(ApiResponse.fail("invalid_code"));
-    }
-    ApiResponse<Map<String, String>> resp = portalAuthService.loginBySmsCode(req.phone, req.code);
-    return ResponseEntity.ok(resp);
-  }
-
-  @PostMapping("/sms/register/send")
-  public ResponseEntity<ApiResponse<Map<String, String>>> sendRegisterSms(@RequestBody SmsSendReq req) {
-    if (req == null || req.phone == null || req.phone.trim().isEmpty()) {
-      return ResponseEntity.ok(ApiResponse.fail("empty"));
-    }
-    ApiResponse<Map<String, String>> resp = portalAuthService.sendRegisterSmsCode(req.phone);
-    return ResponseEntity.ok(resp);
-  }
-
-  @PostMapping("/sms/register")
-  public ResponseEntity<ApiResponse<Map<String, String>>> registerBySms(@RequestBody SmsRegisterReq req) {
-    if (req == null || req.phone == null || req.phone.trim().isEmpty()) {
-      return ResponseEntity.ok(ApiResponse.fail("empty"));
-    }
-    if (req.code == null || req.code.trim().isEmpty()) {
-      return ResponseEntity.ok(ApiResponse.fail("invalid_code"));
     }
     ApiResponse<Map<String, String>> resp =
-        portalAuthService.registerBySmsCode(req.phone, req.code, req.password);
+        portalAuthService.registerWithCode(req.identifier, req.code, req.password);
+    return ResponseEntity.ok(resp);
+  }
+
+  /** 发送登录验证码（邮箱或手机号，账号须已存在） */
+  @PostMapping("/login/send")
+  public ResponseEntity<ApiResponse<Map<String, String>>> sendLoginCode(@RequestBody IdentifierReq req) {
+    if (req == null || req.identifier == null || req.identifier.trim().isEmpty()) {
+      return ResponseEntity.ok(ApiResponse.fail("empty"));
+    }
+    ApiResponse<Map<String, String>> resp = portalAuthService.sendLoginCode(req.identifier);
+    return ResponseEntity.ok(resp);
+  }
+
+  /** 验证码登录 */
+  @PostMapping("/login/code")
+  public ResponseEntity<ApiResponse<Map<String, String>>> loginByCode(@RequestBody LoginCodeReq req) {
+    if (req == null) {
+      return ResponseEntity.ok(ApiResponse.fail("empty"));
+    }
+    ApiResponse<Map<String, String>> resp = portalAuthService.loginByCode(req.identifier, req.code);
     return ResponseEntity.ok(resp);
   }
 
@@ -116,19 +106,19 @@ public class AuthController {
     public String password;
   }
 
-  public static class SmsSendReq {
-    public String phone;
+  public static class IdentifierReq {
+    public String identifier;
   }
 
-  public static class SmsLoginReq {
-    public String phone;
-    public String code;
-  }
-
-  public static class SmsRegisterReq {
-    public String phone;
+  public static class RegisterWithCodeReq {
+    public String identifier;
     public String code;
     public String password;
+  }
+
+  public static class LoginCodeReq {
+    public String identifier;
+    public String code;
   }
 
   public static class ProfileReq {

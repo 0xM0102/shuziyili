@@ -81,18 +81,10 @@ onMounted(() => void refresh());
 </script>
 
 <template>
-  <a-card title="平台用户" :bordered="true">
+  <a-card :bordered="true">
     <template #extra>
       <a-button size="small" @click="refresh">刷新</a-button>
     </template>
-
-    <a-alert
-      type="info"
-      show-icon
-      message="说明"
-      description="此处为在门户站点注册的客户账号（portal_users），与后台操作员数据完全分离。客户自行在门户注册；你可在此查看并协助修改资料。"
-      style="margin-bottom: 12px"
-    />
 
     <a-table
       :columns="columns"

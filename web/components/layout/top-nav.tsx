@@ -5,13 +5,14 @@ import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { primaryNav } from "@/lib/nav";
 import { siteConfig } from "@/lib/site";
+import { SiteWordmark } from "@/components/brand/site-wordmark";
 import { SearchBox } from "./search-box";
 import { SettingsModal } from "./settings-modal";
 import { SettingsIcon } from "@/components/icons/settings-icon";
-import { UserAvatarLink } from "./user-avatar-link";
+import { UserAccountMenu } from "./user-account-menu";
 import { AuthModal } from "../auth/auth-modal";
 import { getBrowserLang, navLabels, uiText, type LangCode } from "@/lib/i18n";
-import { fetchMe, getSession, logout, type AuthSession } from "@/lib/auth-client";
+import { fetchMe, getSession, type AuthSession } from "@/lib/auth-client";
 
 function isActive(pathname: string, href: string) {
   if (href === "/") return pathname === "/";
@@ -86,13 +87,26 @@ export function TopNav() {
       <div className="flex h-16 w-full items-center gap-3 px-4 md:gap-4 md:px-5">
         <Link
           href="/"
-          className="shrink-0 text-lg font-semibold tracking-tight text-foreground"
+          className="flex shrink-0 items-center gap-2 text-foreground"
           onClick={() => setOpen(false)}
         >
-          {siteConfig.name}
+          {/* 将 yl_logo.svg 置于 web/public/ */}
+          {/* eslint-disable-next-line @next/next/no-img-element -- 品牌 SVG 来自 public */}
+          <img
+            src={siteConfig.logoPath}
+            alt=""
+            width={36}
+            height={36}
+            className="h-9 w-auto shrink-0 object-contain"
+          />
+          <SiteWordmark className="h-6 w-auto shrink-0 text-foreground md:h-7" />
+          <span className="sr-only">{siteConfig.name}</span>
         </Link>
 
-        <nav className="hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto md:flex" aria-label="一级菜单">
+        <nav
+          className="hidden min-w-0 flex-1 items-center gap-0.5 overflow-x-auto md:ml-6 md:flex lg:ml-10"
+          aria-label="一级菜单"
+        >
           {primaryNav.map((item) => (
             <Link
               key={item.href}
@@ -111,21 +125,11 @@ export function TopNav() {
         <div className="ml-auto flex shrink-0 items-center gap-2">
           <SearchBox placeholder={t.searchPlaceholder} />
           {session ? (
-            <>
-              <UserAvatarLink session={session} ariaLabel={t.personalCenter} />
-              <button
-                type="button"
-                className={btnGhost}
-                onClick={() => {
-                  void (async () => {
-                    await logout();
-                    window.dispatchEvent(new Event("shuziyili:auth-changed"));
-                  })();
-                }}
-              >
-                {t.logout}
-              </button>
-            </>
+            <UserAccountMenu
+              session={session}
+              lang={lang}
+              onOpenSettings={() => setSettingsOpen(true)}
+            />
           ) : (
             <>
               <button
@@ -150,14 +154,17 @@ export function TopNav() {
               </button>
             </>
           )}
-          <button
-            type="button"
-            className={btnIcon}
-            aria-label="设置"
-            onClick={() => setSettingsOpen(true)}
-          >
-            <SettingsIcon className="h-5 w-5" />
-          </button>
+          {/* 已登录时设置入口在头像菜单内；未登录保留此处 */}
+          {!session ? (
+            <button
+              type="button"
+              className={btnIcon}
+              aria-label="设置"
+              onClick={() => setSettingsOpen(true)}
+            >
+              <SettingsIcon className="h-5 w-5" />
+            </button>
+          ) : null}
           <button
             type="button"
             className="inline-flex h-10 w-10 items-center justify-center rounded-lg text-foreground transition-colors hover:bg-sidebar-hover md:hidden"
@@ -179,19 +186,13 @@ export function TopNav() {
           aria-label="一级菜单"
         >
           {session ? (
-            <div className="mb-3 flex items-center gap-3">
-              <UserAvatarLink
+            <div className="mb-3 flex justify-start">
+              <UserAccountMenu
                 session={session}
-                ariaLabel={t.personalCenter}
+                lang={lang}
                 onNavigate={() => setOpen(false)}
+                onOpenSettings={() => setSettingsOpen(true)}
               />
-              <Link
-                href="/account"
-                className="text-sm font-semibold text-primary underline-offset-2 hover:underline"
-                onClick={() => setOpen(false)}
-              >
-                {t.personalCenter}
-              </Link>
             </div>
           ) : null}
           <ul className="flex flex-col gap-0.5">
@@ -212,61 +213,36 @@ export function TopNav() {
             ))}
           </ul>
 
-          <div className="mt-3 flex gap-2">
-            {session ? (
+          {!session ? (
+            <div className="mt-3 flex gap-2">
+              <button
+                type="button"
+                className="flex-1 rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground"
+                onClick={() => {
+                  setAuthMode("login");
+                  setAuthOpen(true);
+                  setOpen(false);
+                }}
+              >
+                {t.login}
+              </button>
               <button
                 type="button"
                 className="flex-1 rounded-lg border border-border bg-background px-3 py-2.5 text-sm font-semibold text-foreground/90"
                 onClick={() => {
-                  void (async () => {
-                    await logout();
-                    window.dispatchEvent(new Event("shuziyili:auth-changed"));
-                  })();
+                  setAuthMode("register");
+                  setAuthOpen(true);
                   setOpen(false);
                 }}
               >
-                {t.logout}
+                {t.register}
               </button>
-            ) : (
-              <>
-                <button
-                  type="button"
-                  className="flex-1 rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground"
-                  onClick={() => {
-                    setAuthMode("login");
-                    setAuthOpen(true);
-                    setOpen(false);
-                  }}
-                >
-                  {t.login}
-                </button>
-                <button
-                  type="button"
-                  className="flex-1 rounded-lg border border-border bg-background px-3 py-2.5 text-sm font-semibold text-foreground/90"
-                  onClick={() => {
-                    setAuthMode("register");
-                    setAuthOpen(true);
-                    setOpen(false);
-                  }}
-                >
-                  {t.register}
-                </button>
-              </>
-            )}
-          </div>
+            </div>
+          ) : null}
         </nav>
       ) : null}
 
-      <SettingsModal
-        open={settingsOpen}
-        lang={lang}
-        onLangChange={setLang}
-        onClose={() => setSettingsOpen(false)}
-        session={session}
-        onProfileSaved={() => {
-          window.dispatchEvent(new Event("shuziyili:auth-changed"));
-        }}
-      />
+      <SettingsModal open={settingsOpen} lang={lang} onLangChange={setLang} onClose={() => setSettingsOpen(false)} />
 
       <AuthModal
         open={authOpen}

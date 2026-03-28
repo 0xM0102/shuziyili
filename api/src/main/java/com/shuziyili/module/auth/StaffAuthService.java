@@ -6,6 +6,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.dao.DataAccessException;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
  */
 @Service
 public class StaffAuthService {
+
+  private static final Logger log = LoggerFactory.getLogger(StaffAuthService.class);
 
   private static final long SESSION_TTL_MILLIS = 7L * 24 * 60 * 60 * 1000;
 
@@ -44,11 +49,29 @@ public class StaffAuthService {
       return ApiResponse.fail("not_found");
     }
     StaffUserEntity user = userOpt.get();
-    if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+    String hash = user.getPasswordHash();
+    if (hash == null || hash.isBlank()) {
+      log.warn("staff login: empty password_hash for identifier={}", identifier);
       return ApiResponse.fail("wrong_password");
     }
-    SessionEntity session = issueStaffSession(identifier);
-    return ApiResponse.success(Map.of("token", session.getToken(), "identifier", identifier));
+    boolean match;
+    try {
+      match = passwordEncoder.matches(password, hash);
+    } catch (IllegalArgumentException e) {
+      // 库中若非合法 BCrypt 串，matches 会抛异常，否则前端收到 500
+      log.warn("staff login: invalid bcrypt hash for identifier={}: {}", identifier, e.getMessage());
+      return ApiResponse.fail("wrong_password");
+    }
+    if (!match) {
+      return ApiResponse.fail("wrong_password");
+    }
+    try {
+      SessionEntity session = issueStaffSession(identifier);
+      return ApiResponse.success(Map.of("token", session.getToken(), "identifier", identifier));
+    } catch (DataAccessException e) {
+      log.error("staff login: failed to persist session for identifier={}", identifier, e);
+      return ApiResponse.fail("server_error");
+    }
   }
 
   @Transactional(readOnly = true)

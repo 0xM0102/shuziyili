@@ -17,6 +17,7 @@ const staticPaths = [
   "/events",
   "/news",
   "/about",
+  "/cookies",
 ];
 
 export default function sitemap(): MetadataRoute.Sitemap {

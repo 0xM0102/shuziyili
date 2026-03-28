@@ -1,14 +1,19 @@
 # -----------------------------------------------------------------------------
-# 本地覆盖配置（密钥只放本机，勿提交）
+# 本地覆盖配置（密钥、数据库密码等只放本机，勿提交）
 #
 # 用法：
 #   1) 复制本文件为同目录下的 application-local.yml
 #      cp application-local.yml.example application-local.yml
-#   2) 编辑 application-local.yml，填入 COS 密钥（该文件已在仓库 .gitignore 中）
-#   3) 启动时激活 profile：dev + local
-#
-#      export SPRING_PROFILES_ACTIVE=dev,local
+#   2) 编辑 application-local.yml（该文件已在仓库 .gitignore 中）
+#   3) 默认 profile 已是 dev + local（见 application.yml 的 profile group），直接：
 #      ./mvnw spring-boot:run
+#
+# 数据库：开发与生产均为 MySQL。默认连 127.0.0.1:3306 / 库 shuziyili / root:root，
+# 可用 docker compose（api/docker-compose.yml）或本机 MySQL。若密码不同，在下面覆盖：
+#
+# spring:
+#   datasource:
+#     password: your_password
 #
 #   或使用：api/scripts/run-dev-with-cos.example.sh 复制为 run-dev-with-cos.sh
 # -----------------------------------------------------------------------------

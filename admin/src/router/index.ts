@@ -9,6 +9,7 @@ import ArticlesPage from "@/views/articles/ArticlesPage.vue";
 import BannersPage from "@/views/banners/BannersPage.vue";
 import PortalUsersPage from "@/views/portal-users/PortalUsersPage.vue";
 import StaffUsersPage from "@/views/staff-users/StaffUsersPage.vue";
+import VerificationRecordsPage from "@/views/verification-records/VerificationRecordsPage.vue";
 import { api, clearToken, getToken } from "@/lib/api-client";
 
 const routes: RouteRecordRaw[] = [
@@ -25,6 +26,11 @@ const routes: RouteRecordRaw[] = [
       { path: "banners", name: "banners", component: BannersPage },
       { path: "portal-users", name: "portal-users", component: PortalUsersPage },
       { path: "staff-users", name: "staff-users", component: StaffUsersPage },
+      {
+        path: "verification-records",
+        name: "verification-records",
+        component: VerificationRecordsPage,
+      },
     ],
   },
 ];

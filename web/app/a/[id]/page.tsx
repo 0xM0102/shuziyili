@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { getPublicApiV1Base } from "@/lib/api-base";
 import { siteConfig } from "@/lib/site";
 import { ShareRow } from "@/components/article/share-row";
 
@@ -17,7 +18,7 @@ type Article = {
 type QuickItem = { time: string; text: string };
 
 async function fetchArticle(id: string): Promise<Article | null> {
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
+  const base = getPublicApiV1Base();
   const res = await fetch(`${base}/articles/${encodeURIComponent(id)}`, { next: { revalidate: 30 } });
   const json = (await res.json()) as ApiResponse<Article>;
   if (!json.ok || !json.data) return null;

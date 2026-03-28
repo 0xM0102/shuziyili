@@ -45,7 +45,7 @@ export const uiText: Record<
     personalCenter: "个人中心",
     accountHint: "登录后可编辑资料、查看账号信息并安全退出。",
     accountGoLogin: "去登录",
-    accountPageSubtitle: "在此维护展示名、昵称、头像与简介；主题与语言仍在右上角「设置」中调整。",
+    accountPageSubtitle: "在此维护展示名、昵称、头像与简介；主题、语言与外观请点击右上角头像，在菜单里打开「设置」。",
     profileMy: "我的资料",
     profileIdentifier: "登录账号",
     profileDisplayName: "显示名",
@@ -69,7 +69,8 @@ export const uiText: Record<
     personalCenter: "Profile",
     accountHint: "Sign in to edit your profile and manage your account.",
     accountGoLogin: "Sign in",
-    accountPageSubtitle: "Update display name, nickname, avatar, and bio. Theme and language stay in Settings (gear icon).",
+    accountPageSubtitle:
+      "Update your profile here. Theme, language, and display: open your account menu (avatar) and choose Settings.",
     profileMy: "Profile",
     profileIdentifier: "Sign-in ID",
     profileDisplayName: "Display name",

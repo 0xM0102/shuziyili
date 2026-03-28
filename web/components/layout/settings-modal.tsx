@@ -5,23 +5,18 @@ import { LanguageSwitcher } from "./language-switcher";
 import { ThemeToggle } from "./theme-toggle";
 import { SeniorToggle } from "./senior-toggle";
 import type { LangCode } from "@/lib/i18n";
-import type { AuthSession } from "@/lib/auth-client";
-import { UserProfileForm } from "@/components/account/user-profile-form";
 
+/** 全局偏好：语言 / 主题 / 银发模式。资料编辑在「个人中心」页，避免与设置弹窗重复。 */
 export function SettingsModal({
   open,
   lang,
   onLangChange,
   onClose,
-  session,
-  onProfileSaved,
 }: {
   open: boolean;
   lang: LangCode;
   onLangChange: (lang: LangCode) => void;
   onClose: () => void;
-  session: AuthSession | null;
-  onProfileSaved?: () => void;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -59,10 +54,6 @@ export function SettingsModal({
         </div>
 
         <div className="space-y-4 px-4 py-4">
-          {session ? (
-            <UserProfileForm session={session} lang={lang} onSaved={onProfileSaved} />
-          ) : null}
-
           <div className="flex items-center justify-between gap-3">
             <div>
               <p className="text-[15px] font-semibold text-foreground">银发模式</p>

@@ -10,7 +10,6 @@ export const primaryNav: NavItem[] = [
   { href: "/nomad", label: "数字游民" },
   { href: "/events", label: "活动" },
   { href: "/news", label: "资讯" },
-  { href: "/account", label: "个人中心" },
   { href: "/about", label: "关于" },
 ];
 

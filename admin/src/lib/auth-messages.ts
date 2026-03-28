@@ -6,6 +6,7 @@ export function mapApiMessage(code: string | null | undefined): string {
     weak_password: "密码至少 6 位",
     not_found: "账号不存在",
     wrong_password: "密码错误",
+    server_error: "登录服务异常（请稍后重试或查看 API 日志）",
     already_exists: "该账号已注册，请使用正确密码登录",
     unauthorized: "未登录或登录已过期",
     forbidden: "权限不足",

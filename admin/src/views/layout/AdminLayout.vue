@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
+import HelpTip from "@/components/HelpTip.vue";
+import { helpForPath } from "@/page-help";
 import { api, clearToken } from "@/lib/api-client";
 
 const route = useRoute();
@@ -13,6 +15,7 @@ const menuItems = [
   { key: "dashboard", label: "仪表盘", path: "/dashboard" },
   { key: "portal-users", label: "平台用户", path: "/portal-users" },
   { key: "staff-users", label: "后台账号", path: "/staff-users" },
+  { key: "verification-records", label: "验证发送记录", path: "/verification-records" },
   { key: "articles", label: "文章管理", path: "/articles" },
   { key: "banners", label: "首页配置", path: "/banners" },
   { key: "media", label: "媒体库", path: "/media" },
@@ -33,8 +36,12 @@ const title = computed(() => {
   if (route.path.startsWith("/media")) return "媒体库";
   if (route.path.startsWith("/portal-users")) return "平台用户";
   if (route.path.startsWith("/staff-users")) return "后台账号";
+  if (route.path.startsWith("/verification-records")) return "验证发送记录";
+  if (route.path.startsWith("/content")) return "内容管理";
   return "仪表盘";
 });
+
+const pageHelp = computed(() => helpForPath(route.path));
 
 const logout = async () => {
   try {
@@ -56,9 +63,11 @@ const logout = async () => {
       width="220"
     >
       <div class="brand">
-        <div class="dot" />
-        <span class="name">数字伊犁</span>
-        <span class="sub">管理后台</span>
+        <img src="/yl_logo.svg" alt="" class="logo" width="32" height="32" />
+        <div class="brandLines">
+          <span class="name">数字伊犁</span>
+          <span class="sub">管理后台</span>
+        </div>
       </div>
       <div class="siderMenuWrap">
         <a-menu
@@ -75,6 +84,7 @@ const logout = async () => {
           <a-menu-item key="dashboard">仪表盘</a-menu-item>
           <a-menu-item key="portal-users">平台用户</a-menu-item>
           <a-menu-item key="staff-users">后台账号</a-menu-item>
+          <a-menu-item key="verification-records">验证发送记录</a-menu-item>
           <a-menu-item key="articles">文章管理</a-menu-item>
           <a-menu-item key="banners">首页配置</a-menu-item>
           <a-menu-item key="media">媒体库</a-menu-item>
@@ -89,6 +99,7 @@ const logout = async () => {
             <span class="hamburger">≡</span>
           </a-button>
           <span class="pageTitle">{{ title }}</span>
+          <HelpTip v-if="pageHelp" :content="pageHelp" />
         </div>
 
         <div class="right">
@@ -124,19 +135,23 @@ const logout = async () => {
 }
 .brand {
   display: flex;
-  align-items: baseline;
-  gap: 8px;
-  padding: 16px 14px;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 12px;
   color: rgba(255, 255, 255, 0.92);
   font-weight: 700;
   letter-spacing: 0.2px;
 }
-.dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  background: #2174ff;
+.logo {
   flex: 0 0 auto;
+  object-fit: contain;
+}
+.brandLines {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  line-height: 1.2;
 }
 .name {
   font-size: 16px;

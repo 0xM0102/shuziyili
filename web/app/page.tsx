@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { getPublicApiV1Base } from "@/lib/api-base";
 import { siteConfig } from "@/lib/site";
 
 type HomeBanner = {
@@ -31,7 +32,7 @@ type Teaser = {
 };
 
 async function getHomeBanners(): Promise<HomeBanner[]> {
-  const base = process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
+  const base = getPublicApiV1Base();
   try {
     const res = await fetch(`${base}/home/banners`, { next: { revalidate: 30 } });
     if (!res.ok) return [];

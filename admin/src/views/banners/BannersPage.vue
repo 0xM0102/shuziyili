@@ -166,7 +166,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <a-card title="首页配置 · 轮播管理（Banner）" :bordered="true">
+  <a-card :bordered="true">
     <template #extra>
       <a-space>
         <a-button @click="refresh">刷新</a-button>
@@ -228,7 +228,6 @@ onMounted(() => {
             <a-button type="primary" :loading="uploading">上传图片</a-button>
           </a-upload>
         </a-space>
-        <div style="margin-top: 8px; color: #999; font-size: 12px">上传到 COS 后，该文件会自动出现在「媒体库」里。</div>
       </a-form-item>
       <a-form-item label="跳转链接">
         <a-input v-model:value="form.linkUrl" placeholder="例如 /travel 或 https://..." />

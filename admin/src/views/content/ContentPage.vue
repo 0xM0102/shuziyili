@@ -46,7 +46,7 @@ onMounted(() => {
 </script>
 
 <template>
-  <a-card title="内容管理（旧占位，已由「文章管理」替代）" :bordered="true">
+  <a-card :bordered="true">
     <a-space direction="vertical" size="middle" style="width: 100%">
       <a-segmented :options="['资讯', '活动', '便民', '旅游']" :value="'资讯'" disabled />
 

@@ -5,16 +5,30 @@ import { uiText } from "@/lib/i18n";
 import type { LangCode } from "@/lib/i18n";
 import {
   login,
-  loginBySmsCode,
-  register,
-  registerBySmsCode,
-  sendLoginSmsCode,
-  sendRegisterSmsCode,
+  loginByCode,
+  registerWithCode,
+  sendLoginCode,
+  sendRegisterCode,
   validateIdentifier,
 } from "@/lib/auth-client";
 
-function isPhone(v: string) {
-  return /^\+?\d{6,20}$/.test(v.replace(/\s+/g, ""));
+function CloseIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="18"
+      height="18"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.25"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <path d="M18 6 6 18M6 6l12 12" />
+    </svg>
+  );
 }
 
 export function AuthModal({
@@ -29,12 +43,13 @@ export function AuthModal({
   onClose: () => void;
 }) {
   const [submitted, setSubmitted] = useState(false);
-  const [authMethod, setAuthMethod] = useState<"password" | "sms">("password");
+  /** 仅登录：密码 / 验证码 */
+  const [loginKind, setLoginKind] = useState<"password" | "code">("password");
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  const [smsCode, setSmsCode] = useState("");
+  const [otpCode, setOtpCode] = useState("");
   const [loading, setLoading] = useState(false);
-  const [sendingSms, setSendingSms] = useState(false);
+  const [sendingOtp, setSendingOtp] = useState(false);
   const [cooldown, setCooldown] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
@@ -43,10 +58,10 @@ export function AuthModal({
       if (!open) setSubmitted(false);
       setIdentifier("");
       setPassword("");
-      setSmsCode("");
-      setAuthMethod("password");
+      setOtpCode("");
+      setLoginKind("password");
       setLoading(false);
-      setSendingSms(false);
+      setSendingOtp(false);
       setCooldown(0);
       setError(null);
     }, 0);
@@ -109,50 +124,37 @@ export function AuthModal({
     errorText = lang === "zh" ? zh[error] ?? error : en[error] ?? error;
   }
 
-  const canSendSms = cooldown <= 0 && !sendingSms;
+  const canSendOtp = cooldown <= 0 && !sendingOtp;
 
-  const sendSms = async () => {
+  const sendOtp = async () => {
     const id = identifier.trim();
-    if (!id) {
-      setError("empty");
+    const vErr = validateIdentifier(id);
+    if (vErr) {
+      setError(vErr);
       return;
     }
-    if (!isPhone(id.replace(/\s+/g, ""))) {
-      setError("invalid");
-      return;
-    }
-    if (!canSendSms) return;
-    setSendingSms(true);
+    if (!canSendOtp) return;
+    setSendingOtp(true);
     setError(null);
     try {
       const res =
-        mode === "login" ? await sendLoginSmsCode(id) : await sendRegisterSmsCode(id);
+        mode === "login" ? await sendLoginCode(id) : await sendRegisterCode(id);
       if (!res.ok) {
         setError(res.error);
         return;
       }
       setCooldown(60);
     } finally {
-      setSendingSms(false);
+      setSendingOtp(false);
     }
   };
 
-  const submitPassword = async () => {
-    const passwordTrim = password;
-    if (mode === "login") {
-      const res = await login(identifier, passwordTrim);
-      if (!res.ok) {
-        setError(res.error);
-        setLoading(false);
-        return;
-      }
-    } else {
-      const res = await register(identifier, passwordTrim);
-      if (!res.ok) {
-        setError(res.error);
-        setLoading(false);
-        return;
-      }
+  const submitLoginPassword = async () => {
+    const res = await login(identifier, password);
+    if (!res.ok) {
+      setError(res.error);
+      setLoading(false);
+      return;
     }
     window.dispatchEvent(new Event("shuziyili:auth-changed"));
     setSubmitted(true);
@@ -160,44 +162,25 @@ export function AuthModal({
     window.setTimeout(() => onClose(), 550);
   };
 
-  const submitSms = async () => {
-    const id = identifier.trim();
-    const code = smsCode.trim();
-    if (!id) {
-      setError("empty");
+  const submitLoginCode = async () => {
+    const res = await loginByCode(identifier, otpCode);
+    if (!res.ok) {
+      setError(res.error);
       setLoading(false);
       return;
     }
-    if (!isPhone(id.replace(/\s+/g, ""))) {
-      setError("invalid");
-      setLoading(false);
-      return;
-    }
-    if (!code) {
-      setError("invalid_code");
-      setLoading(false);
-      return;
-    }
-    if (mode === "register" && password.trim().length < 6) {
-      setError("weak_password");
-      setLoading(false);
-      return;
-    }
+    window.dispatchEvent(new Event("shuziyili:auth-changed"));
+    setSubmitted(true);
+    setLoading(false);
+    window.setTimeout(() => onClose(), 550);
+  };
 
-    if (mode === "login") {
-      const res = await loginBySmsCode(id, code);
-      if (!res.ok) {
-        setError(res.error);
-        setLoading(false);
-        return;
-      }
-    } else {
-      const res = await registerBySmsCode(id, code, password);
-      if (!res.ok) {
-        setError(res.error);
-        setLoading(false);
-        return;
-      }
+  const submitRegister = async () => {
+    const res = await registerWithCode(identifier, otpCode, password);
+    if (!res.ok) {
+      setError(res.error);
+      setLoading(false);
+      return;
     }
     window.dispatchEvent(new Event("shuziyili:auth-changed"));
     setSubmitted(true);
@@ -208,89 +191,124 @@ export function AuthModal({
   return (
     <div className="fixed inset-0 z-60 flex items-center justify-center px-4 py-10">
       <div
-        className="absolute inset-0 bg-black/40"
+        className="absolute inset-0 bg-black/45 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden
       />
       <div
-        className="relative w-full max-w-md rounded-2xl border border-border bg-card p-5 shadow-xl"
+        className="relative w-full max-w-[420px] rounded-2xl border border-border bg-card p-6 pt-7 shadow-2xl ring-1 ring-black/4 dark:ring-white/6"
         role="dialog"
         aria-modal="true"
         aria-label={title}
       >
-        <div className="flex items-start justify-between gap-3">
-          <div>
-            <h3 className="text-lg font-semibold">{title}</h3>
-            <p className="mt-1 text-sm text-muted">
-              {lang === "zh"
-                ? authMethod === "password"
-                  ? "使用手机号/邮箱与密码，或使用短信验证码（登录需已开通账号）。"
-                  : "短信验证码：登录仅限已注册手机号；注册仅在系统尚无用户时可用。"
-                : authMethod === "password"
-                  ? "Use phone/email + password, or SMS code."
-                  : "SMS: login requires an existing account; register only when no users exist yet."}
-            </p>
-          </div>
-          <button
-            type="button"
-            className="rounded-lg border border-border bg-card px-2 py-1 text-sm text-muted hover:text-foreground"
-            onClick={onClose}
-          >
-            {t.close}
-          </button>
+        <button
+          type="button"
+          className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-sidebar-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+          onClick={onClose}
+          aria-label={t.close}
+        >
+          <CloseIcon />
+        </button>
+
+        <div className="pr-8">
+          <h3 className="text-lg font-semibold tracking-tight text-foreground">{title}</h3>
+          <p className="mt-2 text-[13px] leading-relaxed text-muted">
+            {mode === "register"
+              ? lang === "zh"
+                ? "验证码将发送至手机号（短信）或邮箱（开发环境见服务端日志）。"
+                : "Code via SMS (phone) or email (check server logs in dev)."
+              : lang === "zh"
+                ? loginKind === "password"
+                  ? "使用手机号或邮箱与密码登录。"
+                  : "验证码登录：将向已绑定账号的手机或邮箱发送验证码。"
+                : loginKind === "password"
+                  ? "Sign in with phone or email and password."
+                  : "We’ll send a code to your phone (SMS) or email."}
+          </p>
         </div>
 
         {!submitted ? (
-          <div className="mt-4 space-y-3">
-            <div className="flex rounded-xl border border-border bg-background p-1">
-              <button
-                type="button"
-                className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  authMethod === "password"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted hover:text-foreground"
-                }`}
-                onClick={() => {
-                  setAuthMethod("password");
-                  setError(null);
-                }}
-              >
-                {lang === "zh" ? "密码" : "Password"}
-              </button>
-              <button
-                type="button"
-                className={`flex-1 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${
-                  authMethod === "sms"
-                    ? "bg-primary text-primary-foreground"
-                    : "text-muted hover:text-foreground"
-                }`}
-                onClick={() => {
-                  setAuthMethod("sms");
-                  setError(null);
-                }}
-              >
-                {lang === "zh" ? "短信验证码" : "SMS code"}
-              </button>
-            </div>
+          <div className="mt-5 space-y-4">
+            {mode === "login" ? (
+              <div className="flex gap-1 rounded-xl border border-border bg-sidebar-hover/80 p-1 dark:bg-sidebar-hover/40">
+                <button
+                  type="button"
+                  className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                    loginKind === "password"
+                      ? "bg-card text-foreground shadow-sm ring-1 ring-border"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                  onClick={() => {
+                    setLoginKind("password");
+                    setError(null);
+                  }}
+                >
+                  {lang === "zh" ? "密码登录" : "Password"}
+                </button>
+                <button
+                  type="button"
+                  className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
+                    loginKind === "code"
+                      ? "bg-card text-foreground shadow-sm ring-1 ring-border"
+                      : "text-muted hover:text-foreground"
+                  }`}
+                  onClick={() => {
+                    setLoginKind("code");
+                    setError(null);
+                  }}
+                >
+                  {lang === "zh" ? "验证码登录" : "Code"}
+                </button>
+              </div>
+            ) : null}
 
             <form
-              className="space-y-3"
+              className="space-y-3.5"
               onSubmit={(e) => {
                 e.preventDefault();
                 void (async () => {
                   setLoading(true);
                   setError(null);
                   try {
-                    if (authMethod === "password") {
+                    if (mode === "register") {
                       const err = validateIdentifier(identifier);
                       if (err) {
                         setError(err);
                         setLoading(false);
                         return;
                       }
-                      await submitPassword();
+                      if (otpCode.trim().length < 4) {
+                        setError("invalid_code");
+                        setLoading(false);
+                        return;
+                      }
+                      if (password.trim().length < 6) {
+                        setError("weak_password");
+                        setLoading(false);
+                        return;
+                      }
+                      await submitRegister();
+                    } else if (loginKind === "password") {
+                      const err = validateIdentifier(identifier);
+                      if (err) {
+                        setError(err);
+                        setLoading(false);
+                        return;
+                      }
+                      await submitLoginPassword();
                     } else {
-                      await submitSms();
+                      const err = validateIdentifier(identifier);
+                      if (err) {
+                        setError(err);
+                        setLoading(false);
+                        return;
+                      }
+                      if (!otpCode.trim()) {
+                        setError("invalid_code");
+                        setLoading(false);
+                        return;
+                      }
+                      await submitLoginCode();
                     }
                   } catch {
                     setError("unknown");
@@ -299,84 +317,69 @@ export function AuthModal({
                 })();
               }}
             >
-              {authMethod === "password" ? (
-                <>
+              <input
+                className="w-full rounded-xl border border-border bg-background px-3.5 py-3 text-[15px] outline-none transition-shadow placeholder:text-muted/70 focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
+                placeholder={lang === "zh" ? "手机号或邮箱" : "Phone or email"}
+                required
+                autoComplete="username"
+                value={identifier}
+                onChange={(e) => setIdentifier(e.target.value)}
+              />
+
+              {mode === "register" || loginKind === "code" ? (
+                <div className="flex gap-2">
                   <input
-                    className="w-full rounded-xl border border-border bg-background px-3 py-3 text-[15px] outline-none focus:border-primary/60"
-                    placeholder={lang === "zh" ? "手机号或邮箱" : "Phone or email"}
+                    className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3.5 py-3 text-[15px] outline-none transition-shadow placeholder:text-muted/70 focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
+                    placeholder={lang === "zh" ? "验证码" : "Code"}
                     required
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    value={otpCode}
+                    onChange={(e) => setOtpCode(e.target.value)}
                   />
-                  <input
-                    type="password"
-                    className="w-full rounded-xl border border-border bg-background px-3 py-3 text-[15px] outline-none focus:border-primary/60"
-                    placeholder={lang === "zh" ? "密码" : "Password"}
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                  />
-                </>
-              ) : (
-                <>
-                  <input
-                    className="w-full rounded-xl border border-border bg-background px-3 py-3 text-[15px] outline-none focus:border-primary/60"
-                    placeholder={lang === "zh" ? "手机号（短信仅支持手机号）" : "Phone number"}
-                    required
-                    inputMode="tel"
-                    autoComplete="tel"
-                    value={identifier}
-                    onChange={(e) => setIdentifier(e.target.value)}
-                  />
-                  <div className="flex gap-2">
-                    <input
-                      className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3 py-3 text-[15px] outline-none focus:border-primary/60"
-                      placeholder={lang === "zh" ? "验证码" : "Code"}
-                      required
-                      inputMode="numeric"
-                      autoComplete="one-time-code"
-                      value={smsCode}
-                      onChange={(e) => setSmsCode(e.target.value)}
-                    />
-                    <button
-                      type="button"
-                      disabled={!canSendSms}
-                      className="shrink-0 rounded-xl border border-border bg-background px-3 py-3 text-sm font-semibold text-foreground hover:bg-sidebar-hover disabled:cursor-not-allowed disabled:opacity-50"
-                      onClick={() => void sendSms()}
-                    >
-                      {sendingSms
-                        ? lang === "zh"
-                          ? "发送中…"
-                          : "Sending…"
-                        : cooldown > 0
-                          ? `${cooldown}s`
-                          : lang === "zh"
-                            ? "获取验证码"
-                            : "Send code"}
-                    </button>
-                  </div>
-                  {mode === "register" ? (
-                    <input
-                      type="password"
-                      className="w-full rounded-xl border border-border bg-background px-3 py-3 text-[15px] outline-none focus:border-primary/60"
-                      placeholder={lang === "zh" ? "设置登录密码（至少 6 位）" : "Password (min 6)"}
-                      required
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                    />
-                  ) : null}
-                </>
-              )}
+                  <button
+                    type="button"
+                    disabled={!canSendOtp}
+                    className="shrink-0 rounded-xl border border-border bg-background px-3 py-3 text-sm font-semibold text-foreground transition-colors hover:bg-sidebar-hover disabled:cursor-not-allowed disabled:opacity-50"
+                    onClick={() => void sendOtp()}
+                  >
+                    {sendingOtp
+                      ? lang === "zh"
+                        ? "发送中…"
+                        : "Sending…"
+                      : cooldown > 0
+                        ? `${cooldown}s`
+                        : lang === "zh"
+                          ? "获取验证码"
+                          : "Send code"}
+                  </button>
+                </div>
+              ) : null}
+
+              {mode === "register" || loginKind === "password" ? (
+                <input
+                  type="password"
+                  className="w-full rounded-xl border border-border bg-background px-3.5 py-3 text-[15px] outline-none transition-shadow placeholder:text-muted/70 focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
+                  placeholder={lang === "zh" ? "密码（至少 6 位）" : "Password (min 6)"}
+                  required
+                  autoComplete={mode === "register" ? "new-password" : "current-password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                />
+              ) : null}
 
               {errorText ? (
-                <p className="rounded-xl border border-border bg-sidebar px-3 py-2 text-[15px] text-foreground/90">
+                <p
+                  role="alert"
+                  className="rounded-xl border border-red-500/25 bg-red-500/6 px-3.5 py-2.5 text-[14px] leading-snug text-foreground dark:border-red-400/30 dark:bg-red-400/8"
+                >
                   {errorText}
                 </p>
               ) : null}
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-70"
+                className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {mode === "login"
                   ? lang === "zh"
@@ -389,19 +392,19 @@ export function AuthModal({
             </form>
           </div>
         ) : (
-          <div className="mt-4 space-y-3 text-sm">
-            <p className="rounded-xl border border-border bg-sidebar p-3">
+          <div className="mt-5 space-y-4 text-sm">
+            <p className="rounded-xl border border-primary/20 bg-primary/6 px-4 py-3.5 leading-relaxed text-foreground dark:bg-primary/10">
               {lang === "zh"
                 ? mode === "login"
-                  ? "登录成功。你现在已登录。"
-                  : "注册成功。你现在已登录。"
+                  ? "登录成功，已为你保持登录状态。"
+                  : "注册成功，已为你保持登录状态。"
                 : mode === "login"
-                  ? "Login successful. You are now signed in."
-                  : "Registration successful. You are now signed in."}
+                  ? "You’re signed in."
+                  : "Account created. You’re signed in."}
             </p>
             <button
               type="button"
-              className="w-full rounded-xl bg-primary px-4 py-3 text-[15px] font-semibold text-primary-foreground hover:opacity-95"
+              className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] font-semibold text-primary-foreground shadow-sm hover:opacity-95"
               onClick={onClose}
             >
               {lang === "zh" ? "完成" : "Done"}

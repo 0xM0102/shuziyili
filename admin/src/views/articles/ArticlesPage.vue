@@ -146,7 +146,6 @@ function articlePath(id: string) {
 }
 
 function siteBase() {
-  // 后台运行在 5174，文章前台运行在 3000；生产可用 VITE_SITE_BASE_URL 覆盖
   const v = (import.meta.env.VITE_SITE_BASE_URL as string | undefined) ?? "";
   return (v || "http://localhost:3000").replace(/\/$/, "");
 }
@@ -167,7 +166,7 @@ async function copyLink(id: string) {
 </script>
 
 <template>
-  <a-card title="文章管理" :bordered="true">
+  <a-card :bordered="true">
     <template #extra>
       <a-space>
         <a-button @click="refresh">刷新</a-button>
@@ -230,7 +229,6 @@ async function copyLink(id: string) {
             <a-button type="primary" :loading="uploading">上传封面</a-button>
           </a-upload>
         </a-space>
-        <div style="margin-top: 8px; color: #999; font-size: 12px">上传到 COS 后，该文件会自动出现在「媒体库」里。</div>
       </a-form-item>
       <a-form-item label="状态">
         <a-segmented v-model:value="form.status" :options="[{ label: '草稿', value: 'draft' }, { label: '已发布', value: 'published' }]" />

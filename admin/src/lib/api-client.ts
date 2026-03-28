@@ -29,8 +29,19 @@ export type StaffUserDto = {
   bio: string;
 };
 
-/** 生产构建时通过 VITE_API_BASE_URL 指向线上 API 根地址（不含末尾 /）；开发环境留空走 Vite 代理 */
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") ?? "";
+/**
+ * API 根地址（不含末尾 /）。
+ * - 生产：设 `VITE_API_BASE_URL`（或与站点同域相对路径则留空）。
+ * - 开发：`import.meta.env.DEV` 时默认直连 `http://localhost:8080`，避免仅依赖 Vite 代理时出现 5174 上 /api 404。
+ */
+function resolveApiBase(): string {
+  const fromEnv = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim().replace(/\/$/, "") ?? "";
+  if (fromEnv) return fromEnv;
+  if (import.meta.env.DEV) return "http://localhost:8080";
+  return "";
+}
+
+const API_BASE = resolveApiBase();
 
 function apiUrl(path: string) {
   if (path.startsWith("http://") || path.startsWith("https://")) return path;
@@ -156,6 +167,26 @@ export const api = {
           method: "POST",
           body: JSON.stringify(payload),
         });
+      },
+    },
+    verificationRecords: {
+      async list(page = 0, size = 50) {
+        return request<{
+          items: {
+            id: number;
+            recipient: string;
+            scene: string;
+            createdAt: number;
+            expiresAt: number;
+            used: boolean;
+            usedAt: number;
+            /** 开启 API 的 store-plain-otp 时才有 */
+            plainCode: string | null;
+          }[];
+          total: number;
+          page: number;
+          size: number;
+        }>(`/api/v1/admin/verification-records?page=${page}&size=${size}`, { method: "GET" });
       },
     },
     async listArticles() {

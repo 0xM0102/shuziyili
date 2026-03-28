@@ -1,20 +1,18 @@
-# 本地 / 测试环境：H2 文件库 + 自动建表（开发效率）
+# 本地开发：与生产一致使用 MySQL + Flyway（避免 H2 / MySQL 两套行为）
+# 库名默认 shuziyili。JDBC 已带 createDatabaseIfNotExist=true：首次连库时若库不存在会自动创建（仅开发默认 URL；生产请显式建库）。
 spring:
   datasource:
-    url: jdbc:h2:file:./data/shuziyili;DB_CLOSE_DELAY=-1;AUTO_SERVER=TRUE
-    username: sa
-    password: ""
-    driver-class-name: org.h2.Driver
+    url: ${SPRING_DATASOURCE_URL:jdbc:mysql://127.0.0.1:3306/shuziyili?useUnicode=true&characterEncoding=utf8&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true&useSSL=false&createDatabaseIfNotExist=true}
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     show-sql: false
   flyway:
-    enabled: false
-  h2:
-    console:
-      enabled: true
-      path: /h2-console
+    enabled: true
+    locations: classpath:db/migration
 
 shuziyili:
   cors:

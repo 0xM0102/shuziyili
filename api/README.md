@@ -4,9 +4,45 @@
 
 ## 运行
 
+开发与生产统一使用 **MySQL**；默认 `dev` profile 连接 `127.0.0.1:3306`，库名 `shuziyili`，用户 `root`，密码 `root`（可用环境变量 `SPRING_DATASOURCE_*` 覆盖）。
+
+**Navicat / 本机 MySQL 里看不到 `shuziyili`？**  
+这是正常的：库要不存在，**第一次启动 API** 时，开发环境默认连接串里的 `createDatabaseIfNotExist=true` 会自动建库；刷新 Navicat 即可。也可在 Navicat 里手动执行：
+
+```sql
+CREATE DATABASE shuziyili CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+```
+
+若你本机 root 密码不是 `root`，在 `application-local.yml` 里改 `spring.datasource.password`（或设环境变量 `SPRING_DATASOURCE_PASSWORD`）。
+
+**方式一：Docker 起 MySQL（推荐）**
+
+```bash
+cd api && docker compose up -d
+```
+
+**方式二：本机已安装 MySQL 8（沿用你现有的 3306 实例）**  
+保证账号密码与配置一致即可；无需事先建库也可直接 `./mvnw spring-boot:run`（会自动建 `shuziyili`）。
+
+然后启动 API：
+
 ```bash
 ./mvnw spring-boot:run
 ```
+
+首次启动会由 **Flyway** 执行 `db/migration` 建表；若无操作员，启动脚本会写入初始管理员（见 `BootstrapAdminRunner`）。
+
+### 从旧 H2 文件库迁到 MySQL（一次性）
+
+若你曾用默认 `dev` H2（数据在 `api/data/*.mv.db`），可导入本机 MySQL 后删除 H2 文件：
+
+```bash
+cd api
+export MYSQL_PASSWORD=你的MySQL密码   # 与 application-local.yml 中 root 密码一致
+./scripts/migrate-h2-to-mysql.sh
+```
+
+脚本会：导出 H2 → 跑 Flyway（可设 `SKIP_FLYWAY=1` 跳过）→ 清空业务表并插入 → 清空 `api/data` 下 H2 文件。`flyway_schema_history` 不删。
 
 若无 Wrapper：
 
@@ -19,6 +55,7 @@ mvn -N wrapper:wrapper   # 生成 mvnw（需本机 Maven）
 
 - **Java 11+**（Maven 编译目标为 11；升级 JDK 17 后可考虑迁到 Spring Boot 3）
 - Spring Boot **2.7.x**
+- **MySQL 8**（本地开发 + 生产）
 
 ## 接口
 
@@ -30,8 +67,10 @@ mvn -N wrapper:wrapper   # 生成 mvnw（需本机 Maven）
 
 ## 配置
 
-- 默认：`src/main/resources/application.yml`（端口 8080、CORS）
-- 本地数据库：复制 `application-local.yml.example` 为 `application-local.yml`（勿提交），并在 `pom.xml` 中自行加入 JPA + MySQL 依赖后使用 `--spring.profiles.active=local`
+- 默认：`application.yml`（端口 8080、默认 profile `dev`）
+- `application-dev.yml`：本地 MySQL + Flyway + 文档接口
+- `application-prod.yml`：生产 MySQL + Flyway + `ddl-auto: validate`
+- 复制 `application-local.yml.example` 为 `application-local.yml` 覆盖 COS 密钥、数据库密码等（勿提交）
 
 ## 包结构（与前期方案一致）
 

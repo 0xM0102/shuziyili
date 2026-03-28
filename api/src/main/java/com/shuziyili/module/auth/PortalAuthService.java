@@ -1,6 +1,7 @@
 package com.shuziyili.module.auth;
 
 import com.shuziyili.common.ApiResponse;
+import com.shuziyili.module.sms.EmailSender;
 import com.shuziyili.module.sms.SmsCodeEntity;
 import com.shuziyili.module.sms.SmsCodeRepository;
 import com.shuziyili.module.sms.SmsScene;
@@ -14,12 +15,13 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 门户 C 端：注册、登录、短信验证码、个人资料。 数据仅 {@link PortalUserEntity}，会话 scope={@link
+ * 门户 C 端：注册（须验证码）、登录（密码或验证码）、个人资料。会话 scope={@link
  * SessionScope#PORTAL}，与 {@link StaffAuthService} 互不通用。
  */
 @Service
@@ -35,36 +37,24 @@ public class PortalAuthService {
   private final SessionRepository sessionRepository;
   private final SmsCodeRepository smsCodeRepository;
   private final SmsSender smsSender;
+  private final EmailSender emailSender;
   private final SecureRandom random = new SecureRandom();
+  /** 为 true 时在库中写入 plain_code，供管理后台查看；生产环境请关闭。 */
+  private final boolean storePlainOtp;
 
   public PortalAuthService(
       PortalUserRepository portalUserRepository,
       SessionRepository sessionRepository,
       SmsCodeRepository smsCodeRepository,
-      SmsSender smsSender) {
+      SmsSender smsSender,
+      EmailSender emailSender,
+      @Value("${shuziyili.auth.store-plain-otp:true}") boolean storePlainOtp) {
     this.portalUserRepository = portalUserRepository;
     this.sessionRepository = sessionRepository;
     this.smsCodeRepository = smsCodeRepository;
     this.smsSender = smsSender;
-  }
-
-  @Transactional
-  public ApiResponse<Map<String, String>> register(String identifierRaw, String password) {
-    String identifier = AccountIdentifiers.normalize(identifierRaw);
-    String validation = AccountIdentifiers.validate(identifier);
-    if (validation != null) {
-      return ApiResponse.fail(validation);
-    }
-    if (password == null || password.trim().length() < 6) {
-      return ApiResponse.fail("weak_password");
-    }
-    if (portalUserRepository.findByIdentifier(identifier).isPresent()) {
-      return ApiResponse.fail("already_exists");
-    }
-    long now = clock.millis();
-    portalUserRepository.save(newPortalUser(identifier, passwordEncoder.encode(password), now));
-    SessionEntity session = issuePortalSession(identifier);
-    return ApiResponse.success(Map.of("token", session.getToken(), "identifier", identifier));
+    this.emailSender = emailSender;
+    this.storePlainOtp = storePlainOtp;
   }
 
   @Transactional
@@ -89,83 +79,76 @@ public class PortalAuthService {
     return ApiResponse.success(Map.of("token", session.getToken(), "identifier", identifier));
   }
 
+  /** 发送注册验证码（邮箱或手机号）。 */
   @Transactional
-  public ApiResponse<Map<String, String>> sendLoginSmsCode(String phoneRaw) {
-    String phone = AccountIdentifiers.normalize(phoneRaw);
-    String validation = AccountIdentifiers.validate(phone);
+  public ApiResponse<Map<String, String>> sendRegisterCode(String identifierRaw) {
+    String identifier = AccountIdentifiers.normalize(identifierRaw);
+    String validation = AccountIdentifiers.validate(identifier);
     if (validation != null) {
       return ApiResponse.fail(validation);
     }
-    if (!AccountIdentifiers.isPhone(phone)) {
-      return ApiResponse.fail("invalid");
-    }
-    if (portalUserRepository.findByIdentifier(phone).isEmpty()) {
-      return ApiResponse.fail("not_found");
-    }
-    return issueSmsCodeAndSend(phone, SmsScene.LOGIN);
-  }
-
-  @Transactional
-  public ApiResponse<Map<String, String>> sendRegisterSmsCode(String phoneRaw) {
-    String phone = AccountIdentifiers.normalize(phoneRaw);
-    String validation = AccountIdentifiers.validate(phone);
-    if (validation != null) {
-      return ApiResponse.fail(validation);
-    }
-    if (!AccountIdentifiers.isPhone(phone)) {
-      return ApiResponse.fail("invalid");
-    }
-    if (portalUserRepository.findByIdentifier(phone).isPresent()) {
+    if (portalUserRepository.findByIdentifier(identifier).isPresent()) {
       return ApiResponse.fail("already_exists");
     }
-    return issueSmsCodeAndSend(phone, SmsScene.REGISTER);
+    return issueOtpAndSend(identifier, SmsScene.REGISTER);
   }
 
+  /** 验证码 + 密码完成注册（邮箱或手机号）。 */
   @Transactional
-  public ApiResponse<Map<String, String>> loginBySmsCode(String phoneRaw, String codeRaw) {
-    String phone = AccountIdentifiers.normalize(phoneRaw);
-    String validation = AccountIdentifiers.validate(phone);
+  public ApiResponse<Map<String, String>> registerWithCode(
+      String identifierRaw, String codeRaw, String password) {
+    String identifier = AccountIdentifiers.normalize(identifierRaw);
+    String validation = AccountIdentifiers.validate(identifier);
     if (validation != null) {
       return ApiResponse.fail(validation);
-    }
-    if (!AccountIdentifiers.isPhone(phone)) {
-      return ApiResponse.fail("invalid");
-    }
-    String err = verifyAndConsumeSmsCode(phone, SmsScene.LOGIN, codeRaw);
-    if (err != null) {
-      return ApiResponse.fail(err);
-    }
-    if (portalUserRepository.findByIdentifier(phone).isEmpty()) {
-      return ApiResponse.fail("not_found");
-    }
-    SessionEntity session = issuePortalSession(phone);
-    return ApiResponse.success(Map.of("token", session.getToken(), "identifier", phone));
-  }
-
-  @Transactional
-  public ApiResponse<Map<String, String>> registerBySmsCode(String phoneRaw, String codeRaw, String password) {
-    String phone = AccountIdentifiers.normalize(phoneRaw);
-    String validation = AccountIdentifiers.validate(phone);
-    if (validation != null) {
-      return ApiResponse.fail(validation);
-    }
-    if (!AccountIdentifiers.isPhone(phone)) {
-      return ApiResponse.fail("invalid");
     }
     if (password == null || password.trim().length() < 6) {
       return ApiResponse.fail("weak_password");
     }
-    if (portalUserRepository.findByIdentifier(phone).isPresent()) {
+    if (portalUserRepository.findByIdentifier(identifier).isPresent()) {
       return ApiResponse.fail("already_exists");
     }
-    String err = verifyAndConsumeSmsCode(phone, SmsScene.REGISTER, codeRaw);
+    String err = verifyAndConsumeOtp(identifier, SmsScene.REGISTER, codeRaw);
     if (err != null) {
       return ApiResponse.fail(err);
     }
     long now = clock.millis();
-    portalUserRepository.save(newPortalUser(phone, passwordEncoder.encode(password), now));
-    SessionEntity session = issuePortalSession(phone);
-    return ApiResponse.success(Map.of("token", session.getToken(), "identifier", phone));
+    portalUserRepository.save(newPortalUser(identifier, passwordEncoder.encode(password), now));
+    SessionEntity session = issuePortalSession(identifier);
+    return ApiResponse.success(Map.of("token", session.getToken(), "identifier", identifier));
+  }
+
+  /** 发送登录验证码（邮箱或手机号，账号须已存在）。 */
+  @Transactional
+  public ApiResponse<Map<String, String>> sendLoginCode(String identifierRaw) {
+    String identifier = AccountIdentifiers.normalize(identifierRaw);
+    String validation = AccountIdentifiers.validate(identifier);
+    if (validation != null) {
+      return ApiResponse.fail(validation);
+    }
+    if (portalUserRepository.findByIdentifier(identifier).isEmpty()) {
+      return ApiResponse.fail("not_found");
+    }
+    return issueOtpAndSend(identifier, SmsScene.LOGIN);
+  }
+
+  /** 验证码登录（邮箱或手机号）。 */
+  @Transactional
+  public ApiResponse<Map<String, String>> loginByCode(String identifierRaw, String codeRaw) {
+    String identifier = AccountIdentifiers.normalize(identifierRaw);
+    String validation = AccountIdentifiers.validate(identifier);
+    if (validation != null) {
+      return ApiResponse.fail(validation);
+    }
+    String err = verifyAndConsumeOtp(identifier, SmsScene.LOGIN, codeRaw);
+    if (err != null) {
+      return ApiResponse.fail(err);
+    }
+    if (portalUserRepository.findByIdentifier(identifier).isEmpty()) {
+      return ApiResponse.fail("not_found");
+    }
+    SessionEntity session = issuePortalSession(identifier);
+    return ApiResponse.success(Map.of("token", session.getToken(), "identifier", identifier));
   }
 
   @Transactional(readOnly = true)
@@ -214,6 +197,63 @@ public class PortalAuthService {
     return ApiResponse.success();
   }
 
+  private ApiResponse<Map<String, String>> issueOtpAndSend(String recipient, String scene) {
+    long now = clock.millis();
+    Optional<SmsCodeEntity> lastOpt =
+        smsCodeRepository.findFirstByPhoneAndSceneOrderByCreatedAtDesc(recipient, scene);
+    if (lastOpt.isPresent() && now - lastOpt.get().getCreatedAt() < SMS_SEND_COOLDOWN_MS) {
+      return ApiResponse.fail("too_many_requests");
+    }
+    String code = String.format(Locale.ROOT, "%06d", random.nextInt(1_000_000));
+    SmsCodeEntity e = new SmsCodeEntity();
+    e.setPhone(recipient);
+    e.setScene(scene);
+    e.setCodeHash(sha256Hex("shuziyili:" + recipient + ":" + scene + ":" + code));
+    e.setCreatedAt(now);
+    e.setExpiresAt(now + SMS_CODE_TTL_MS);
+    e.setUsed(false);
+    e.setUsedAt(0);
+    if (storePlainOtp) {
+      e.setPlainCode(code);
+    }
+    smsCodeRepository.save(e);
+    if (AccountIdentifiers.isPhone(recipient)) {
+      smsSender.sendVerificationCode(recipient, scene, code);
+    } else {
+      emailSender.sendVerificationCode(recipient, scene, code);
+    }
+    return ApiResponse.success(Map.of("sent", "true"));
+  }
+
+  /** @return null 表示核销成功 */
+  private String verifyAndConsumeOtp(String recipient, String scene, String codeRaw) {
+    String code = codeRaw == null ? "" : codeRaw.trim();
+    if (!code.matches("^\\d{4,8}$")) {
+      return "invalid_code";
+    }
+    Optional<SmsCodeEntity> lastOpt =
+        smsCodeRepository.findFirstByPhoneAndSceneOrderByCreatedAtDesc(recipient, scene);
+    if (lastOpt.isEmpty()) {
+      return "code_invalid";
+    }
+    SmsCodeEntity e = lastOpt.get();
+    long now = clock.millis();
+    if (e.isUsed()) {
+      return "code_used";
+    }
+    if (now > e.getExpiresAt()) {
+      return "code_expired";
+    }
+    String expected = sha256Hex("shuziyili:" + recipient + ":" + scene + ":" + code);
+    if (!expected.equals(e.getCodeHash())) {
+      return "code_invalid";
+    }
+    e.setUsed(true);
+    e.setUsedAt(now);
+    smsCodeRepository.save(e);
+    return null;
+  }
+
   /** 未过期且 {@link SessionScope#PORTAL}；过期则删除会话行。 */
   private Optional<SessionEntity> resolveLivePortalSession(String bearerToken) {
     if (bearerToken == null || bearerToken.isBlank()) {
@@ -257,56 +297,6 @@ public class PortalAuthService {
     user.setBio("");
     user.setUpdatedAt(now);
     return user;
-  }
-
-  private ApiResponse<Map<String, String>> issueSmsCodeAndSend(String phone, String scene) {
-    long now = clock.millis();
-    Optional<SmsCodeEntity> lastOpt =
-        smsCodeRepository.findFirstByPhoneAndSceneOrderByCreatedAtDesc(phone, scene);
-    if (lastOpt.isPresent() && now - lastOpt.get().getCreatedAt() < SMS_SEND_COOLDOWN_MS) {
-      return ApiResponse.fail("too_many_requests");
-    }
-    String code = String.format(Locale.ROOT, "%06d", random.nextInt(1_000_000));
-    SmsCodeEntity e = new SmsCodeEntity();
-    e.setPhone(phone);
-    e.setScene(scene);
-    e.setCodeHash(sha256Hex("shuziyili:" + phone + ":" + scene + ":" + code));
-    e.setCreatedAt(now);
-    e.setExpiresAt(now + SMS_CODE_TTL_MS);
-    e.setUsed(false);
-    e.setUsedAt(0);
-    smsCodeRepository.save(e);
-    smsSender.sendVerificationCode(phone, scene, code);
-    return ApiResponse.success(Map.of("sent", "true"));
-  }
-
-  /** @return null 表示核销成功 */
-  private String verifyAndConsumeSmsCode(String phone, String scene, String codeRaw) {
-    String code = codeRaw == null ? "" : codeRaw.trim();
-    if (!code.matches("^\\d{4,8}$")) {
-      return "invalid_code";
-    }
-    Optional<SmsCodeEntity> lastOpt =
-        smsCodeRepository.findFirstByPhoneAndSceneOrderByCreatedAtDesc(phone, scene);
-    if (lastOpt.isEmpty()) {
-      return "code_invalid";
-    }
-    SmsCodeEntity e = lastOpt.get();
-    long now = clock.millis();
-    if (e.isUsed()) {
-      return "code_used";
-    }
-    if (now > e.getExpiresAt()) {
-      return "code_expired";
-    }
-    String expected = sha256Hex("shuziyili:" + phone + ":" + scene + ":" + code);
-    if (!expected.equals(e.getCodeHash())) {
-      return "code_invalid";
-    }
-    e.setUsed(true);
-    e.setUsedAt(now);
-    smsCodeRepository.save(e);
-    return null;
   }
 
   private SessionEntity issuePortalSession(String identifier) {

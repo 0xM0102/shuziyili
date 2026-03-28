@@ -23,9 +23,6 @@ spring:
   flyway:
     enabled: true
     locations: classpath:db/migration
-  h2:
-    console:
-      enabled: false
 
 # 逗号分隔；未设置时默认主站域名（仍建议部署时显式配置）
 shuziyili:

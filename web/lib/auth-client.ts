@@ -1,3 +1,5 @@
+import { getPublicApiV1Base } from "@/lib/api-base";
+
 export type AuthSession = {
   identifier: string;
   token: string;
@@ -23,8 +25,10 @@ type AuthLoginRegisterData = {
 type StoredSession = AuthSession;
 
 const SESSION_KEY = "shuziyili_session_v1";
-const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080/api/v1";
+
+function apiBase() {
+  return getPublicApiV1Base();
+}
 
 function canUseStorage() {
   return typeof window !== "undefined" && typeof localStorage !== "undefined";
@@ -116,7 +120,7 @@ async function apiRequest<T>(
     token?: string;
   }
 ): Promise<ApiResponse<T>> {
-  const url = `${API_BASE}${path}`;
+  const url = `${apiBase()}${path}`;
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
   };
@@ -143,15 +147,29 @@ async function apiRequest<T>(
   }
 }
 
-export async function register(identifierRaw: string, password: string) {
+export async function sendRegisterCode(identifierRaw: string) {
+  const err = validateIdentifier(identifierRaw);
+  if (err) return { ok: false as const, error: err };
+  const res = await apiRequest<{ sent: string }>("/auth/register/send", {
+    method: "POST",
+    body: { identifier: identifierRaw.trim() },
+  });
+  if (!res.ok) return { ok: false as const, error: res.message ?? "unknown" };
+  return { ok: true as const };
+}
+
+export async function registerWithCode(identifierRaw: string, code: string, password: string) {
   const err = validateIdentifier(identifierRaw);
   if (err) return { ok: false as const, error: err };
   if (password.trim().length < 6) return { ok: false as const, error: "weak_password" };
+  const c = code.trim();
+  if (!c) return { ok: false as const, error: "invalid_code" };
 
   const res = await apiRequest<AuthLoginRegisterData>("/auth/register", {
     method: "POST",
     body: {
-      identifier: identifierRaw,
+      identifier: identifierRaw.trim(),
+      code: c,
       password,
     },
   });
@@ -219,61 +237,26 @@ export async function fetchMe(): Promise<AuthSession | null> {
   return merged;
 }
 
-export async function sendLoginSmsCode(phoneRaw: string) {
-  const res = await apiRequest<{ sent: string }>("/auth/sms/send", {
+export async function sendLoginCode(identifierRaw: string) {
+  const err = validateIdentifier(identifierRaw);
+  if (err) return { ok: false as const, error: err };
+  const res = await apiRequest<{ sent: string }>("/auth/login/send", {
     method: "POST",
-    body: { phone: phoneRaw.trim() },
+    body: { identifier: identifierRaw.trim() },
   });
   if (!res.ok) return { ok: false as const, error: res.message ?? "unknown" };
   return { ok: true as const };
 }
 
-export async function loginBySmsCode(phoneRaw: string, code: string) {
-  const p = phoneRaw.trim();
+export async function loginByCode(identifierRaw: string, code: string) {
+  const err = validateIdentifier(identifierRaw);
+  if (err) return { ok: false as const, error: err };
   const c = code.trim();
-  if (!p) return { ok: false as const, error: "empty" };
-  if (!isPhone(p.replace(/\s+/g, ""))) return { ok: false as const, error: "invalid" };
   if (!c) return { ok: false as const, error: "invalid_code" };
 
-  const res = await apiRequest<AuthLoginRegisterData>("/auth/sms/login", {
+  const res = await apiRequest<AuthLoginRegisterData>("/auth/login/code", {
     method: "POST",
-    body: { phone: p, code: c },
-  });
-
-  if (!res.ok || !res.data) {
-    return { ok: false as const, error: res.message ?? "unknown" };
-  }
-
-  const session: AuthSession = {
-    identifier: res.data.identifier,
-    token: res.data.token,
-    createdAt: Date.now(),
-    ...emptyProfile(),
-  };
-  setStoredSession(session);
-  return { ok: true as const, session };
-}
-
-export async function sendRegisterSmsCode(phoneRaw: string) {
-  const res = await apiRequest<{ sent: string }>("/auth/sms/register/send", {
-    method: "POST",
-    body: { phone: phoneRaw.trim() },
-  });
-  if (!res.ok) return { ok: false as const, error: res.message ?? "unknown" };
-  return { ok: true as const };
-}
-
-export async function registerBySmsCode(phoneRaw: string, code: string, password: string) {
-  const p = phoneRaw.trim();
-  const c = code.trim();
-  if (!p) return { ok: false as const, error: "empty" };
-  if (!isPhone(p.replace(/\s+/g, ""))) return { ok: false as const, error: "invalid" };
-  if (!c) return { ok: false as const, error: "invalid_code" };
-  if (password.trim().length < 6) return { ok: false as const, error: "weak_password" };
-
-  const res = await apiRequest<AuthLoginRegisterData>("/auth/sms/register", {
-    method: "POST",
-    body: { phone: p, code: c, password },
+    body: { identifier: identifierRaw.trim(), code: c },
   });
 
   if (!res.ok || !res.data) {
