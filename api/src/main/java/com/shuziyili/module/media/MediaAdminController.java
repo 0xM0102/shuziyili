@@ -4,6 +4,7 @@ import com.shuziyili.common.ApiResponse;
 import com.shuziyili.common.BearerTokens;
 import com.shuziyili.config.CosProperties;
 import com.shuziyili.module.auth.StaffAuthService;
+import com.shuziyili.module.auth.StaffPermissionCodes;
 import com.shuziyili.module.media.CosStorageService.MediaItem;
 import com.shuziyili.module.media.CosStorageService.UploadResult;
 import java.util.LinkedHashMap;
@@ -42,7 +43,7 @@ public class MediaAdminController {
   public ResponseEntity<ApiResponse<Map<String, Object>>> config(
       @RequestHeader(value = "Authorization", required = false) String authorization) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaff(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.MEDIA_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
     }
     Map<String, Object> m = new LinkedHashMap<>();
@@ -60,7 +61,7 @@ public class MediaAdminController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestParam(value = "prefix", required = false) String prefix) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaff(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.MEDIA_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
     }
     try {
@@ -76,7 +77,7 @@ public class MediaAdminController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestParam("file") MultipartFile file) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaff(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.MEDIA_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
     }
     try {
@@ -93,7 +94,7 @@ public class MediaAdminController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestParam("key") String key) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaff(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.MEDIA_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
     }
     try {

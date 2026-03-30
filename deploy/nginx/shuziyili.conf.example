@@ -1,0 +1,76 @@
+# 复制到 /etc/nginx/sites-available/shuziyili 后填写 SSL 路径。
+# 域名：shuziyili.com（与 mtt 并存时请只新增本文件，勿改 mtt 的 server）
+#
+# DNS：@ / www / admin / api 的 A 记录指向本机公网 IP
+
+# ---------- HTTP 跳转 HTTPS（证书就绪后建议启用）----------
+# server {
+#     listen 80;
+#     listen [::]:80;
+#     server_name shuziyili.com www.shuziyili.com admin.shuziyili.com api.shuziyili.com;
+#     return 301 https://$host$request_uri;
+# }
+
+# ---------- 门户（Next.js → 127.0.0.1:3000）----------
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name shuziyili.com www.shuziyili.com;
+
+    ssl_certificate     /etc/nginx/ssl/shuziyili/fullchain.crt;
+    ssl_certificate_key /etc/nginx/ssl/shuziyili/privkey.key;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+}
+
+# ---------- 管理后台（Vite 构建产物，Nginx 静态托管）----------
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name admin.shuziyili.com;
+
+    ssl_certificate     /etc/nginx/ssl/shuziyili/fullchain.crt;
+    ssl_certificate_key /etc/nginx/ssl/shuziyili/privkey.key;
+
+    root /opt/shuziyili/admin/dist;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }
+}
+
+# ---------- API（Spring Boot → 127.0.0.1:8080）----------
+server {
+    listen 443 ssl http2;
+    listen [::]:443 ssl http2;
+    server_name api.shuziyili.com;
+
+    ssl_certificate     /etc/nginx/ssl/shuziyili/fullchain.crt;
+    ssl_certificate_key /etc/nginx/ssl/shuziyili/privkey.key;
+
+    client_max_body_size 20m;
+
+    location / {
+        proxy_pass http://127.0.0.1:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }
+}

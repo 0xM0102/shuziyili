@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { PlusOutlined, ReloadOutlined } from "@ant-design/icons-vue";
 import { computed, onMounted, reactive, ref } from "vue";
 import { api } from "@/lib/api-client";
 import { mapApiMessage } from "@/lib/auth-messages";
@@ -169,8 +170,14 @@ async function copyLink(id: string) {
   <a-card :bordered="true">
     <template #extra>
       <a-space>
-        <a-button @click="refresh">刷新</a-button>
-        <a-button type="primary" @click="openCreate">新建文章</a-button>
+        <a-button @click="refresh">
+          <template #icon><ReloadOutlined /></template>
+          刷新
+        </a-button>
+        <a-button type="primary" @click="openCreate">
+          <template #icon><PlusOutlined /></template>
+          新建文章
+        </a-button>
       </a-space>
     </template>
 

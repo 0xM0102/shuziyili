@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { LoginOutlined } from "@ant-design/icons-vue";
 import { ref } from "vue";
 import { useRouter } from "vue-router";
 import { api, setToken } from "@/lib/api-client";
@@ -80,6 +81,7 @@ const submit = async () => {
           />
         </a-form-item>
         <a-button type="primary" html-type="submit" size="large" block :loading="loading">
+          <template #icon><LoginOutlined /></template>
           登录
         </a-button>
       </a-form>

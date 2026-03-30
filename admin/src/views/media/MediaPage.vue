@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ReloadOutlined, UploadOutlined } from "@ant-design/icons-vue";
 import { onMounted, ref } from "vue";
 import { api } from "@/lib/api-client";
 import { mapApiMessage } from "@/lib/auth-messages";
@@ -117,7 +118,10 @@ function fmtSize(n: number) {
 
     <a-card title="图片上传" size="small">
       <a-upload :before-upload="beforeUpload" :show-upload-list="false" accept="image/jpeg,image/png,image/gif,image/webp">
-        <a-button type="primary" :loading="uploading">选择图片上传</a-button>
+        <a-button type="primary" :loading="uploading">
+          <template #icon><UploadOutlined /></template>
+          选择图片上传
+        </a-button>
       </a-upload>
       <p v-if="cfg" class="upload-hint">
         路径前缀：<code>{{ cfg.keyPrefix }}yyyy/MM/dd/…</code>
@@ -126,7 +130,10 @@ function fmtSize(n: number) {
 
     <a-card :bordered="true">
       <template #extra>
-        <a-button size="small" @click="refresh">刷新</a-button>
+        <a-button size="small" @click="refresh">
+          <template #icon><ReloadOutlined /></template>
+          刷新
+        </a-button>
       </template>
       <a-table
         :columns="columns"

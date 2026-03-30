@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ReloadOutlined } from "@ant-design/icons-vue";
 import { onMounted, ref } from "vue";
 import { api, type PortalUserDto } from "@/lib/api-client";
 import { mapApiMessage } from "@/lib/auth-messages";
@@ -8,6 +9,8 @@ type Row = PortalUserDto;
 
 const loading = ref(false);
 const rows = ref<Row[]>([]);
+/** 按账号（手机号/邮箱）模糊查询 */
+const searchKeyword = ref("");
 
 const editOpen = ref(false);
 const savingProfile = ref(false);
@@ -22,7 +25,7 @@ const editForm = ref({
 async function refresh() {
   loading.value = true;
   try {
-    const r = await api.admin.portalUsers.list();
+    const r = await api.admin.portalUsers.list(searchKeyword.value);
     if (!r.ok || !r.data) {
       rows.value = [];
       void message.error(mapApiMessage(r.message));
@@ -83,7 +86,19 @@ onMounted(() => void refresh());
 <template>
   <a-card :bordered="true">
     <template #extra>
-      <a-button size="small" @click="refresh">刷新</a-button>
+      <a-space wrap>
+        <a-input-search
+          v-model:value="searchKeyword"
+          placeholder="手机号或邮箱"
+          allow-clear
+          style="width: min(100vw - 8rem, 280px)"
+          @search="refresh"
+        />
+        <a-button size="small" @click="refresh">
+          <template #icon><ReloadOutlined /></template>
+          刷新
+        </a-button>
+      </a-space>
     </template>
 
     <a-table

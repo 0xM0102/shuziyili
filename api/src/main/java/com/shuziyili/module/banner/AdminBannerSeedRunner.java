@@ -27,6 +27,7 @@ public class AdminBannerSeedRunner implements ApplicationRunner {
     b.setImageUrl("https://shuziyili-1322855353.cos.ap-chengdu.myqcloud.com/uploads/demo/demo.jpg");
     b.setLinkUrl("/");
     b.setSlot(BannerSlot.HOME_MAIN.code());
+    b.setScope(BannerScope.HOME.code);
     b.setEnabled(true);
     b.setSortOrder(0);
     b.setCreatedAt(now);

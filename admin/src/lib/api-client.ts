@@ -4,6 +4,8 @@ export type ApiResponse<T> = {
   data?: T;
 };
 
+export type StaffRole = "admin" | "editor" | "operator" | "viewer";
+
 /** 门户注册用户（无角色） */
 export type PortalUserDto = {
   id: number;
@@ -20,13 +22,32 @@ export type PortalUserDto = {
 export type StaffUserDto = {
   id: number;
   identifier: string;
-  role: "admin" | "editor";
+  role: StaffRole;
   createdAt: number;
   updatedAt: number;
   displayName: string;
   nickname: string;
   avatarUrl: string;
   bio: string;
+};
+
+export type StaffRoleDto = {
+  roleName: StaffRole;
+  displayName: string;
+  enabled: boolean;
+  sortOrder: number;
+};
+
+export type StaffPermissionDto = {
+  permissionCode: string;
+  displayName: string;
+  description: string;
+  enabled: boolean;
+};
+
+export type StaffRolePermissionsDto = {
+  roleName: StaffRole;
+  permissionCodes: string[];
 };
 
 /**
@@ -107,7 +128,7 @@ export const api = {
     async me() {
       return request<{
         identifier: string;
-        role: "admin" | "editor";
+        role: StaffRole;
         displayName: string;
         nickname: string;
         avatarUrl: string;
@@ -121,9 +142,32 @@ export const api = {
     },
   },
   admin: {
+    dashboard: {
+      async summary() {
+        return request<{
+          portalUsersTotal: number;
+          staffUsersTotal: number;
+          articlesTotal: number;
+          articlesPublished: number;
+          articlesDraft: number;
+          flashTotal: number;
+          flashEnabled: number;
+          flashExternalTotal: number;
+          flashInternalTotal: number;
+          flashExternalEnabled: number;
+          flashInternalEnabled: number;
+          flashTagsTotal: number;
+          bannersTotal: number;
+        }>(`/api/v1/admin/dashboard/summary`, { method: "GET" });
+      },
+    },
     portalUsers: {
-      async list() {
-        return request<{ items: PortalUserDto[] }>("/api/v1/admin/portal-users", { method: "GET" });
+      async list(q?: string) {
+        const needle = q?.trim();
+        const qs = needle ? `?q=${encodeURIComponent(needle)}` : "";
+        return request<{ items: PortalUserDto[] }>(`/api/v1/admin/portal-users${qs}`, {
+          method: "GET",
+        });
       },
       async updateProfile(
         id: number,
@@ -136,10 +180,12 @@ export const api = {
       },
     },
     staff: {
-      async list() {
-        return request<{ items: StaffUserDto[] }>("/api/v1/admin/staff", { method: "GET" });
+      async list(q?: string) {
+        const needle = q?.trim();
+        const qs = needle ? `?q=${encodeURIComponent(needle)}` : "";
+        return request<{ items: StaffUserDto[] }>(`/api/v1/admin/staff${qs}`, { method: "GET" });
       },
-      async setRole(id: number, role: "admin" | "editor") {
+      async setRole(id: number, role: StaffRole) {
         return request<StaffUserDto>(`/api/v1/admin/staff/${id}/role`, {
           method: "PUT",
           body: JSON.stringify({ role }),
@@ -157,7 +203,7 @@ export const api = {
       async create(payload: {
         identifier: string;
         password: string;
-        role: "admin" | "editor";
+        role: StaffRole;
         displayName?: string;
         nickname?: string;
         avatarUrl?: string;
@@ -187,6 +233,138 @@ export const api = {
           page: number;
           size: number;
         }>(`/api/v1/admin/verification-records?page=${page}&size=${size}`, { method: "GET" });
+      },
+    },
+    flashLinks: {
+      async list() {
+        return request<{
+          items: {
+            id: number;
+            title: string;
+            url: string;
+            linkKind: "EXTERNAL" | "INTERNAL";
+            sourceLabel: string;
+            tagId: number | null;
+            sortOrder: number;
+            enabled: boolean;
+            publishedAt: number;
+            createdAt: number;
+            updatedAt: number;
+          }[];
+        }>("/api/v1/admin/flash-links", { method: "GET" });
+      },
+      async create(payload: {
+        linkKind?: "EXTERNAL" | "INTERNAL";
+        title: string;
+        url: string;
+        sourceLabel?: string;
+        tagId?: number | null;
+        sortOrder: number;
+        enabled: boolean;
+        publishedAt: number;
+      }) {
+        return request<{
+          id: number;
+          title: string;
+          url: string;
+          linkKind: "EXTERNAL" | "INTERNAL";
+          sourceLabel: string;
+          tagId: number | null;
+          sortOrder: number;
+          enabled: boolean;
+          publishedAt: number;
+          createdAt: number;
+          updatedAt: number;
+        }>("/api/v1/admin/flash-links", { method: "POST", body: JSON.stringify(payload) });
+      },
+      async update(
+        id: number,
+        payload: {
+          linkKind?: "EXTERNAL" | "INTERNAL";
+          title: string;
+          url: string;
+          sourceLabel?: string;
+          tagId?: number | null;
+          sortOrder: number;
+          enabled: boolean;
+          publishedAt: number;
+        }
+      ) {
+        return request<{
+          id: number;
+          title: string;
+          url: string;
+          linkKind: "EXTERNAL" | "INTERNAL";
+          sourceLabel: string;
+          tagId: number | null;
+          sortOrder: number;
+          enabled: boolean;
+          publishedAt: number;
+          createdAt: number;
+          updatedAt: number;
+        }>(`/api/v1/admin/flash-links/${id}`, { method: "PUT", body: JSON.stringify(payload) });
+      },
+      async remove(id: number) {
+        return request<void>(`/api/v1/admin/flash-links/${id}`, { method: "DELETE" });
+      },
+    },
+    flashTags: {
+      async list(targetKind: "FLASH" | "ARTICLE") {
+        return request<{
+          items: {
+            id: number;
+            targetKind: "FLASH" | "ARTICLE";
+            label: string;
+            sortOrder: number;
+            enabled: boolean;
+            createdAt: number;
+            updatedAt: number;
+          }[];
+        }>(`/api/v1/admin/flash-tags?targetKind=${targetKind}`, { method: "GET" });
+      },
+      async create(payload: {
+        targetKind: "FLASH" | "ARTICLE";
+        label: string;
+        enabled: boolean;
+        sortOrder: number;
+      }) {
+        return request<{
+          id: number;
+          targetKind: "FLASH" | "ARTICLE";
+          label: string;
+          sortOrder: number;
+          enabled: boolean;
+          createdAt: number;
+          updatedAt: number;
+        }>(`/api/v1/admin/flash-tags`, {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      },
+      async update(
+        id: number,
+        payload: {
+          targetKind: "FLASH" | "ARTICLE";
+          label: string;
+          enabled: boolean;
+          sortOrder: number;
+        }
+      ) {
+        return request<{
+          id: number;
+          targetKind: "FLASH" | "ARTICLE";
+          label: string;
+          sortOrder: number;
+          enabled: boolean;
+          createdAt: number;
+          updatedAt: number;
+        }>(`/api/v1/admin/flash-tags/${id}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+      },
+      async remove(id: number) {
+        return request<void>(`/api/v1/admin/flash-tags/${id}`, { method: "DELETE" });
       },
     },
     async listArticles() {
@@ -248,26 +426,29 @@ export const api = {
     async deleteArticle(id: string) {
       return request<void>(`/api/v1/admin/articles/${encodeURIComponent(id)}`, { method: "DELETE" });
     },
-    async listBanners() {
+    async listBanners(scope: "home" | "travel" = "home") {
+      const q = `?scope=${encodeURIComponent(scope)}`;
       return request<{
         items: {
           id: number;
           title: string;
           imageUrl: string;
           linkUrl: string | null;
-          slot: "home_main" | "home_side_top" | "home_side_bottom";
+          scope: string;
+          slot: string;
           enabled: boolean;
           sortOrder: number;
           createdAt: number;
           updatedAt: number;
         }[];
-      }>("/api/v1/admin/banners", { method: "GET" });
+      }>(`/api/v1/admin/banners${q}`, { method: "GET" });
     },
     async createBanner(payload: {
+      scope: "home" | "travel";
       title: string;
       imageUrl: string;
       linkUrl?: string | null;
-      slot: "home_main" | "home_side_top" | "home_side_bottom";
+      slot: string;
       enabled: boolean;
       sortOrder: number;
     }) {
@@ -276,7 +457,8 @@ export const api = {
         title: string;
         imageUrl: string;
         linkUrl: string | null;
-        slot: "home_main" | "home_side_top" | "home_side_bottom";
+        scope: string;
+        slot: string;
         enabled: boolean;
         sortOrder: number;
         createdAt: number;
@@ -289,7 +471,7 @@ export const api = {
         title: string;
         imageUrl: string;
         linkUrl?: string | null;
-        slot: "home_main" | "home_side_top" | "home_side_bottom";
+        slot: string;
         enabled: boolean;
         sortOrder: number;
       }
@@ -299,7 +481,8 @@ export const api = {
         title: string;
         imageUrl: string;
         linkUrl: string | null;
-        slot: "home_main" | "home_side_top" | "home_side_bottom";
+        scope: string;
+        slot: string;
         enabled: boolean;
         sortOrder: number;
         createdAt: number;
@@ -347,6 +530,26 @@ export const api = {
     },
     async deleteMedia(key: string) {
       return request<void>(`/api/v1/admin/media?key=${encodeURIComponent(key)}`, { method: "DELETE" });
+    },
+    rbac: {
+      async listRoles() {
+        return request<StaffRoleDto[]>(`/api/v1/admin/staff-roles`, { method: "GET" });
+      },
+      async listPermissions() {
+        return request<StaffPermissionDto[]>(`/api/v1/admin/staff-permissions`, { method: "GET" });
+      },
+      async listRolePermissions(roleName: string) {
+        return request<StaffRolePermissionsDto>(
+          `/api/v1/admin/staff-roles/${encodeURIComponent(roleName)}/permissions`,
+          { method: "GET" }
+        );
+      },
+      async setRolePermissions(roleName: string, permissionCodes: string[]) {
+        return request<StaffRolePermissionsDto>(
+          `/api/v1/admin/staff-roles/${encodeURIComponent(roleName)}/permissions`,
+          { method: "PUT", body: JSON.stringify({ permissionCodes }) }
+        );
+      },
     },
   },
 };

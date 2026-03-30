@@ -196,14 +196,14 @@ export function AuthModal({
         aria-hidden
       />
       <div
-        className="relative w-full max-w-[420px] rounded-2xl border border-border bg-card p-6 pt-7 shadow-2xl ring-1 ring-black/4 dark:ring-white/6"
+        className="relative w-full max-w-[420px] rounded-2xl border border-border bg-card p-6 pt-7"
         role="dialog"
         aria-modal="true"
         aria-label={title}
       >
         <button
           type="button"
-          className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-sidebar-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/35"
+          className="absolute right-3 top-3 inline-flex h-9 w-9 items-center justify-center rounded-full text-muted transition-colors hover:bg-sidebar-hover hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/40"
           onClick={onClose}
           aria-label={t.close}
         >
@@ -235,7 +235,7 @@ export function AuthModal({
                   type="button"
                   className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
                     loginKind === "password"
-                      ? "bg-card text-foreground shadow-sm ring-1 ring-border"
+                      ? "border border-border bg-card text-foreground"
                       : "text-muted hover:text-foreground"
                   }`}
                   onClick={() => {
@@ -249,7 +249,7 @@ export function AuthModal({
                   type="button"
                   className={`flex-1 rounded-lg px-3 py-2.5 text-sm font-medium transition-all ${
                     loginKind === "code"
-                      ? "bg-card text-foreground shadow-sm ring-1 ring-border"
+                      ? "border border-border bg-card text-foreground"
                       : "text-muted hover:text-foreground"
                   }`}
                   onClick={() => {
@@ -318,7 +318,7 @@ export function AuthModal({
               }}
             >
               <input
-                className="w-full rounded-xl border border-border bg-background px-3.5 py-3 text-[15px] outline-none transition-shadow placeholder:text-muted/70 focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
+                className="w-full rounded-xl border border-border bg-background px-3.5 py-3 text-[15px] outline-none transition-colors placeholder:text-muted/70 focus:border-primary focus:outline-none"
                 placeholder={lang === "zh" ? "手机号或邮箱" : "Phone or email"}
                 required
                 autoComplete="username"
@@ -329,7 +329,7 @@ export function AuthModal({
               {mode === "register" || loginKind === "code" ? (
                 <div className="flex gap-2">
                   <input
-                    className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3.5 py-3 text-[15px] outline-none transition-shadow placeholder:text-muted/70 focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
+                    className="min-w-0 flex-1 rounded-xl border border-border bg-background px-3.5 py-3 text-[15px] outline-none transition-colors placeholder:text-muted/70 focus:border-primary focus:outline-none"
                     placeholder={lang === "zh" ? "验证码" : "Code"}
                     required
                     inputMode="numeric"
@@ -359,7 +359,7 @@ export function AuthModal({
               {mode === "register" || loginKind === "password" ? (
                 <input
                   type="password"
-                  className="w-full rounded-xl border border-border bg-background px-3.5 py-3 text-[15px] outline-none transition-shadow placeholder:text-muted/70 focus:border-primary/50 focus:ring-2 focus:ring-primary/15"
+                  className="w-full rounded-xl border border-border bg-background px-3.5 py-3 text-[15px] outline-none transition-colors placeholder:text-muted/70 focus:border-primary focus:outline-none"
                   placeholder={lang === "zh" ? "密码（至少 6 位）" : "Password (min 6)"}
                   required
                   autoComplete={mode === "register" ? "new-password" : "current-password"}
@@ -379,7 +379,7 @@ export function AuthModal({
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-70"
+                className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] font-semibold text-primary-foreground transition-opacity hover:opacity-95 disabled:cursor-not-allowed disabled:opacity-70"
               >
                 {mode === "login"
                   ? lang === "zh"
@@ -404,7 +404,7 @@ export function AuthModal({
             </p>
             <button
               type="button"
-              className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] font-semibold text-primary-foreground shadow-sm hover:opacity-95"
+              className="w-full rounded-xl bg-primary px-4 py-3.5 text-[15px] font-semibold text-primary-foreground hover:opacity-95"
               onClick={onClose}
             >
               {lang === "zh" ? "完成" : "Done"}

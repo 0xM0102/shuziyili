@@ -2,6 +2,7 @@ package com.shuziyili.module.auth;
 
 import com.shuziyili.common.ApiResponse;
 import com.shuziyili.common.BearerTokens;
+import com.shuziyili.module.auth.StaffPermissionCodes;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -13,6 +14,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** 管理后台：操作员账号（{@link StaffUserEntity}） */
@@ -32,13 +34,18 @@ public class AdminStaffController {
 
   @GetMapping
   public ResponseEntity<ApiResponse<Map<String, Object>>> list(
-      @RequestHeader(value = "Authorization", required = false) String authorization) {
+      @RequestHeader(value = "Authorization", required = false) String authorization,
+      @RequestParam(value = "q", required = false) String q) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffAdmin(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.STAFF_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("forbidden"));
     }
-    List<StaffDto> items =
-        staffUserRepository.findAll().stream().map(this::toDto).collect(Collectors.toList());
+    String needle = q == null ? "" : q.trim();
+    List<StaffUserEntity> entities =
+        needle.isEmpty()
+            ? staffUserRepository.findAll()
+            : staffUserRepository.findByIdentifierContainingIgnoreCaseOrderByIdDesc(needle);
+    List<StaffDto> items = entities.stream().map(this::toDto).collect(Collectors.toList());
     return ResponseEntity.ok(ApiResponse.success(Map.of("items", items)));
   }
 
@@ -48,14 +55,14 @@ public class AdminStaffController {
       @PathVariable("id") Long id,
       @RequestBody SetRoleReq req) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffAdmin(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.STAFF_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("forbidden"));
     }
     if (id == null) {
       return ResponseEntity.ok(ApiResponse.fail("empty"));
     }
     String role = req == null ? null : req.role;
-    if (!"admin".equals(role) && !"editor".equals(role)) {
+    if (!"admin".equals(role) && !"editor".equals(role) && !"operator".equals(role) && !"viewer".equals(role)) {
       return ResponseEntity.ok(ApiResponse.fail("invalid_role"));
     }
     return staffUserRepository
@@ -75,7 +82,7 @@ public class AdminStaffController {
       @PathVariable("id") Long id,
       @RequestBody(required = false) UpdateStaffProfileReq req) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffAdmin(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.STAFF_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("forbidden"));
     }
     if (id == null) {
@@ -92,10 +99,16 @@ public class AdminStaffController {
         .findById(id)
         .map(
             (u) -> {
+              StaffUserEntity u2 = java.util.Objects.requireNonNull(u);
               ProfilePayloadValidator.applyToStaff(
-                  u, body.displayName, body.nickname, body.avatarUrl, body.bio, System.currentTimeMillis());
-              staffUserRepository.save(u);
-              return ResponseEntity.ok(ApiResponse.success(toDto(u)));
+                  u2,
+                  body.displayName,
+                  body.nickname,
+                  body.avatarUrl,
+                  body.bio,
+                  System.currentTimeMillis());
+              staffUserRepository.save(u2);
+              return ResponseEntity.ok(ApiResponse.success(toDto(u2)));
             })
         .orElseGet(() -> ResponseEntity.ok(ApiResponse.fail("not_found")));
   }
@@ -105,7 +118,7 @@ public class AdminStaffController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestBody CreateStaffReq req) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffAdmin(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.STAFF_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("forbidden"));
     }
     if (req == null || req.identifier == null || req.identifier.trim().isEmpty()) {
@@ -115,7 +128,7 @@ public class AdminStaffController {
       return ResponseEntity.ok(ApiResponse.fail("weak_password"));
     }
     String role = req.role == null || req.role.isBlank() ? "editor" : req.role.trim();
-    if (!"admin".equals(role) && !"editor".equals(role)) {
+    if (!"admin".equals(role) && !"editor".equals(role) && !"operator".equals(role) && !"viewer".equals(role)) {
       return ResponseEntity.ok(ApiResponse.fail("invalid_role"));
     }
     String identifier = req.identifier.trim();

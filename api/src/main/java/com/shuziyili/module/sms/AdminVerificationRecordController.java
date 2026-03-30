@@ -3,6 +3,7 @@ package com.shuziyili.module.sms;
 import com.shuziyili.common.ApiResponse;
 import com.shuziyili.common.BearerTokens;
 import com.shuziyili.module.auth.StaffAuthService;
+import com.shuziyili.module.auth.StaffPermissionCodes;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,7 +41,7 @@ public class AdminVerificationRecordController {
       @RequestParam(defaultValue = "0") int page,
       @RequestParam(defaultValue = "50") int size) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffAdmin(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.VERIFICATION_RECORDS_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("forbidden"));
     }
     int safeSize = Math.min(Math.max(size, 1), MAX_PAGE_SIZE);

@@ -32,6 +32,16 @@ export function mapApiMessage(code: string | null | undefined): string {
     delete_failed: "删除失败，请稍后重试",
     invalid_key: "无效的对象键",
     empty_key: "缺少对象键",
+    empty_title: "请填写标题",
+    empty_url: "请填写链接",
+    invalid_url: "链接需以 http:// 或 https:// 开头",
+    invalid_link_kind: "类型需为外链或站内",
+    invalid_internal_path: "站内路径需以 / 开头，且不能为带协议的网址",
+    invalid_tag_id: "无效的标签",
+    invalid_target_kind: "无效的标签分类",
+    empty_label: "请填写标签名称",
+    duplicate_label: "该标签已存在（同分类下不可重复）",
+    invalid_permission_code: "包含无效的权限编码",
   };
   return m[code ?? ""] ?? (code ? `错误：${code}` : "请求失败");
 }

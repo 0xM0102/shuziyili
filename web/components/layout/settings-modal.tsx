@@ -37,7 +37,7 @@ export function SettingsModal({
         aria-hidden
       />
       <div
-        className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-background shadow-xl"
+        className="relative max-h-[90vh] w-full max-w-md overflow-y-auto rounded-xl border border-border bg-background"
         role="dialog"
         aria-modal="true"
         aria-label="设置"

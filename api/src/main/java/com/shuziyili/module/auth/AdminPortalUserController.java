@@ -2,6 +2,7 @@ package com.shuziyili.module.auth;
 
 import com.shuziyili.common.ApiResponse;
 import com.shuziyili.common.BearerTokens;
+import com.shuziyili.module.auth.StaffPermissionCodes;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -12,6 +13,7 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /** 管理后台：平台注册用户（{@link PortalUserEntity}） */
@@ -30,13 +32,18 @@ public class AdminPortalUserController {
 
   @GetMapping
   public ResponseEntity<ApiResponse<Map<String, Object>>> list(
-      @RequestHeader(value = "Authorization", required = false) String authorization) {
+      @RequestHeader(value = "Authorization", required = false) String authorization,
+      @RequestParam(value = "q", required = false) String q) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffAdmin(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.PORTAL_USERS_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("forbidden"));
     }
-    List<PortalUserDto> items =
-        portalUserRepository.findAll().stream().map(this::toDto).collect(Collectors.toList());
+    String needle = q == null ? "" : q.trim();
+    List<PortalUserEntity> entities =
+        needle.isEmpty()
+            ? portalUserRepository.findAll()
+            : portalUserRepository.findByIdentifierContainingIgnoreCaseOrderByIdDesc(needle);
+    List<PortalUserDto> items = entities.stream().map(this::toDto).collect(Collectors.toList());
     return ResponseEntity.ok(ApiResponse.success(Map.of("items", items)));
   }
 
@@ -46,7 +53,7 @@ public class AdminPortalUserController {
       @PathVariable("id") Long id,
       @RequestBody(required = false) UpdatePortalUserReq req) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffAdmin(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.PORTAL_USERS_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("forbidden"));
     }
     if (id == null) {

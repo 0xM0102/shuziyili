@@ -61,7 +61,7 @@ export function UserAccountMenu({
     <div className="relative" ref={rootRef}>
       <button
         type="button"
-        className="flex items-center gap-0.5 rounded-full text-left outline-none transition hover:opacity-95 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+        className="flex items-center gap-0.5 rounded-full text-left outline-none transition hover:opacity-95 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/50"
         aria-expanded={open}
         aria-haspopup="menu"
         aria-controls={menuId}
@@ -85,7 +85,7 @@ export function UserAccountMenu({
           id={menuId}
           role="menu"
           aria-orientation="vertical"
-          className="absolute right-0 top-[calc(100%+8px)] z-[70] min-w-[240px] rounded-xl border border-border bg-card py-1 shadow-xl ring-1 ring-black/5 dark:ring-white/10"
+          className="absolute right-0 top-[calc(100%+8px)] z-[70] min-w-[240px] rounded-xl border border-border bg-card py-1"
         >
           <div className="flex items-center gap-2 border-b border-border px-3 py-2.5">
             <div className="min-w-0 flex-1">
@@ -96,7 +96,7 @@ export function UserAccountMenu({
             </div>
             <button
               type="button"
-              className="shrink-0 rounded-lg p-1.5 text-muted transition-colors hover:bg-sidebar-hover hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40"
+              className="shrink-0 rounded-lg p-1.5 text-muted transition-colors hover:bg-sidebar-hover hover:text-foreground focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary/45"
               aria-label={lang === "zh" ? "设置" : "Settings"}
               onClick={() => {
                 setOpen(false);

@@ -2,6 +2,7 @@ package com.shuziyili.module.article;
 
 import com.shuziyili.common.ApiResponse;
 import com.shuziyili.common.BearerTokens;
+import com.shuziyili.module.auth.StaffPermissionCodes;
 import com.shuziyili.module.auth.StaffAuthService;
 import java.util.List;
 import java.util.Map;
@@ -32,7 +33,7 @@ public class AdminArticleController {
   public ResponseEntity<ApiResponse<Map<String, Object>>> list(
       @RequestHeader(value = "Authorization", required = false) String authorization) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaff(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.ARTICLES_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
     }
     List<AdminArticleService.Article> items = articleService.list();
@@ -44,7 +45,7 @@ public class AdminArticleController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestBody UpsertReq req) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaff(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.ARTICLES_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
     }
     AdminArticleService.Article created = articleService.create(req);
@@ -57,7 +58,7 @@ public class AdminArticleController {
       @PathVariable("id") String id,
       @RequestBody UpsertReq req) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaff(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.ARTICLES_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
     }
     AdminArticleService.UpdateResult r = articleService.update(id, req);
@@ -72,16 +73,11 @@ public class AdminArticleController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @PathVariable("id") String id) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaff(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.ARTICLES_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
     }
     boolean ok = articleService.delete(id);
     return ResponseEntity.ok(ok ? ApiResponse.success() : ApiResponse.fail("not_found"));
-  }
-
-  public static class CreateReq {
-    public String title;
-    public String status; // draft | published
   }
 
   public static class UpsertReq {

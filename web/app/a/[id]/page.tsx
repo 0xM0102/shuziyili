@@ -2,6 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getPublicApiV1Base } from "@/lib/api-base";
+import { FlashTitleLink } from "@/components/flash/flash-title-link";
+import { FlashTagBadge } from "@/components/flash/flash-tag-badge";
+import { formatFlashTime, getFlashLinks, type FlashLinkItem } from "@/lib/flash-links";
 import { siteConfig } from "@/lib/site";
 import { ShareRow } from "@/components/article/share-row";
 
@@ -15,8 +18,6 @@ type Article = {
   updatedAt: number;
 };
 
-type QuickItem = { time: string; text: string };
-
 async function fetchArticle(id: string): Promise<Article | null> {
   const base = getPublicApiV1Base();
   const res = await fetch(`${base}/articles/${encodeURIComponent(id)}`, { next: { revalidate: 30 } });
@@ -25,7 +26,7 @@ async function fetchArticle(id: string): Promise<Article | null> {
   return json.data;
 }
 
-function QuickAside({ items }: { items: QuickItem[] }) {
+function QuickAside({ items }: { items: FlashLinkItem[] }) {
   return (
     <aside className="border-t border-border bg-background lg:border-l lg:border-t-0">
       <div className="flex items-center justify-between px-4 py-4">
@@ -33,20 +34,30 @@ function QuickAside({ items }: { items: QuickItem[] }) {
           <span className="h-2 w-2 rounded-full bg-pink-500" aria-hidden />
           <h2 className="text-base font-semibold text-foreground">7×24 快讯</h2>
         </div>
-        <Link href="/news" className="text-xs text-muted hover:text-primary">
+        <Link href="/flash" className="text-xs text-muted hover:text-primary">
           更多 &gt;
         </Link>
       </div>
-      <ul>
-        {items.map((it) => (
-          <li key={`${it.time}-${it.text}`} className="px-4 py-4">
-            <div className="flex gap-3">
-              <span className="mt-0.5 shrink-0 text-xs text-muted">{it.time}</span>
-              <p className="line-clamp-2 text-sm text-foreground/95">{it.text}</p>
-            </div>
-          </li>
-        ))}
-      </ul>
+      {items.length === 0 ? (
+        <p className="px-4 py-6 text-sm text-muted">暂无快讯。</p>
+      ) : (
+        <ul>
+          {items.map((it) => (
+            <li key={it.id} className="border-b border-border px-4 py-4 last:border-b-0">
+              <div className="flex gap-3">
+                <span className="w-14 shrink-0 text-xs text-muted">{formatFlashTime(it.publishedAt)}</span>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <FlashTagBadge label={it.tagLabel} density="compact" />
+                    <FlashTitleLink item={it} mode="direct" />
+                  </div>
+                  {it.sourceLabel ? <p className="mt-1 text-xs text-muted">来源：{it.sourceLabel}</p> : null}
+                </div>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
     </aside>
   );
 }
@@ -72,18 +83,11 @@ export default async function ArticlePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
-  const a = await fetchArticle(id);
+  const [a, flash] = await Promise.all([fetchArticle(id), getFlashLinks()]);
   if (!a) notFound();
 
-  const quick: QuickItem[] = [
-    { time: "12:15", text: "伊犁本地活动报名新增 3 场（占位）。" },
-    { time: "11:40", text: "春季出行提示：山区温差与路况（占位）。" },
-    { time: "10:10", text: "便民：政务服务入口更新（占位）。" },
-    { time: "09:30", text: "数字游民：短住房源上新（占位）。" },
-    { time: "08:20", text: "旅游：热门景点客流提示（占位）。" },
-  ];
-
   const pageUrl = `${siteConfig.url.replace(/\/$/, "")}/a/${a.id}`;
+  const articleDateLabel = new Date(a.updatedAt).toLocaleString("zh-CN", { hour12: false });
 
   return (
     <div className="space-y-0">
@@ -106,7 +110,7 @@ export default async function ArticlePage({
               </h1>
               {a.summary ? <p className="mt-2 max-w-4xl text-sm text-muted">{a.summary}</p> : null}
               <div className="mt-4 max-w-4xl">
-                <ShareRow url={pageUrl} />
+                <ShareRow url={pageUrl} dateLabel={articleDateLabel} shareTitle={a.title} />
               </div>
             </div>
           </section>
@@ -127,7 +131,7 @@ export default async function ArticlePage({
           </div>
         </div>
 
-        <QuickAside items={quick} />
+        <QuickAside items={flash} />
       </section>
     </div>
   );

@@ -28,10 +28,21 @@ public class StaffAuthService {
   private final Clock clock = Clock.systemUTC();
   private final StaffUserRepository staffUserRepository;
   private final SessionRepository sessionRepository;
+  private final StaffRoleRepository staffRoleRepository;
+  private final StaffPermissionRepository staffPermissionRepository;
+  private final StaffRolePermissionRepository staffRolePermissionRepository;
 
-  public StaffAuthService(StaffUserRepository staffUserRepository, SessionRepository sessionRepository) {
+  public StaffAuthService(
+      StaffUserRepository staffUserRepository,
+      SessionRepository sessionRepository,
+      StaffRoleRepository staffRoleRepository,
+      StaffPermissionRepository staffPermissionRepository,
+      StaffRolePermissionRepository staffRolePermissionRepository) {
     this.staffUserRepository = staffUserRepository;
     this.sessionRepository = sessionRepository;
+    this.staffRoleRepository = staffRoleRepository;
+    this.staffPermissionRepository = staffPermissionRepository;
+    this.staffRolePermissionRepository = staffRolePermissionRepository;
   }
 
   @Transactional
@@ -121,6 +132,47 @@ public class StaffAuthService {
     if (!"admin".equals(uo.get().getRole())) {
       return ApiResponse.fail("forbidden");
     }
+    return ApiResponse.success();
+  }
+
+  /**
+   * 权限校验：先验证会话与 role 是否存在且启用，再校验 role->permission 映射。
+   *
+   * <p>若任一条件不满足（包括权限不存在/禁用），返回 forbidden。
+   */
+  @Transactional(readOnly = true)
+  public ApiResponse<Void> requireStaffPermission(String bearerToken, String permissionCode) {
+    Optional<StaffUserEntity> uo = resolveStaffFromValidSession(bearerToken);
+    if (uo.isEmpty()) {
+      return ApiResponse.fail("unauthorized");
+    }
+    StaffUserEntity u = uo.get();
+    String role = u.getRole() == null || u.getRole().isBlank() ? "editor" : u.getRole();
+    if (permissionCode == null || permissionCode.isBlank()) {
+      return ApiResponse.fail("forbidden");
+    }
+
+    boolean roleEnabled =
+        staffRoleRepository
+            .findById(java.util.Objects.requireNonNull(role))
+            .map(StaffRoleEntity::isEnabled)
+            .orElse(false);
+    if (!roleEnabled) {
+      return ApiResponse.fail("forbidden");
+    }
+
+    boolean permissionEnabled =
+        staffPermissionRepository.findById(permissionCode).map(StaffPermissionEntity::isEnabled).orElse(false);
+    if (!permissionEnabled) {
+      return ApiResponse.fail("forbidden");
+    }
+
+    boolean has =
+        staffRolePermissionRepository.existsByRoleNameAndPermissionCodeAndEnabledTrue(role, permissionCode);
+    if (!has) {
+      return ApiResponse.fail("forbidden");
+    }
+
     return ApiResponse.success();
   }
 

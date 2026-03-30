@@ -9,6 +9,7 @@
     "lint": "eslint ."
   },
   "dependencies": {
+    "@ant-design/icons-vue": "^7.0.1",
     "ant-design-vue": "^4",
     "pinia": "^3",
     "vue": "^3.5.0",
@@ -28,4 +29,3 @@
     "vue-tsc": "^3"
   }
 }
-

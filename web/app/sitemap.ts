@@ -16,6 +16,7 @@ const staticPaths = [
   "/nomad",
   "/events",
   "/news",
+  "/flash",
   "/about",
   "/cookies",
 ];

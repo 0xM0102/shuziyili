@@ -1,6 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { getPublicApiV1Base } from "@/lib/api-base";
+import { FlashTitleLink } from "@/components/flash/flash-title-link";
+import { FlashTagBadge } from "@/components/flash/flash-tag-badge";
+import { formatFlashTime, getFlashLinks } from "@/lib/flash-links";
 import { siteConfig } from "@/lib/site";
 
 type HomeBanner = {
@@ -196,7 +199,7 @@ function SectionHead({
 }
 
 export default async function HomePage() {
-  const banners = await getHomeBanners();
+  const [banners, flashLinks] = await Promise.all([getHomeBanners(), getFlashLinks()]);
   const mains = banners.filter((b) => b.slot === "home_main");
   const hero = mains[0];
   const sideTop = banners.find((b) => b.slot === "home_side_top");
@@ -334,24 +337,32 @@ export default async function HomePage() {
 
         <aside className="border-t border-border bg-background lg:border-t-0 lg:border-l">
           <div className="flex items-center justify-between px-4 py-4">
-            <SectionHead title="7×24 快讯" moreHref="/news" dotTone="pink" />
+            <SectionHead title="7×24 快讯" moreHref="/flash" dotTone="pink" />
           </div>
-          <ul>
-            {[
-              { time: "12:15", text: "伊犁本地活动报名新增 3 场（占位）。" },
-              { time: "11:40", text: "春季出行提示：山区温差与路况（占位）。" },
-              { time: "10:10", text: "便民：政务服务入口更新（占位）。" },
-              { time: "09:30", text: "数字游民：短住房源上新（占位）。" },
-              { time: "08:20", text: "旅游：热门景点客流提示（占位）。" },
-            ].map((it) => (
-              <li key={`${it.time}-${it.text}`} className="px-4 py-4">
-                <div className="flex gap-3">
-                  <span className="mt-0.5 shrink-0 text-xs text-muted">{it.time}</span>
-                  <p className="line-clamp-2 text-sm text-foreground/95">{it.text}</p>
-                </div>
-              </li>
-            ))}
-          </ul>
+          {flashLinks.length === 0 ? (
+            <p className="px-4 py-6 text-sm text-muted">暂无快讯，可在管理后台「快讯」添加。</p>
+          ) : (
+            <ul>
+              {flashLinks.map((it) => (
+                <li key={it.id} className="border-b border-border px-4 py-4 last:border-b-0">
+                  <div className="flex gap-3">
+                    <span className="w-14 shrink-0 text-xs text-muted">
+                      {formatFlashTime(it.publishedAt)}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <FlashTagBadge label={it.tagLabel} density="compact" />
+                        <FlashTitleLink item={it} mode="direct" />
+                      </div>
+                      {it.sourceLabel ? (
+                        <p className="mt-1 text-xs text-muted">来源：{it.sourceLabel}</p>
+                      ) : null}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
         </aside>
       </section>
     </div>

@@ -1,0 +1,22 @@
+[Unit]
+Description=Shuziyili API (Spring Boot)
+After=network.target mysql.service
+
+[Service]
+Type=simple
+User=www-data
+Group=www-data
+WorkingDirectory=/opt/shuziyili/api
+
+# 将 jar 路径与 EnvironmentFile 换成实际位置
+ExecStart=/usr/bin/java -jar /opt/shuziyili/api/shuziyili-api.jar
+EnvironmentFile=-/opt/shuziyili/config/api.env
+
+Restart=on-failure
+RestartSec=5
+
+# 仅本机访问，配合 Nginx 反代
+# ExecStart 也可用 -Dserver.address=127.0.0.1（视 Spring Boot 版本）
+
+[Install]
+WantedBy=multi-user.target

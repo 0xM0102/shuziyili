@@ -72,6 +72,8 @@
   </dependencies>
 
   <build>
+    <!-- 固定 jar 名，便于服务器 systemd / 脚本部署 -->
+    <finalName>shuziyili-api</finalName>
     <plugins>
       <plugin>
         <groupId>org.springframework.boot</groupId>

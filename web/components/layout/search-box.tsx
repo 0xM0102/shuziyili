@@ -26,7 +26,7 @@ export function SearchBox({
         value={q}
         onChange={(e) => setQ(e.target.value)}
         placeholder={placeholder}
-        className="h-10 w-72 rounded-lg bg-sidebar-hover/70 pl-3 pr-9 text-[15px] text-foreground placeholder:text-muted outline-none transition-colors focus:bg-sidebar-hover focus:ring-2 focus:ring-primary/15"
+        className="h-10 w-72 rounded-lg border border-transparent bg-sidebar-hover/70 pl-3 pr-9 text-[15px] text-foreground placeholder:text-muted outline-none transition-colors focus:border-primary/40 focus:bg-sidebar-hover"
       />
       <button
         type="submit"

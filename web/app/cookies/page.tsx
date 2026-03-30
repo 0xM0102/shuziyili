@@ -25,7 +25,7 @@ type ItemProps = {
 
 function PolicyItem({ tag, title, children }: ItemProps) {
   return (
-    <li className="rounded-2xl border border-border bg-card p-5 shadow-sm md:p-6">
+    <li className="rounded-2xl border border-border bg-card p-5 md:p-6">
       <div className="flex flex-col gap-3 sm:flex-row sm:gap-5">
         <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-primary/10 text-sm font-bold text-primary sm:mt-0.5">
           {tag}
@@ -75,7 +75,7 @@ export default function CookiesPage() {
           </ul>
         </section>
 
-        <section className="rounded-2xl border border-border bg-card p-6 shadow-sm md:p-8">
+        <section className="rounded-2xl border border-border bg-card p-6 md:p-8">
           <h2 className="flex items-center gap-2.5 text-lg font-semibold text-foreground">
             <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
             您的选择

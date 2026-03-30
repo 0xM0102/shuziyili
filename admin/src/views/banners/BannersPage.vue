@@ -1,21 +1,27 @@
 <script setup lang="ts">
-import { computed, onMounted, reactive, ref } from "vue";
+import { PlusOutlined, ReloadOutlined } from "@ant-design/icons-vue";
+import { computed, onMounted, reactive, ref, watch } from "vue";
 import { api } from "@/lib/api-client";
 import { mapApiMessage } from "@/lib/auth-messages";
 import { message } from "ant-design-vue";
 import type { UploadProps } from "ant-design-vue";
+
+type BannerScopeTab = "home" | "travel";
 
 type Banner = {
   id: number;
   title: string;
   imageUrl: string;
   linkUrl: string | null;
-  slot: "home_main" | "home_side_top" | "home_side_bottom";
+  scope: string;
+  slot: string;
   enabled: boolean;
   sortOrder: number;
   createdAt: number;
   updatedAt: number;
 };
+
+const activeScope = ref<BannerScopeTab>("home");
 
 const loading = ref(false);
 const items = ref<Banner[]>([]);
@@ -29,19 +35,43 @@ const form = reactive({
   title: "",
   imageUrl: "",
   linkUrl: "",
-  slot: "home_main" as "home_main" | "home_side_top" | "home_side_bottom",
+  slot: "home_main",
   enabled: true,
   sortOrder: 0,
 });
 
-const slotOptions = [
+const homeSlotOptions = [
   { label: "主 Banner（左侧大图）", value: "home_main" },
   { label: "副 Banner（右上）", value: "home_side_top" },
   { label: "副 Banner（右下）", value: "home_side_bottom" },
 ];
 
-function slotLabel(slot: Banner["slot"]) {
-  const v = slotOptions.find((s) => s.value === slot);
+const travelSlotOptions = [
+  { label: "主 Banner（旅游大焦点）", value: "travel_main" },
+  { label: "副 Banner（右上）", value: "travel_side_top" },
+  { label: "副 Banner（右下）", value: "travel_side_bottom" },
+];
+
+const slotOptions = computed(() =>
+  activeScope.value === "travel" ? travelSlotOptions : homeSlotOptions
+);
+
+function defaultSlotForScope(scope: BannerScopeTab): string {
+  return scope === "travel" ? "travel_main" : "home_main";
+}
+
+function isSideSlot(slot: string) {
+  return (
+    slot === "home_side_top" ||
+    slot === "home_side_bottom" ||
+    slot === "travel_side_top" ||
+    slot === "travel_side_bottom"
+  );
+}
+
+function slotLabel(slot: string) {
+  const all = [...homeSlotOptions, ...travelSlotOptions];
+  const v = all.find((s) => s.value === slot);
   return v?.label ?? slot;
 }
 
@@ -51,16 +81,24 @@ function resetForm() {
   form.title = "";
   form.imageUrl = "";
   form.linkUrl = "";
-  form.slot = "home_main";
+  form.slot = defaultSlotForScope(activeScope.value);
   form.enabled = true;
   form.sortOrder = 0;
   editingId.value = null;
 }
 
+watch(activeScope, () => {
+  if (modalOpen.value) {
+    modalOpen.value = false;
+  }
+  form.slot = defaultSlotForScope(activeScope.value);
+  void refresh();
+});
+
 async function refresh() {
   loading.value = true;
   try {
-    const r = await api.admin.listBanners();
+    const r = await api.admin.listBanners(activeScope.value);
     if (!r.ok || !r.data) {
       items.value = [];
       void message.error(mapApiMessage(r.message));
@@ -81,7 +119,7 @@ function openEdit(b: Banner) {
   form.title = b.title ?? "";
   form.imageUrl = b.imageUrl ?? "";
   form.linkUrl = b.linkUrl ?? "";
-  form.slot = b.slot ?? "home_main";
+  form.slot = b.slot ?? defaultSlotForScope(activeScope.value);
   form.enabled = !!b.enabled;
   form.sortOrder = b.sortOrder ?? 0;
   editingId.value = b.id;
@@ -95,13 +133,13 @@ async function save() {
     return;
   }
   const link = form.linkUrl.trim();
-  if ((form.slot === "home_side_top" || form.slot === "home_side_bottom") && !link) {
-    void message.warning("右侧副 Banner 需要填写跳转链接（例如 /a/文章ID）");
+  if (isSideSlot(form.slot) && !link) {
+    void message.warning("副 Banner 需要填写跳转链接（例如 /a/文章ID 或 /travel/...）");
     return;
   }
   saving.value = true;
   try {
-    const payload = {
+    const payloadBase = {
       title: form.title.trim() || "Banner",
       imageUrl,
       linkUrl: link ? link : null,
@@ -110,8 +148,11 @@ async function save() {
       sortOrder: Number.isFinite(form.sortOrder) ? form.sortOrder : 0,
     };
     const r = editingId.value
-      ? await api.admin.updateBanner(editingId.value, payload)
-      : await api.admin.createBanner(payload);
+      ? await api.admin.updateBanner(editingId.value, payloadBase)
+      : await api.admin.createBanner({
+          ...payloadBase,
+          scope: activeScope.value,
+        });
     if (!r.ok) {
       void message.error(mapApiMessage(r.message));
       return;
@@ -153,7 +194,7 @@ async function remove(id: number) {
 const columns = [
   { title: "预览", key: "thumb", width: 120 },
   { title: "标题", dataIndex: "title", key: "title" },
-  { title: "分类位", key: "slot", width: 180 },
+  { title: "展示位", key: "slot", width: 200 },
   { title: "启用", key: "enabled", width: 90 },
   { title: "排序", dataIndex: "sortOrder", key: "sortOrder", width: 90 },
   { title: "更新时间", dataIndex: "updatedAt", key: "updatedAt", width: 140 },
@@ -166,13 +207,28 @@ onMounted(() => {
 </script>
 
 <template>
-  <a-card :bordered="true">
+  <a-card :bordered="true" title="Banner 管理">
     <template #extra>
       <a-space>
-        <a-button @click="refresh">刷新</a-button>
-        <a-button type="primary" @click="openCreate">新建 Banner</a-button>
+        <a-button @click="refresh">
+          <template #icon><ReloadOutlined /></template>
+          刷新
+        </a-button>
+        <a-button type="primary" @click="openCreate">
+          <template #icon><PlusOutlined /></template>
+          新建 Banner
+        </a-button>
       </a-space>
     </template>
+
+    <p class="mb-4 text-sm text-gray-500">
+      全站 Banner 统一在此维护，按板块（Tab）区分展示位置；门户首页与旅游频道各自有主图与两个副位。
+    </p>
+
+    <a-tabs v-model:activeKey="activeScope" class="banner-tabs">
+      <a-tab-pane key="home" tab="门户首页" />
+      <a-tab-pane key="travel" tab="旅游频道" />
+    </a-tabs>
 
     <a-table
       :columns="columns"
@@ -181,6 +237,7 @@ onMounted(() => {
       row-key="id"
       :pagination="{ pageSize: 20 }"
       size="middle"
+      class="mt-4"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'thumb'">
@@ -232,7 +289,7 @@ onMounted(() => {
       <a-form-item label="跳转链接">
         <a-input v-model:value="form.linkUrl" placeholder="例如 /travel 或 https://..." />
       </a-form-item>
-      <a-form-item label="分类位" required>
+      <a-form-item label="展示位" required>
         <a-select v-model:value="form.slot" :options="slotOptions" />
       </a-form-item>
       <a-form-item label="启用">
@@ -245,3 +302,8 @@ onMounted(() => {
   </a-modal>
 </template>
 
+<style scoped>
+.banner-tabs :deep(.ant-tabs-nav) {
+  margin-bottom: 0;
+}
+</style>

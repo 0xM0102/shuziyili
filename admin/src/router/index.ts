@@ -3,13 +3,15 @@ import { createRouter, createWebHistory, type RouteRecordRaw } from "vue-router"
 import AdminLayout from "@/views/layout/AdminLayout.vue";
 import LoginPage from "@/views/login/LoginPage.vue";
 import DashboardPage from "@/views/dashboard/DashboardPage.vue";
-import ContentPage from "@/views/content/ContentPage.vue";
 import MediaPage from "@/views/media/MediaPage.vue";
 import ArticlesPage from "@/views/articles/ArticlesPage.vue";
 import BannersPage from "@/views/banners/BannersPage.vue";
+import FlashLinksPage from "@/views/flash-links/FlashLinksPage.vue";
+import FlashTagsPage from "@/views/flash-tags/FlashTagsPage.vue";
 import PortalUsersPage from "@/views/portal-users/PortalUsersPage.vue";
 import StaffUsersPage from "@/views/staff-users/StaffUsersPage.vue";
 import VerificationRecordsPage from "@/views/verification-records/VerificationRecordsPage.vue";
+import PermissionsPage from "@/views/permissions/PermissionsPage.vue";
 import { api, clearToken, getToken } from "@/lib/api-client";
 
 const routes: RouteRecordRaw[] = [
@@ -20,10 +22,11 @@ const routes: RouteRecordRaw[] = [
     children: [
       { path: "", redirect: "/dashboard" },
       { path: "dashboard", name: "dashboard", component: DashboardPage },
-      { path: "content", name: "content", component: ContentPage },
       { path: "articles", name: "articles", component: ArticlesPage },
       { path: "media", name: "media", component: MediaPage },
       { path: "banners", name: "banners", component: BannersPage },
+      { path: "flash-links", name: "flash-links", component: FlashLinksPage },
+      { path: "flash-tags", name: "flash-tags", component: FlashTagsPage },
       { path: "portal-users", name: "portal-users", component: PortalUsersPage },
       { path: "staff-users", name: "staff-users", component: StaffUsersPage },
       {
@@ -31,6 +34,7 @@ const routes: RouteRecordRaw[] = [
         name: "verification-records",
         component: VerificationRecordsPage,
       },
+      { path: "permissions", name: "permissions", component: PermissionsPage },
     ],
   },
 ];

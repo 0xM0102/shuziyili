@@ -27,6 +27,10 @@ public class BannerEntity {
   @Column(length = 32)
   private String slot;
 
+  /** 板块：{@link BannerScope} 的 code，如 home、travel */
+  @Column(nullable = false, length = 32)
+  private String scope = BannerScope.HOME.code;
+
   @Column(nullable = false)
   private boolean enabled;
 
@@ -85,6 +89,14 @@ public class BannerEntity {
 
   public void setSlot(String slot) {
     this.slot = slot;
+  }
+
+  public String getScope() {
+    return scope;
+  }
+
+  public void setScope(String scope) {
+    this.scope = scope;
   }
 
   public int getSortOrder() {

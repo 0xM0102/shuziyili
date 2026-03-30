@@ -33,7 +33,7 @@ export function CookieConsentBanner() {
       aria-label="Cookie 与本地存储说明"
       aria-live="polite"
     >
-      <div className="pointer-events-auto flex w-full max-w-3xl flex-col gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-lg md:flex-row md:items-center md:justify-between md:gap-4 md:px-5 md:py-4">
+      <div className="pointer-events-auto flex w-full max-w-3xl flex-col gap-3 rounded-xl border border-border bg-card px-4 py-3 md:flex-row md:items-center md:justify-between md:gap-4 md:px-5 md:py-4">
         <p className="text-sm leading-relaxed text-foreground/90">
           我们使用 Cookie 与本地存储，用于保持登录状态、记住主题与语言等偏好。
           <Link href="/cookies" className="ml-1 font-medium text-primary underline-offset-2 hover:underline">

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ReloadOutlined } from "@ant-design/icons-vue";
 import { onMounted, ref } from "vue";
 import { api } from "@/lib/api-client";
 import { mapApiMessage } from "@/lib/auth-messages";
@@ -71,7 +72,10 @@ onMounted(() => void refresh());
 <template>
   <a-card :bordered="true">
     <template #extra>
-      <a-button size="small" @click="refresh">刷新</a-button>
+      <a-button size="small" @click="refresh">
+        <template #icon><ReloadOutlined /></template>
+        刷新
+      </a-button>
     </template>
 
     <a-table

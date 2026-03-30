@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { PlusOutlined, ReloadOutlined } from "@ant-design/icons-vue";
 import { onMounted, ref } from "vue";
 import { api, type StaffUserDto } from "@/lib/api-client";
 import { mapApiMessage } from "@/lib/auth-messages";
@@ -8,13 +9,14 @@ type Row = StaffUserDto;
 
 const loading = ref(false);
 const rows = ref<Row[]>([]);
+const searchKeyword = ref("");
 
 const createOpen = ref(false);
 const creating = ref(false);
 const createForm = ref({
   identifier: "",
   password: "",
-  role: "editor" as "admin" | "editor",
+  role: "editor" as "admin" | "editor" | "operator" | "viewer",
   displayName: "",
   nickname: "",
   avatarUrl: "",
@@ -34,7 +36,7 @@ const editForm = ref({
 async function refresh() {
   loading.value = true;
   try {
-    const r = await api.admin.staff.list();
+    const r = await api.admin.staff.list(searchKeyword.value);
     if (!r.ok || !r.data) {
       rows.value = [];
       void message.error(mapApiMessage(r.message));
@@ -124,7 +126,7 @@ async function saveProfile() {
   }
 }
 
-async function changeRole(row: Row, role: "admin" | "editor") {
+async function changeRole(row: Row, role: "admin" | "editor" | "operator" | "viewer") {
   const r = await api.admin.staff.setRole(row.id, role);
   if (!r.ok || !r.data) {
     void message.error(mapApiMessage(r.message));
@@ -149,9 +151,22 @@ onMounted(() => void refresh());
 <template>
   <a-card :bordered="true">
     <template #extra>
-      <a-space>
-        <a-button size="small" @click="refresh">刷新</a-button>
-        <a-button type="primary" size="small" @click="createOpen = true">新建操作员</a-button>
+      <a-space wrap>
+        <a-input-search
+          v-model:value="searchKeyword"
+          placeholder="手机号或邮箱"
+          allow-clear
+          style="width: min(100vw - 8rem, 280px)"
+          @search="refresh"
+        />
+        <a-button size="small" @click="refresh">
+          <template #icon><ReloadOutlined /></template>
+          刷新
+        </a-button>
+        <a-button type="primary" size="small" @click="createOpen = true">
+          <template #icon><PlusOutlined /></template>
+          新建操作员
+        </a-button>
       </a-space>
     </template>
 
@@ -170,9 +185,11 @@ onMounted(() => void refresh());
             :value="record.role"
             :options="[
               { label: '管理员', value: 'admin' },
-              { label: '编辑', value: 'editor' }
+              { label: '编辑', value: 'editor' },
+              { label: '运营', value: 'operator' },
+              { label: '只读', value: 'viewer' }
             ]"
-            @change="(v: string | number) => changeRole(record, v as 'admin' | 'editor')"
+            @change="(v: string | number) => changeRole(record, v as 'admin' | 'editor' | 'operator' | 'viewer')"
           />
         </template>
         <template v-if="column.key === 'createdAt'">
@@ -183,6 +200,8 @@ onMounted(() => void refresh());
             <a-button type="link" size="small" @click="openEdit(record)">编辑资料</a-button>
             <a-button type="link" size="small" @click="changeRole(record, 'editor')">设为编辑</a-button>
             <a-button type="link" size="small" @click="changeRole(record, 'admin')">设为管理员</a-button>
+            <a-button type="link" size="small" @click="changeRole(record, 'operator')">设为运营</a-button>
+            <a-button type="link" size="small" @click="changeRole(record, 'viewer')">设为只读</a-button>
           </a-space>
         </template>
       </template>
@@ -202,7 +221,9 @@ onMounted(() => void refresh());
           v-model:value="createForm.role"
           :options="[
             { label: '管理员', value: 'admin' },
-            { label: '编辑', value: 'editor' }
+            { label: '编辑', value: 'editor' },
+            { label: '运营', value: 'operator' },
+            { label: '只读', value: 'viewer' }
           ]"
         />
       </a-form-item>

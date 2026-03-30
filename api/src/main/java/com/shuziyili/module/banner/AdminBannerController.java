@@ -2,6 +2,7 @@ package com.shuziyili.module.banner;
 
 import com.shuziyili.common.ApiResponse;
 import com.shuziyili.common.BearerTokens;
+import com.shuziyili.module.auth.StaffPermissionCodes;
 import com.shuziyili.module.auth.StaffAuthService;
 import java.util.List;
 import java.util.Map;
@@ -14,8 +15,10 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 后台 CRUD：全站 banners 表，按 scope 分板块；列表参数 scope 默认 home。 */
 @RestController
 @RequestMapping("/api/v1/admin/banners")
 public class AdminBannerController {
@@ -30,12 +33,13 @@ public class AdminBannerController {
 
   @GetMapping
   public ResponseEntity<ApiResponse<Map<String, Object>>> list(
-      @RequestHeader(value = "Authorization", required = false) String authorization) {
+      @RequestHeader(value = "Authorization", required = false) String authorization,
+      @RequestParam(value = "scope", required = false) String scope) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaff(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.BANNERS_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
     }
-    List<AdminBannerService.Banner> items = bannerService.list();
+    List<AdminBannerService.Banner> items = bannerService.list(scope);
     return ResponseEntity.ok(ApiResponse.success(Map.of("items", items)));
   }
 
@@ -44,7 +48,7 @@ public class AdminBannerController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestBody UpsertReq req) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaff(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.BANNERS_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
     }
     if (req == null || req.imageUrl == null || req.imageUrl.trim().isEmpty()) {
@@ -63,7 +67,7 @@ public class AdminBannerController {
       @PathVariable("id") Long id,
       @RequestBody UpsertReq req) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaff(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.BANNERS_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
     }
     AdminBannerService.UpdateResult r = bannerService.update(id, req);
@@ -78,7 +82,7 @@ public class AdminBannerController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @PathVariable("id") Long id) {
     String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaff(token).isOk()) {
+    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.BANNERS_MANAGE).isOk()) {
       return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
     }
     boolean ok = bannerService.delete(id);
@@ -86,6 +90,8 @@ public class AdminBannerController {
   }
 
   public static class UpsertReq {
+    /** 板块：home、travel；新建时可选，默认 home */
+    public String scope;
     public String title;
     public String imageUrl;
     public String linkUrl;
