@@ -123,9 +123,6 @@ function fmtSize(n: number) {
           选择图片上传
         </a-button>
       </a-upload>
-      <p v-if="cfg" class="upload-hint">
-        路径前缀：<code>{{ cfg.keyPrefix }}yyyy/MM/dd/…</code>
-      </p>
     </a-card>
 
     <a-card :bordered="true">
@@ -166,15 +163,3 @@ function fmtSize(n: number) {
     </a-card>
   </a-space>
 </template>
-
-<style scoped>
-.upload-hint {
-  margin-top: 8px;
-  margin-bottom: 0;
-  font-size: 12px;
-  color: #999;
-}
-.upload-hint code {
-  font-size: 11px;
-}
-</style>

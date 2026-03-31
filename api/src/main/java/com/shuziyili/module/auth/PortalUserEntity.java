@@ -26,9 +26,6 @@ public class PortalUserEntity {
   @Column(nullable = false, length = 200)
   private String passwordHash;
 
-  @Column(name = "display_name", nullable = false, length = 64)
-  private String displayName = "";
-
   @Column(nullable = false, length = 64)
   private String nickname = "";
 
@@ -74,14 +71,6 @@ public class PortalUserEntity {
 
   public void setCreatedAt(long createdAt) {
     this.createdAt = createdAt;
-  }
-
-  public String getDisplayName() {
-    return displayName;
-  }
-
-  public void setDisplayName(String displayName) {
-    this.displayName = displayName;
   }
 
   public String getNickname() {

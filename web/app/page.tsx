@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getPublicApiV1Base } from "@/lib/api-base";
+import { fetchPublicApiData } from "@/lib/api-base";
 import { FlashTitleLink } from "@/components/flash/flash-title-link";
 import { FlashTagBadge } from "@/components/flash/flash-tag-badge";
 import { formatFlashTime, getFlashLinks } from "@/lib/flash-links";
@@ -34,28 +34,36 @@ type Teaser = {
   tone?: "blue" | "dark" | "warm";
 };
 
-async function getHomeBanners(): Promise<HomeBanner[]> {
-  const base = getPublicApiV1Base();
-  try {
-    const res = await fetch(`${base}/home/banners`, { next: { revalidate: 30 } });
-    if (!res.ok) return [];
-    const json = (await res.json()) as { ok: boolean; data?: { items?: HomeBanner[] } };
-    if (!json.ok) return [];
-    return json.data?.items ?? [];
-  } catch {
-    return [];
-  }
+type CuratedArticle = {
+  id: string;
+  title: string;
+  summary: string;
+  coverUrl: string | null;
+  updatedAt: number;
+  href: string;
+};
+
+async function getHomeFeatured(): Promise<CuratedArticle[]> {
+  const data = await fetchPublicApiData<{ featured?: CuratedArticle[] }>("/home/curated", {});
+  return data.featured ?? [];
 }
 
-/**
- * 首页「热点」结构说明（参考资讯门户形态）：
- * - 上半区：左侧大焦点（轮播位） + 右侧两张小卡（补充曝光/导流）
- * - 下半区：左侧精选/热榜（更强的信息密度） + 右侧 7×24 快讯（高频短内容）
- *
- * 这里先用静态占位数据与渐变背景模拟“封面图位”，后续接入真实内容时：
- * - 用真实 cover 图替换掉渐变块（例如 Next/Image + 图片 URL）
- * - 用真实接口数据替换 featured/列表数组即可，不需要重改布局。
- */
+/** 首页 Hero 标题下角标：相对更新时间（中文）。 */
+function formatRelativeTime(ms: number): string {
+  const diff = Date.now() - ms;
+  if (diff < 60_000) return "刚刚";
+  if (diff < 3_600_000) return `${Math.max(1, Math.floor(diff / 60_000))} 分钟前`;
+  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)} 小时前`;
+  if (diff < 172_800_000) return "昨天";
+  return new Date(ms).toLocaleDateString("zh-CN");
+}
+
+async function getHomeBanners(): Promise<HomeBanner[]> {
+  const data = await fetchPublicApiData<{ items?: HomeBanner[] }>("/home/banners", { items: [] });
+  return data.items ?? [];
+}
+
+/** 无主 Banner 且无后台精选首条时的 Hero 兜底（渐变块）。 */
 const featured: Teaser[] = [
   {
     title: "伊犁春季赏花路线与避堵建议（占位）",
@@ -199,11 +207,21 @@ function SectionHead({
 }
 
 export default async function HomePage() {
-  const [banners, flashLinks] = await Promise.all([getHomeBanners(), getFlashLinks()]);
+  const [banners, flashLinks, featuredCurated] = await Promise.all([
+    getHomeBanners(),
+    getFlashLinks(),
+    getHomeFeatured(),
+  ]);
   const mains = banners.filter((b) => b.slot === "home_main");
   const hero = mains[0];
   const sideTop = banners.find((b) => b.slot === "home_side_top");
   const sideBottom = banners.find((b) => b.slot === "home_side_bottom");
+  const firstCurated = featuredCurated[0];
+  // 「今日推荐」日期应始终表示今天（本地时区），而非某条内容的更新时间。
+  const calDate = new Date();
+  const month2 = String(calDate.getMonth() + 1).padStart(2, "0");
+  const day2 = String(calDate.getDate()).padStart(2, "0");
+  const featuredTop = featuredCurated.slice(0, 4);
 
   return (
     <div className="space-y-0">
@@ -212,7 +230,7 @@ export default async function HomePage() {
         <div className="relative overflow-hidden bg-background">
           <div
             className={`relative h-[240px] w-full md:h-[340px] ${
-              hero ? "bg-cover bg-center" : `bg-linear-to-br ${toneClass(featured[0].tone)}`
+              hero ? "bg-cover bg-center" : `bg-linear-to-br ${toneClass(firstCurated ? "blue" : featured[0].tone)}`
             }`}
             style={
               hero
@@ -246,15 +264,22 @@ export default async function HomePage() {
                 {hero ? null : (
                   <>
                     <span className="rounded-full bg-primary/90 px-2.5 py-1 text-xs font-semibold text-white">
-                      {featured[0].tag ?? "焦点"}
+                      {firstCurated ? "精选" : (featured[0].tag ?? "焦点")}
                     </span>
-                    <span className="text-xs text-white/80">{featured[0].meta ?? "更新"}</span>
+                    <span className="text-xs text-white/80">
+                      {firstCurated
+                        ? formatRelativeTime(firstCurated.updatedAt)
+                        : (featured[0].meta ?? "更新")}
+                    </span>
                   </>
                 )}
               </div>
-              <Link href={hero?.linkUrl ?? featured[0].href} className="mt-3 block">
+              <Link
+                href={hero?.linkUrl ?? firstCurated?.href ?? featured[0].href}
+                className="mt-3 block"
+              >
                 <h1 className="line-clamp-1 text-xl font-semibold tracking-tight text-white md:text-2xl">
-                  {hero?.title ?? featured[0].title}
+                  {hero?.title ?? firstCurated?.title ?? featured[0].title}
                 </h1>
               </Link>
 
@@ -291,48 +316,45 @@ export default async function HomePage() {
         <div className="space-y-0">
           <div className="bg-background p-4 md:p-5">
             <SectionHead title="数伊精选" moreHref="/news" dotTone="blue" />
-            <div className="mt-4 grid gap-3 md:grid-cols-[140px_1fr]">
-              <div className="bg-sidebar-hover p-3">
-                <p className="text-xs text-muted">今日推荐</p>
-                <p className="mt-2 text-2xl font-bold tracking-tight text-foreground">03</p>
-                <p className="text-xs text-muted">2026 / 03 / 25</p>
-              </div>
-              <div className="bg-background p-3">
-                <ul className="space-y-2 text-sm">
-                  {[
-                    "伊犁本周活动：市集、展览、报名入口汇总（占位）",
-                    "春季自驾：天气、路况、补给点建议（占位）",
-                    "数字游民：短住选址与网络测速经验（占位）",
-                    "便民黄页：常用电话与办事入口（占位）",
-                  ].map((t) => (
-                    <li key={t} className="flex gap-2">
-                      <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-border" />
-                      <span className="line-clamp-1 text-foreground/95">{t}</span>
-                    </li>
-                  ))}
-                </ul>
+            <div className="mt-4 bg-primary/10">
+              <div className="grid gap-0 md:grid-cols-[160px_1fr]">
+                {/* 左侧日期牌 */}
+                <div className="flex items-center justify-center p-4 md:p-5">
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-primary">今日推荐</p>
+                    <p className="mt-3 text-xs text-muted">
+                      {calDate.getFullYear()} 年 {month2} 月
+                    </p>
+                    <p className="mt-2 text-3xl font-extrabold tracking-tight text-foreground">
+                      {day2} / {month2}
+                    </p>
+                  </div>
+                </div>
+
+                {/* 右侧要点列表 */}
+                <div className="p-4 md:p-5">
+                  {featuredTop.length === 0 ? (
+                    <p className="text-sm text-muted">
+                      暂无精选条目。请登录管理后台 → 内容管理 → 首页运营，添加已发布文章。
+                    </p>
+                  ) : (
+                    <ul className="space-y-2.5 text-sm">
+                      {featuredTop.map((it) => (
+                        <li key={it.id} className="flex min-w-0 items-start gap-2">
+                          <span className="mt-1.5 h-2 w-2 shrink-0 rotate-45 rounded-[2px] bg-primary/60" aria-hidden />
+                          <Link href={it.href} className="min-w-0 line-clamp-1 font-medium text-foreground/95 hover:text-primary">
+                            {it.title}
+                          </Link>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="border-t border-border bg-background">
-            <div className="flex items-center justify-between px-4 py-4 md:px-5">
-              <SectionHead title={`${siteConfig.name} 今日热榜（占位）`} moreHref="/news" dotTone="blue" />
-            </div>
-            <ul>
-              {[
-                { title: "本周末活动报名入口整理（占位）", meta: "34 分钟前" },
-                { title: "伊宁周边轻徒步线路推荐（占位）", meta: "2 小时前" },
-                { title: "便民：医院挂号与急救电话（占位）", meta: "今天" },
-                { title: "数字游民：共享办公与咖啡馆（占位）", meta: "昨天" },
-              ].map((it) => (
-                <li key={it.title} className="px-4 py-4 md:px-5">
-                  <p className="line-clamp-1 text-sm font-medium text-foreground/95">{it.title}</p>
-                  <p className="mt-1 text-xs text-muted">{it.meta}</p>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {/* 今日热榜已移除：下方直接进入右侧快讯与其它内容 */}
         </div>
 
         <aside className="border-t border-border bg-background lg:border-t-0 lg:border-l">

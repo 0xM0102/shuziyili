@@ -23,9 +23,10 @@ export const uiText: Record<
     accountPageSubtitle: string;
     profileMy: string;
     profileIdentifier: string;
-    profileDisplayName: string;
     profileNickname: string;
     profileAvatarUrl: string;
+    profileAvatarUpload: string;
+    profileAvatarUploading: string;
     profileBio: string;
     profileSave: string;
     profileSaving: string;
@@ -45,12 +46,13 @@ export const uiText: Record<
     personalCenter: "个人中心",
     accountHint: "登录后可编辑资料、查看账号信息并安全退出。",
     accountGoLogin: "去登录",
-    accountPageSubtitle: "在此维护展示名、昵称、头像与简介；主题、语言与外观请点击右上角头像，在菜单里打开「设置」。",
+    accountPageSubtitle: "在此维护昵称、头像与简介；主题、语言与外观请点击右上角头像，在菜单里打开「设置」。",
     profileMy: "我的资料",
     profileIdentifier: "登录账号",
-    profileDisplayName: "显示名",
     profileNickname: "昵称",
     profileAvatarUrl: "头像 URL（https://…）",
+    profileAvatarUpload: "上传头像",
+    profileAvatarUploading: "上传中…",
     profileBio: "简介",
     profileSave: "保存资料",
     profileSaving: "保存中…",
@@ -73,9 +75,10 @@ export const uiText: Record<
       "Update your profile here. Theme, language, and display: open your account menu (avatar) and choose Settings.",
     profileMy: "Profile",
     profileIdentifier: "Sign-in ID",
-    profileDisplayName: "Display name",
     profileNickname: "Nickname",
     profileAvatarUrl: "Avatar URL (https://…)",
+    profileAvatarUpload: "Upload avatar",
+    profileAvatarUploading: "Uploading…",
     profileBio: "Bio",
     profileSave: "Save profile",
     profileSaving: "Saving…",

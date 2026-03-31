@@ -1,4 +1,4 @@
-import { getPublicApiV1Base } from "@/lib/api-base";
+import { fetchPublicApiData } from "@/lib/api-base";
 
 export type FlashLinkKind = "EXTERNAL" | "INTERNAL";
 
@@ -12,8 +12,6 @@ export type FlashLinkItem = {
   tagLabel: string;
   publishedAt: number;
 };
-
-const FLASH_LIST_REVALIDATE_SEC = 30;
 
 function normalizeKind(raw: unknown): FlashLinkKind {
   return raw === "INTERNAL" ? "INTERNAL" : "EXTERNAL";
@@ -33,29 +31,10 @@ function parseFlashRecord(raw: Record<string, unknown>): FlashLinkItem {
   };
 }
 
-function flashFetchInit(): RequestInit {
-  return { next: { revalidate: FLASH_LIST_REVALIDATE_SEC } };
-}
-
-async function fetchFlashJson(path: string): Promise<unknown | null> {
-  const base = getPublicApiV1Base();
-  try {
-    const res = await fetch(`${base}${path}`, flashFetchInit());
-    if (!res.ok) return null;
-    return (await res.json()) as unknown;
-  } catch {
-    return null;
-  }
-}
-
 /** 门户各处的「7×24 快讯」列表（最多 30 条，与 API 一致） */
 export async function getFlashLinks(): Promise<FlashLinkItem[]> {
-  const json = (await fetchFlashJson("/home/flash-links")) as {
-    ok?: boolean;
-    data?: { items?: unknown[] };
-  } | null;
-  if (!json?.ok) return [];
-  const raw = json.data?.items ?? [];
+  const data = await fetchPublicApiData<{ items?: unknown[] }>("/home/flash-links", { items: [] });
+  const raw = data.items ?? [];
   const out: FlashLinkItem[] = [];
   for (const row of raw) {
     if (row && typeof row === "object") {
@@ -68,12 +47,12 @@ export async function getFlashLinks(): Promise<FlashLinkItem[]> {
 /** 单条快讯（仅启用），用于 /flash/[id] */
 export async function getFlashLinkById(id: number): Promise<FlashLinkItem | null> {
   if (!Number.isFinite(id) || id <= 0) return null;
-  const json = (await fetchFlashJson(`/home/flash-links/${id}`)) as {
-    ok?: boolean;
-    data?: Record<string, unknown>;
-  } | null;
-  if (!json?.ok || !json.data) return null;
-  return parseFlashRecord(json.data);
+  const data = await fetchPublicApiData<Record<string, unknown> | null>(
+    `/home/flash-links/${id}`,
+    null,
+  );
+  if (!data) return null;
+  return parseFlashRecord(data);
 }
 
 /** 时间戳：M/D HH:mm（始终带日期，符合时间线样式） */

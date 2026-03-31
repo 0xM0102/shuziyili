@@ -95,15 +95,73 @@ public class StaffAuthService {
     String identifier = u.getIdentifier();
     String role = u.getRole() == null || u.getRole().isBlank() ? "editor" : u.getRole();
     Map<String, String> m = new LinkedHashMap<>();
+    m.put("id", Long.toString(u.getId()));
     m.put("identifier", identifier);
     m.put("role", role);
-    m.put("displayName", nullToEmpty(u.getDisplayName()));
     m.put("nickname", nullToEmpty(u.getNickname()));
     m.put("avatarUrl", nullToEmpty(u.getAvatarUrl()));
     m.put("bio", nullToEmpty(u.getBio()));
     m.put("createdAt", Long.toString(u.getCreatedAt()));
     m.put("updatedAt", Long.toString(u.getUpdatedAt()));
     return ApiResponse.success(m);
+  }
+
+  /**
+   * 当前登录后台用户修改自己的资料（昵称/头像等），无需 staff.manage。
+   */
+  @Transactional
+  public ApiResponse<Map<String, String>> updateStaffOwnProfile(
+      String bearerToken, String nickname, String avatarUrl, String bio) {
+    Optional<StaffUserEntity> uo = resolveStaffFromValidSession(bearerToken);
+    if (uo.isEmpty()) {
+      return ApiResponse.fail("unauthorized");
+    }
+    StaffUserEntity u = uo.get();
+    String err = ProfilePayloadValidator.validate(nickname, avatarUrl, bio);
+    if (err != null) {
+      return ApiResponse.fail(err);
+    }
+    long now = clock.millis();
+    ProfilePayloadValidator.applyToStaff(u, nickname, avatarUrl, bio, now);
+    staffUserRepository.save(u);
+    return staffMe(bearerToken);
+  }
+
+  /**
+   * 修改当前登录后台用户密码；需校验原密码。
+   */
+  @Transactional
+  public ApiResponse<Void> changeStaffPassword(String bearerToken, String oldPassword, String newPassword) {
+    Optional<StaffUserEntity> uo = resolveStaffFromValidSession(bearerToken);
+    if (uo.isEmpty()) {
+      return ApiResponse.fail("unauthorized");
+    }
+    StaffUserEntity u = uo.get();
+    String hash = u.getPasswordHash();
+    if (hash == null || hash.isBlank()) {
+      return ApiResponse.fail("wrong_password");
+    }
+    if (oldPassword == null || oldPassword.isBlank()) {
+      return ApiResponse.fail("wrong_password");
+    }
+    if (newPassword == null || newPassword.trim().length() < 6) {
+      return ApiResponse.fail("weak_password");
+    }
+    boolean match;
+    try {
+      match = passwordEncoder.matches(oldPassword, hash);
+    } catch (IllegalArgumentException e) {
+      // 库中若非合法 BCrypt 串，matches 会抛异常，否则前端收到 500
+      log.warn("staff change password: invalid bcrypt hash for id={}: {}", u.getId(), e.getMessage());
+      return ApiResponse.fail("wrong_password");
+    }
+    if (!match) {
+      return ApiResponse.fail("wrong_password");
+    }
+    u.setPasswordHash(passwordEncoder.encode(newPassword.trim()));
+    u.setUpdatedAt(clock.millis());
+    staffUserRepository.save(u);
+    return ApiResponse.success();
   }
 
   @Transactional

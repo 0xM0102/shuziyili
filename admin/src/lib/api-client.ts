@@ -6,13 +6,24 @@ export type ApiResponse<T> = {
 
 export type StaffRole = "admin" | "editor" | "operator" | "viewer";
 
+/** GET /api/v1/staff/auth/me 当前登录后台用户 */
+export type StaffMeDto = {
+  id: string;
+  identifier: string;
+  role: StaffRole;
+  nickname: string;
+  avatarUrl: string;
+  bio: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 /** 门户注册用户（无角色） */
 export type PortalUserDto = {
   id: number;
   identifier: string;
   createdAt: number;
   updatedAt: number;
-  displayName: string;
   nickname: string;
   avatarUrl: string;
   bio: string;
@@ -25,7 +36,6 @@ export type StaffUserDto = {
   role: StaffRole;
   createdAt: number;
   updatedAt: number;
-  displayName: string;
   nickname: string;
   avatarUrl: string;
   bio: string;
@@ -53,12 +63,12 @@ export type StaffRolePermissionsDto = {
 /**
  * API 根地址（不含末尾 /）。
  * - 生产：设 `VITE_API_BASE_URL`（或与站点同域相对路径则留空）。
- * - 开发：`import.meta.env.DEV` 时默认直连 `http://localhost:8080`，避免仅依赖 Vite 代理时出现 5174 上 /api 404。
+ * - 开发：默认留空，请求走当前源下的 `/api/...`，由 `vite.config.ts` 代理到后端，避免浏览器跨域与 CORS。
+ *   若需浏览器直连 `http://localhost:8080`（例如未用 Vite），可设 `VITE_API_BASE_URL=http://localhost:8080`。
  */
 function resolveApiBase(): string {
   const fromEnv = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.trim().replace(/\/$/, "") ?? "";
   if (fromEnv) return fromEnv;
-  if (import.meta.env.DEV) return "http://localhost:8080";
   return "";
 }
 
@@ -95,6 +105,10 @@ export function clearToken() {
   }
 }
 
+function adminHomeFeaturedPath() {
+  return "/api/v1/admin/home-articles";
+}
+
 async function request<T>(path: string, init?: RequestInit): Promise<ApiResponse<T>> {
   const token = getToken();
   const headers = new Headers(init?.headers);
@@ -126,16 +140,24 @@ export const api = {
       });
     },
     async me() {
-      return request<{
-        identifier: string;
-        role: StaffRole;
-        displayName: string;
-        nickname: string;
-        avatarUrl: string;
-        bio: string;
-        createdAt: string;
-        updatedAt: string;
-      }>("/api/v1/staff/auth/me", { method: "GET" });
+      return request<StaffMeDto>("/api/v1/staff/auth/me", { method: "GET" });
+    },
+    async updateProfile(payload: {
+      nickname: string;
+      avatarUrl: string;
+      bio: string;
+    }) {
+      // 与门户 PUT /api/v1/auth/profile 对称；用 POST 避免部分环境下对 /me 的 PUT 出现 405
+      return request<StaffMeDto>("/api/v1/staff/auth/profile", {
+        method: "POST",
+        body: JSON.stringify(payload),
+      });
+    },
+    async changePassword(oldPassword: string, newPassword: string) {
+      return request<void>("/api/v1/staff/auth/password", {
+        method: "PUT",
+        body: JSON.stringify({ oldPassword, newPassword }),
+      });
     },
     async logout() {
       return request<void>("/api/v1/staff/auth/logout", { method: "POST" });
@@ -171,7 +193,7 @@ export const api = {
       },
       async updateProfile(
         id: number,
-        payload: { displayName: string; nickname: string; avatarUrl: string; bio: string }
+        payload: { nickname: string; avatarUrl: string; bio: string }
       ) {
         return request<PortalUserDto>(`/api/v1/admin/portal-users/${id}`, {
           method: "PUT",
@@ -193,7 +215,7 @@ export const api = {
       },
       async updateProfile(
         id: number,
-        payload: { displayName: string; nickname: string; avatarUrl: string; bio: string }
+        payload: { nickname: string; avatarUrl: string; bio: string }
       ) {
         return request<StaffUserDto>(`/api/v1/admin/staff/${id}`, {
           method: "PUT",
@@ -204,7 +226,6 @@ export const api = {
         identifier: string;
         password: string;
         role: StaffRole;
-        displayName?: string;
         nickname?: string;
         avatarUrl?: string;
         bio?: string;
@@ -426,6 +447,24 @@ export const api = {
     async deleteArticle(id: string) {
       return request<void>(`/api/v1/admin/articles/${encodeURIComponent(id)}`, { method: "DELETE" });
     },
+    /** 首页精选（独立槽位，非文章类型字段） */
+    async listHomeArticleSlots() {
+      return request<{
+        items: {
+          slotId: number;
+          articleId: string;
+          title: string;
+          status: string;
+          sortOrder: number;
+        }[];
+      }>(adminHomeFeaturedPath(), { method: "GET" });
+    },
+    async replaceHomeArticleSlots(articleIds: string[]) {
+      return request<void>(adminHomeFeaturedPath(), {
+        method: "PUT",
+        body: JSON.stringify({ articleIds }),
+      });
+    },
     async listBanners(scope: "home" | "travel" = "home") {
       const q = `?scope=${encodeURIComponent(scope)}`;
       return request<{
@@ -509,12 +548,16 @@ export const api = {
         { method: "GET" }
       );
     },
-    async uploadMedia(file: File) {
+    /** @param scope `cms` 默认（文章/Banner/媒体库）；`staff_avatar` 后台操作员头像目录 */
+    async uploadMedia(file: File, opts?: { scope?: "cms" | "staff_avatar" }) {
       const token = getToken();
       const headers = new Headers();
       if (token) headers.set("Authorization", `Bearer ${token}`);
       const body = new FormData();
       body.append("file", file);
+      // 与 query 相比，multipart 表单字段更可靠（部分代理/客户端对 multipart+query 的 scope 会丢，导致落默认 cms/）
+      const scope = opts?.scope ?? "cms";
+      body.append("scope", scope);
       let resp: Response;
       try {
         resp = await fetch(apiUrl("/api/v1/admin/media/upload"), { method: "POST", headers, body });

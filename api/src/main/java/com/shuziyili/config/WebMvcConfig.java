@@ -19,6 +19,14 @@ public class WebMvcConfig implements WebMvcConfigurer {
   @Override
   public void addCorsMappings(CorsRegistry registry) {
     List<String> patterns = corsProperties.getAllowedOriginPatterns();
+    if (patterns.isEmpty()) {
+      patterns =
+          List.of(
+              "http://localhost:*",
+              "http://127.0.0.1:*",
+              "http://localhost:5174",
+              "http://127.0.0.1:5174");
+    }
     registry
         .addMapping("/api/**")
         .allowedOriginPatterns(patterns.toArray(String[]::new))

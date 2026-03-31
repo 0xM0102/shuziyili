@@ -1,30 +1,36 @@
 <script setup lang="ts">
 import {
+  ControlOutlined,
   DashboardOutlined,
   FileTextOutlined,
   FolderOutlined,
   HomeOutlined,
   LinkOutlined,
+  StarOutlined,
   LogoutOutlined,
   MenuFoldOutlined,
   MenuUnfoldOutlined,
   KeyOutlined,
   PictureOutlined,
   SendOutlined,
+  SettingOutlined,
   UserOutlined,
   UserSwitchOutlined,
 } from "@ant-design/icons-vue";
-import { computed, ref, watch } from "vue";
+import { computed, onMounted, ref, watch } from "vue";
 import { useRoute, useRouter } from "vue-router";
 import HelpTip from "@/components/HelpTip.vue";
 import { helpForPath } from "@/page-help";
 import { api, clearToken } from "@/lib/api-client";
+import { refreshStaffMe, staffMe } from "@/lib/staff-session";
+import { getStaffAvatarInitial } from "@/lib/staff-ui";
 
 const route = useRoute();
 const router = useRouter();
 
-/** a-sub-menu 的 key，与路由 /content 无关 */
+/** a-sub-menu 的 key，与路由路径无关 */
 const CONTENT_SUBMENU_KEY = "content";
+const ADMIN_SUBMENU_KEY = "admin";
 
 const collapsed = ref(false);
 const selectedKeys = ref<string[]>([]);
@@ -43,19 +49,43 @@ const menuItems = [
   { key: "flash-links", path: "/flash-links" },
   { key: "flash-tags", path: "/flash-tags" },
   { key: "media", path: "/media" },
+  { key: "home-curation", path: "/home-curation" },
 ] as const;
 
 /** 归入「内容管理」子菜单的路由前缀 */
-const CONTENT_PATH_PREFIXES = ["/articles", "/banners", "/flash-links", "/flash-tags", "/media"] as const;
+const CONTENT_PATH_PREFIXES = [
+  "/articles",
+  "/home-curation",
+  "/banners",
+  "/flash-links",
+  "/flash-tags",
+  "/media",
+] as const;
+/** 归入「后台管理」子菜单的路由前缀 */
+const ADMIN_PATH_PREFIXES = ["/staff-users", "/permissions", "/verification-records"] as const;
+const PAGE_TITLES = [
+  { prefix: "/articles", title: "文章管理" },
+  { prefix: "/home-curation", title: "首页运营" },
+  { prefix: "/banners", title: "Banner 管理" },
+  { prefix: "/flash-links", title: "快讯" },
+  { prefix: "/flash-tags", title: "标签管理" },
+  { prefix: "/media", title: "媒体库" },
+  { prefix: "/portal-users", title: "平台用户" },
+  { prefix: "/staff-users", title: "后台账号" },
+  { prefix: "/verification-records", title: "验证发送记录" },
+  { prefix: "/permissions", title: "权限管理" },
+  { prefix: "/profile", title: "个人设置" },
+] as const;
 
 watch(
   () => route.path,
   (p) => {
     const hit = menuItems.find((i) => p.startsWith(i.path));
     selectedKeys.value = [hit?.key ?? "dashboard"];
-    openKeys.value = CONTENT_PATH_PREFIXES.some((prefix) => p.startsWith(prefix))
-      ? [CONTENT_SUBMENU_KEY]
-      : [];
+    const open: string[] = [];
+    if (ADMIN_PATH_PREFIXES.some((prefix) => p.startsWith(prefix))) open.push(ADMIN_SUBMENU_KEY);
+    if (CONTENT_PATH_PREFIXES.some((prefix) => p.startsWith(prefix))) open.push(CONTENT_SUBMENU_KEY);
+    openKeys.value = open;
   },
   { immediate: true }
 );
@@ -66,17 +96,17 @@ function onMenuClick(e: { key: string }) {
 }
 
 const title = computed(() => {
-  if (route.path.startsWith("/articles")) return "文章管理";
-  if (route.path.startsWith("/banners")) return "Banner 管理";
-  if (route.path.startsWith("/flash-links")) return "快讯";
-  if (route.path.startsWith("/flash-tags")) return "标签管理";
-  if (route.path.startsWith("/media")) return "媒体库";
-  if (route.path.startsWith("/portal-users")) return "平台用户";
-  if (route.path.startsWith("/staff-users")) return "后台账号";
-  if (route.path.startsWith("/verification-records")) return "验证发送记录";
-  if (route.path.startsWith("/permissions")) return "权限管理";
-  return "仪表盘";
+  const hit = PAGE_TITLES.find((item) => route.path.startsWith(item.prefix));
+  return hit?.title ?? "仪表盘";
 });
+
+const staffAvatarText = computed(() => {
+  const m = staffMe.value;
+  if (!m) return "?";
+  return getStaffAvatarInitial(m);
+});
+
+onMounted(() => void refreshStaffMe());
 
 const pageHelp = computed(() => helpForPath(route.path));
 
@@ -85,6 +115,7 @@ const logout = async () => {
     await api.auth.logout();
   } finally {
     clearToken();
+    staffMe.value = null;
     await router.push("/login");
   }
 };
@@ -122,18 +153,27 @@ const logout = async () => {
             <template #icon><UserOutlined /></template>
             <span>平台用户</span>
           </a-menu-item>
-          <a-menu-item key="staff-users">
-            <template #icon><UserSwitchOutlined /></template>
-            <span>后台账号</span>
-          </a-menu-item>
-          <a-menu-item key="verification-records">
-            <template #icon><SendOutlined /></template>
-            <span>验证发送记录</span>
-          </a-menu-item>
-          <a-menu-item key="permissions">
-            <template #icon><KeyOutlined /></template>
-            <span>权限管理</span>
-          </a-menu-item>
+
+          <a-sub-menu :key="ADMIN_SUBMENU_KEY">
+            <template #title>
+              <span class="subMenuTitle">
+                <ControlOutlined class="subMenuIcon" />
+                <span>后台管理</span>
+              </span>
+            </template>
+            <a-menu-item key="staff-users">
+              <template #icon><UserSwitchOutlined /></template>
+              <span>后台账号</span>
+            </a-menu-item>
+            <a-menu-item key="permissions">
+              <template #icon><KeyOutlined /></template>
+              <span>权限管理</span>
+            </a-menu-item>
+            <a-menu-item key="verification-records">
+              <template #icon><SendOutlined /></template>
+              <span>验证发送记录</span>
+            </a-menu-item>
+          </a-sub-menu>
 
           <a-sub-menu :key="CONTENT_SUBMENU_KEY">
             <template #title>
@@ -145,6 +185,10 @@ const logout = async () => {
             <a-menu-item key="articles">
               <template #icon><FileTextOutlined /></template>
               <span>文章管理</span>
+            </a-menu-item>
+            <a-menu-item key="home-curation">
+              <template #icon><StarOutlined /></template>
+              <span>首页运营</span>
             </a-menu-item>
             <a-menu-item key="banners">
               <template #icon><HomeOutlined /></template>
@@ -181,10 +225,31 @@ const logout = async () => {
         </div>
 
         <div class="right">
-          <a-button type="default" @click="logout">
-            <template #icon><LogoutOutlined /></template>
-            退出
-          </a-button>
+          <a-dropdown v-if="staffMe" placement="bottomRight">
+            <span class="avatarTrigger" role="button" tabindex="0" aria-label="账号菜单">
+              <img
+                v-if="staffMe.avatarUrl"
+                :key="staffMe.avatarUrl"
+                :src="staffMe.avatarUrl"
+                alt=""
+                class="headerAvatarImg"
+              />
+              <a-avatar v-else :size="32">{{ staffAvatarText }}</a-avatar>
+            </span>
+            <template #overlay>
+              <a-menu>
+                <a-menu-item key="profile" @click="router.push('/profile')">
+                  <SettingOutlined />
+                  个人设置
+                </a-menu-item>
+                <a-menu-divider />
+                <a-menu-item key="logout" danger @click="logout">
+                  <LogoutOutlined />
+                  退出登录
+                </a-menu-item>
+              </a-menu>
+            </template>
+          </a-dropdown>
         </div>
       </a-layout-header>
 
@@ -207,6 +272,7 @@ const logout = async () => {
   flex-direction: column;
   height: 100%;
   overflow: hidden;
+  box-shadow: 4px 0 20px rgba(0, 21, 41, 0.12);
 }
 .siderMenuWrap {
   flex: 1;
@@ -222,6 +288,7 @@ const logout = async () => {
   color: rgba(255, 255, 255, 0.92);
   font-weight: 700;
   letter-spacing: 0.2px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
 }
 .logo {
   flex: 0 0 auto;
@@ -253,7 +320,8 @@ const logout = async () => {
   align-items: center;
   justify-content: space-between;
   background: #ffffff;
-  border-bottom: 1px solid #e7e7e7;
+  border-bottom: 1px solid #eef0f4;
+  box-shadow: 0 1px 4px rgba(15, 23, 42, 0.06);
 }
 .left {
   display: flex;
@@ -266,9 +334,10 @@ const logout = async () => {
   height: 40px;
 }
 .pageTitle {
-  font-size: 15px;
-  font-weight: 700;
-  color: #333;
+  font-size: 16px;
+  font-weight: 600;
+  color: rgba(0, 0, 0, 0.88);
+  letter-spacing: 0.02em;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -277,6 +346,28 @@ const logout = async () => {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+.avatarTrigger {
+  display: inline-flex;
+  cursor: pointer;
+  line-height: 1;
+  border-radius: 50%;
+  outline: none;
+  transition: box-shadow 0.2s ease;
+}
+.avatarTrigger:hover {
+  box-shadow: 0 0 0 2px rgba(22, 119, 255, 0.25);
+}
+.avatarTrigger:focus-visible {
+  box-shadow: 0 0 0 2px #fff, 0 0 0 4px #1677ff;
+}
+
+.headerAvatarImg {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
 }
 .content {
   height: calc(100% - 64px);

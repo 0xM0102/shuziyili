@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ReloadOutlined, SaveOutlined } from "@ant-design/icons-vue";
 import { computed, onMounted, ref } from "vue";
-import { api, type StaffPermissionDto, type StaffRoleDto, type StaffRolePermissionsDto } from "@/lib/api-client";
+import { api, type StaffPermissionDto, type StaffRoleDto } from "@/lib/api-client";
 import { mapApiMessage } from "@/lib/auth-messages";
 import { message } from "ant-design-vue";
 
@@ -15,7 +15,12 @@ const activeRoleName = ref<string>("");
 const selectedPermissionCodes = ref<string[]>([]);
 const search = ref("");
 
-const activeRole = computed(() => roles.value.find((r) => r.roleName === activeRoleName.value) ?? null);
+const roleOptions = computed(() =>
+  roles.value.map((r) => ({
+    label: `${r.displayName}（${r.roleName}）`,
+    value: r.roleName,
+  }))
+);
 
 const filteredPermissions = computed(() => {
   const q = search.value.trim().toLowerCase();
@@ -29,6 +34,14 @@ const filteredPermissions = computed(() => {
 const enabledPermissionCodes = computed(() =>
   permissions.value.filter((p) => p.enabled).map((p) => p.permissionCode)
 );
+
+const columns = [
+  { title: "授权", key: "grant", width: 72, align: "center" as const },
+  { title: "权限名称", dataIndex: "displayName", key: "displayName", ellipsis: true },
+  { title: "权限码", dataIndex: "permissionCode", key: "permissionCode", width: 220, ellipsis: true },
+  { title: "说明", dataIndex: "description", key: "description", ellipsis: true },
+  { title: "状态", key: "status", width: 88 },
+];
 
 async function refreshForRole(roleName?: string) {
   const rn = roleName ?? activeRoleName.value;
@@ -93,21 +106,41 @@ function clearAll() {
   selectedPermissionCodes.value = [];
 }
 
+function onGrantChange(record: StaffPermissionDto, checked: boolean) {
+  if (!record.enabled) return;
+  const code = record.permissionCode;
+  const arr = [...selectedPermissionCodes.value];
+  const i = arr.indexOf(code);
+  if (checked && i === -1) arr.push(code);
+  if (!checked && i >= 0) arr.splice(i, 1);
+  selectedPermissionCodes.value = arr;
+}
+
 onMounted(() => {
   void refreshAll();
 });
 </script>
 
 <template>
-  <div class="mx-auto max-w-6xl">
-    <div class="mb-4 flex items-start justify-between gap-3">
-      <div>
-        <h1 class="text-lg font-semibold">权限管理</h1>
-        <p class="mt-1 text-sm text-gray-500">
-          选择一个角色后，勾选其可访问的后台能力。仅拥有相应权限的账号才可进入对应页面/调用对应接口。
-        </p>
-      </div>
-      <a-space>
+  <a-card :bordered="true" title="权限管理">
+    <template #extra>
+      <a-space wrap>
+        <a-select
+          v-model:value="activeRoleName"
+          :options="roleOptions"
+          placeholder="选择角色"
+          :disabled="roles.length === 0"
+          style="width: min(100vw - 10rem, 240px)"
+          @change="(v: string) => onRoleChange(v)"
+        />
+        <a-input-search
+          v-model:value="search"
+          placeholder="筛选：名称 / 权限码 / 说明"
+          allow-clear
+          style="width: min(100vw - 10rem, 260px)"
+        />
+        <a-button size="small" :disabled="permissions.length === 0" @click="selectAllEnabled">全选可用</a-button>
+        <a-button size="small" :disabled="selectedPermissionCodes.length === 0" @click="clearAll">清空</a-button>
         <a-button size="small" @click="refreshAll">
           <template #icon><ReloadOutlined /></template>
           刷新
@@ -117,72 +150,38 @@ onMounted(() => {
           保存
         </a-button>
       </a-space>
-    </div>
+    </template>
 
-    <a-alert v-if="roles.length === 0 && !loading" type="info" show-icon message="暂无角色数据（或权限不足）。" class="mb-4" />
+    <a-alert
+      v-if="roles.length === 0 && !loading"
+      type="info"
+      show-icon
+      message="暂无角色数据，或当前账号无权限。"
+      class="mb-4"
+    />
 
-    <a-row :gutter="[16, 16]">
-      <a-col :xs="24" :lg="7">
-        <a-card bordered :loading="loading" title="角色">
-          <a-radio-group
-            class="w-full"
-            :value="activeRoleName"
-            @change="(e: any) => onRoleChange(e?.target?.value)"
-          >
-            <a-space direction="vertical" class="w-full">
-              <a-radio v-for="r in roles" :key="r.roleName" :value="r.roleName">
-                <span class="font-medium">{{ r.displayName }}</span>
-                <span class="ml-2 text-xs text-gray-500">({{ r.roleName }})</span>
-              </a-radio>
-            </a-space>
-          </a-radio-group>
-        </a-card>
-      </a-col>
-
-      <a-col :xs="24" :lg="17">
-        <a-card bordered :loading="loading" title="权限">
-          <template #extra>
-            <a-space>
-              <a-button size="small" @click="selectAllEnabled" :disabled="permissions.length === 0">全选可用</a-button>
-              <a-button size="small" @click="clearAll" :disabled="selectedPermissionCodes.length === 0">清空</a-button>
-            </a-space>
-          </template>
-
-          <div class="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <div class="min-w-[240px] flex-1">
-              <a-input
-                v-model:value="search"
-                placeholder="搜索权限：名称 / code / 描述"
-                allow-clear
-              />
-            </div>
-            <div class="text-xs text-gray-500">
-              当前角色：<span class="font-medium text-gray-700">{{ activeRole?.displayName ?? "-" }}</span>
-              <span class="ml-2">已选 {{ selectedPermissionCodes.length }} 项</span>
-            </div>
-          </div>
-
-          <a-checkbox-group v-model:value="selectedPermissionCodes">
-            <a-list :data-source="filteredPermissions" :split="false">
-              <template #renderItem="{ item }">
-                <a-list-item class="px-0">
-                  <div class="w-full rounded border border-gray-200 px-3 py-3 hover:border-gray-300">
-                    <div class="flex items-start justify-between gap-3">
-                      <a-checkbox :value="item.permissionCode" :disabled="!item.enabled">
-                        <span class="font-medium">{{ item.displayName }}</span>
-                      </a-checkbox>
-                      <span class="text-xs text-gray-500">{{ item.permissionCode }}</span>
-                    </div>
-                    <p v-if="item.description" class="mt-2 text-xs text-gray-500">{{ item.description }}</p>
-                    <a-tag v-if="!item.enabled" color="default" class="mt-2">已禁用</a-tag>
-                  </div>
-                </a-list-item>
-              </template>
-            </a-list>
-          </a-checkbox-group>
-        </a-card>
-      </a-col>
-    </a-row>
-  </div>
+    <a-table
+      :columns="columns"
+      :data-source="filteredPermissions"
+      :loading="loading"
+      row-key="permissionCode"
+      :pagination="false"
+      size="middle"
+      :scroll="{ x: 900 }"
+    >
+      <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'grant'">
+          <a-checkbox
+            :checked="selectedPermissionCodes.includes(record.permissionCode)"
+            :disabled="!record.enabled"
+            @change="(e: any) => onGrantChange(record, !!e?.target?.checked)"
+          />
+        </template>
+        <template v-if="column.key === 'status'">
+          <a-tag v-if="record.enabled" color="success">可用</a-tag>
+          <a-tag v-else color="default">已禁用</a-tag>
+        </template>
+      </template>
+    </a-table>
+  </a-card>
 </template>
-

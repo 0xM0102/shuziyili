@@ -1,22 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import type { LangCode } from "@/lib/i18n";
 import { uiText } from "@/lib/i18n";
-import { updateProfile, type AuthSession } from "@/lib/auth-client";
+import { updateProfile, uploadAvatarFile, type AuthSession } from "@/lib/auth-client";
 import { toast } from "@/lib/toast";
 
 const profileErrorZh: Record<string, string> = {
   unauthorized: "登录已失效，请重新登录。",
   invalid_profile: "资料格式不正确（长度或头像链接需为 http/https）。",
+  network_error: "网络异常，请稍后重试。",
   unknown: "保存失败，请稍后重试。",
 };
 
 const profileErrorEn: Record<string, string> = {
   unauthorized: "Session expired. Please sign in again.",
   invalid_profile: "Invalid profile (length or avatar URL must be http/https).",
+  network_error: "Network error. Try again later.",
   unknown: "Could not save. Try again later.",
 };
+
+const MAX_AVATAR_BYTES = 10 * 1024 * 1024;
+const ALLOWED_AVATAR_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 
 type FormProps = {
   session: AuthSession;
@@ -34,18 +39,19 @@ export function UserProfileForm(props: FormProps) {
 function UserProfileFormBody({ session, lang, onSaved }: FormProps) {
   const t = uiText[lang];
   const errMap = lang === "zh" ? profileErrorZh : profileErrorEn;
+  const avatarFileRef = useRef<HTMLInputElement>(null);
 
-  const [displayName, setDisplayName] = useState(() => session.displayName ?? "");
   const [nickname, setNickname] = useState(() => session.nickname ?? "");
   const [avatarUrl, setAvatarUrl] = useState(() => session.avatarUrl ?? "");
   const [bio, setBio] = useState(() => session.bio ?? "");
   const [saving, setSaving] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [profileError, setProfileError] = useState<string | null>(null);
 
   async function handleSave() {
     setSaving(true);
     setProfileError(null);
-    const r = await updateProfile({ displayName, nickname, avatarUrl, bio });
+    const r = await updateProfile({ nickname, avatarUrl, bio });
     setSaving(false);
     if (!r.ok) {
       const msg = errMap[r.error] ?? errMap.unknown;
@@ -55,6 +61,31 @@ function UserProfileFormBody({ session, lang, onSaved }: FormProps) {
     }
     toast.success(lang === "zh" ? "资料已保存" : "Profile saved");
     onSaved?.();
+  }
+
+  async function handleAvatarFileChange(e: ChangeEvent<HTMLInputElement>) {
+    const f = e.target.files?.[0];
+    e.target.value = "";
+    if (!f) return;
+    if (!ALLOWED_AVATAR_TYPES.has(f.type)) {
+      toast.error(lang === "zh" ? "仅支持 jpg/png/gif/webp" : "Only jpg/png/gif/webp is supported");
+      return;
+    }
+    if (f.size > MAX_AVATAR_BYTES) {
+      toast.error(lang === "zh" ? "头像大小不能超过 10MB" : "Avatar must be 10MB or less");
+      return;
+    }
+    setUploadingAvatar(true);
+    setProfileError(null);
+    const r = await uploadAvatarFile(f);
+    setUploadingAvatar(false);
+    if (!r.ok) {
+      const msg = errMap[r.error] ?? errMap.unknown;
+      toast.error(msg);
+      return;
+    }
+    setAvatarUrl(r.url);
+    toast.success(lang === "zh" ? "头像已上传" : "Avatar uploaded");
   }
 
   return (
@@ -67,16 +98,6 @@ function UserProfileFormBody({ session, lang, onSaved }: FormProps) {
         </p>
       </div>
       <label className="block">
-        <span className="mb-1 block text-xs font-medium text-muted">{t.profileDisplayName}</span>
-        <input
-          type="text"
-          maxLength={64}
-          value={displayName}
-          onChange={(e) => setDisplayName(e.target.value)}
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary/40"
-        />
-      </label>
-      <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">{t.profileNickname}</span>
         <input
           type="text"
@@ -86,17 +107,34 @@ function UserProfileFormBody({ session, lang, onSaved }: FormProps) {
           className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary/40"
         />
       </label>
-      <label className="block">
+      <div className="block">
         <span className="mb-1 block text-xs font-medium text-muted">{t.profileAvatarUrl}</span>
-        <input
-          type="url"
-          maxLength={1024}
-          value={avatarUrl}
-          onChange={(e) => setAvatarUrl(e.target.value)}
-          placeholder="https://"
-          className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary/40"
-        />
-      </label>
+        <div className="flex flex-wrap items-stretch gap-2">
+          <input
+            type="url"
+            maxLength={1024}
+            value={avatarUrl}
+            onChange={(e) => setAvatarUrl(e.target.value)}
+            placeholder="https://"
+            className="min-w-0 flex-1 rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground outline-none focus:border-primary/40"
+          />
+          <input
+            ref={avatarFileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            className="hidden"
+            onChange={(e) => void handleAvatarFileChange(e)}
+          />
+          <button
+            type="button"
+            disabled={uploadingAvatar}
+            onClick={() => avatarFileRef.current?.click()}
+            className="shrink-0 rounded-lg border border-border bg-background px-3 py-2 text-sm font-medium text-foreground transition-opacity hover:bg-muted/40 disabled:opacity-60"
+          >
+            {uploadingAvatar ? t.profileAvatarUploading : t.profileAvatarUpload}
+          </button>
+        </div>
+      </div>
       <label className="block">
         <span className="mb-1 block text-xs font-medium text-muted">{t.profileBio}</span>
         <textarea

@@ -263,10 +263,6 @@ onMounted(() => {
       </a-space>
     </template>
 
-    <p class="mb-4 text-sm text-gray-500">
-      快讯在门户就是<strong>一段展示文字</strong>（首页侧栏、文章侧栏、快讯列表时间线）。<strong>站内</strong>仅这段文字；<strong>外链</strong>另填跳转地址。可选标签、来源；每条可有独立分享页（路径 /flash/编号）。
-    </p>
-
     <a-tabs v-model:activeKey="listTab" type="line" class="mb-4">
       <a-tab-pane key="all" tab="全部" />
       <a-tab-pane key="internal" tab="站内" />

@@ -16,15 +16,28 @@ public class CorsProperties {
 
   public List<String> getAllowedOriginPatterns() {
     if (allowedOriginPatternsCsv != null && !allowedOriginPatternsCsv.isBlank()) {
-      return Arrays.stream(allowedOriginPatternsCsv.split(","))
-          .map(String::trim)
-          .filter(s -> !s.isEmpty())
-          .collect(Collectors.toList());
+      List<String> fromCsv =
+          Arrays.stream(allowedOriginPatternsCsv.split(","))
+              .map(String::trim)
+              .filter(s -> !s.isEmpty())
+              .collect(Collectors.toList());
+      // 避免 CORS_ALLOWED_ORIGINS="," 等解析成空列表时误放行「无 Origin」
+      if (!fromCsv.isEmpty()) {
+        return fromCsv;
+      }
     }
     if (allowedOriginPatterns != null && !allowedOriginPatterns.isEmpty()) {
       return allowedOriginPatterns;
     }
-    return List.of("http://localhost:*");
+    return defaultLocalOriginPatterns();
+  }
+
+  private static List<String> defaultLocalOriginPatterns() {
+    return List.of(
+        "http://localhost:*",
+        "http://127.0.0.1:*",
+        "http://localhost:5174",
+        "http://127.0.0.1:5174");
   }
 
   public void setAllowedOriginPatterns(List<String> allowedOriginPatterns) {

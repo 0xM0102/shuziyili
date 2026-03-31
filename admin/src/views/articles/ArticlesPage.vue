@@ -5,6 +5,7 @@ import { api } from "@/lib/api-client";
 import { mapApiMessage } from "@/lib/auth-messages";
 import { message } from "ant-design-vue";
 import type { UploadProps } from "ant-design-vue";
+import MarkdownIt from "markdown-it";
 
 type Article = {
   id: string;
@@ -34,6 +35,16 @@ const form = reactive({
 });
 
 const modalTitle = computed(() => (editingId.value ? "编辑文章" : "新建文章"));
+const drawerWidth = ref<number | string>(720);
+const contentMode = ref<"edit" | "preview">("edit");
+
+const md = new MarkdownIt({
+  html: false, // 禁止原始 HTML，避免 XSS
+  linkify: true,
+  breaks: true,
+});
+
+const contentPreviewHtml = computed(() => md.render(form.content || ""));
 
 function resetForm() {
   form.title = "";
@@ -61,6 +72,7 @@ async function refresh() {
 
 function openCreate() {
   resetForm();
+  contentMode.value = "edit";
   modalOpen.value = true;
 }
 
@@ -71,6 +83,7 @@ function openEdit(a: Article) {
   form.coverUrl = a.coverUrl ?? "";
   form.status = (a.status === "published" ? "published" : "draft") as "draft" | "published";
   editingId.value = a.id;
+  contentMode.value = "edit";
   modalOpen.value = true;
 }
 
@@ -140,6 +153,11 @@ const columns = [
 
 onMounted(() => {
   void refresh();
+  try {
+    drawerWidth.value = window.innerWidth >= 1024 ? 720 : "100%";
+  } catch {
+    drawerWidth.value = 720;
+  }
 });
 
 function articlePath(id: string) {
@@ -217,7 +235,23 @@ async function copyLink(id: string) {
     </a-table>
   </a-card>
 
-  <a-modal v-model:open="modalOpen" :title="modalTitle" :confirm-loading="saving" @ok="save" @cancel="modalOpen = false">
+  <a-drawer
+    v-model:open="modalOpen"
+    :title="modalTitle"
+    placement="right"
+    :width="drawerWidth"
+    :mask-closable="false"
+    :keyboard="false"
+    :closable="true"
+    :destroy-on-close="false"
+  >
+    <template #extra>
+      <a-space>
+        <a-button @click="refresh">刷新列表</a-button>
+        <a-button type="primary" :loading="saving" @click="save">保存</a-button>
+      </a-space>
+    </template>
+
     <a-form layout="vertical">
       <a-form-item label="标题" required>
         <a-input v-model:value="form.title" placeholder="请输入标题" />
@@ -238,12 +272,72 @@ async function copyLink(id: string) {
         </a-space>
       </a-form-item>
       <a-form-item label="状态">
-        <a-segmented v-model:value="form.status" :options="[{ label: '草稿', value: 'draft' }, { label: '已发布', value: 'published' }]" />
+        <a-segmented
+          v-model:value="form.status"
+          :options="[{ label: '草稿', value: 'draft' }, { label: '已发布', value: 'published' }]"
+        />
       </a-form-item>
       <a-form-item label="正文">
-        <a-textarea v-model:value="form.content" :rows="8" placeholder="先用纯文本占位，后续可接富文本编辑器" />
+        <a-segmented
+          v-model:value="contentMode"
+          class="mb-3"
+          :options="[{ label: '编辑', value: 'edit' }, { label: '预览', value: 'preview' }]"
+        />
+        <div v-if="contentMode === 'edit'">
+          <a-textarea
+            v-model:value="form.content"
+            :rows="14"
+            placeholder="支持 Markdown：# 标题、- 列表、**加粗**、[链接](url) 等"
+          />
+          <p class="mt-2 text-xs text-gray-500">
+            预览为安全渲染：不会执行 HTML。图片可先上传到「媒体库」后用 Markdown 引用：`![](图片URL)`。
+          </p>
+        </div>
+        <div v-else class="md-preview" v-html="contentPreviewHtml" />
       </a-form-item>
     </a-form>
-  </a-modal>
+  </a-drawer>
 </template>
+
+<style scoped>
+.md-preview :deep(h1),
+.md-preview :deep(h2),
+.md-preview :deep(h3) {
+  font-weight: 600;
+  margin: 0.75rem 0 0.5rem;
+}
+.md-preview :deep(p) {
+  margin: 0.5rem 0;
+}
+.md-preview :deep(ul) {
+  padding-left: 1.25rem;
+  margin: 0.5rem 0;
+  list-style: disc;
+}
+.md-preview :deep(ol) {
+  padding-left: 1.25rem;
+  margin: 0.5rem 0;
+  list-style: decimal;
+}
+.md-preview :deep(code) {
+  padding: 0.1rem 0.3rem;
+  border-radius: 0.25rem;
+  background: rgba(0, 0, 0, 0.04);
+}
+.md-preview :deep(pre) {
+  padding: 0.75rem;
+  border-radius: 0.5rem;
+  background: rgba(0, 0, 0, 0.04);
+  overflow: auto;
+}
+.md-preview :deep(a) {
+  color: #1677ff;
+}
+.md-preview :deep(blockquote) {
+  margin: 0.75rem 0;
+  padding-left: 0.75rem;
+  border-left: 3px solid rgba(0, 0, 0, 0.15);
+  color: rgba(0, 0, 0, 0.65);
+}
+</style>
 

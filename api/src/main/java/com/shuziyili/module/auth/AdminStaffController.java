@@ -89,9 +89,7 @@ public class AdminStaffController {
       return ResponseEntity.ok(ApiResponse.fail("empty"));
     }
     UpdateStaffProfileReq body = req == null ? new UpdateStaffProfileReq() : req;
-    String err =
-        ProfilePayloadValidator.validate(
-            body.displayName, body.nickname, body.avatarUrl, body.bio);
+    String err = ProfilePayloadValidator.validate(body.nickname, body.avatarUrl, body.bio);
     if (err != null) {
       return ResponseEntity.ok(ApiResponse.fail(err));
     }
@@ -102,7 +100,6 @@ public class AdminStaffController {
               StaffUserEntity u2 = java.util.Objects.requireNonNull(u);
               ProfilePayloadValidator.applyToStaff(
                   u2,
-                  body.displayName,
                   body.nickname,
                   body.avatarUrl,
                   body.bio,
@@ -141,18 +138,15 @@ public class AdminStaffController {
     u.setPasswordHash(passwordEncoder.encode(req.password));
     u.setRole(role);
     u.setCreatedAt(now);
-    u.setDisplayName("");
     u.setNickname("");
     u.setAvatarUrl("");
     u.setBio("");
     u.setUpdatedAt(now);
-    String perr =
-        ProfilePayloadValidator.validate(req.displayName, req.nickname, req.avatarUrl, req.bio);
+    String perr = ProfilePayloadValidator.validate(req.nickname, req.avatarUrl, req.bio);
     if (perr != null) {
       return ResponseEntity.ok(ApiResponse.fail(perr));
     }
-    ProfilePayloadValidator.applyToStaff(
-        u, req.displayName, req.nickname, req.avatarUrl, req.bio, now);
+    ProfilePayloadValidator.applyToStaff(u, req.nickname, req.avatarUrl, req.bio, now);
     staffUserRepository.save(u);
     return ResponseEntity.ok(ApiResponse.success(toDto(u)));
   }
@@ -164,7 +158,6 @@ public class AdminStaffController {
     d.role = u.getRole() == null || u.getRole().isBlank() ? "editor" : u.getRole();
     d.createdAt = u.getCreatedAt();
     d.updatedAt = u.getUpdatedAt();
-    d.displayName = u.getDisplayName() == null ? "" : u.getDisplayName();
     d.nickname = u.getNickname() == null ? "" : u.getNickname();
     d.avatarUrl = u.getAvatarUrl() == null ? "" : u.getAvatarUrl();
     d.bio = u.getBio() == null ? "" : u.getBio();
@@ -181,7 +174,6 @@ public class AdminStaffController {
     public String role;
     public long createdAt;
     public long updatedAt;
-    public String displayName;
     public String nickname;
     public String avatarUrl;
     public String bio;
@@ -191,14 +183,12 @@ public class AdminStaffController {
     public String identifier;
     public String password;
     public String role;
-    public String displayName;
     public String nickname;
     public String avatarUrl;
     public String bio;
   }
 
   public static class UpdateStaffProfileReq {
-    public String displayName;
     public String nickname;
     public String avatarUrl;
     public String bio;

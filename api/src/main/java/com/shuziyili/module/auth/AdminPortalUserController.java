@@ -60,9 +60,7 @@ public class AdminPortalUserController {
       return ResponseEntity.ok(ApiResponse.fail("empty"));
     }
     UpdatePortalUserReq body = req == null ? new UpdatePortalUserReq() : req;
-    String err =
-        ProfilePayloadValidator.validate(
-            body.displayName, body.nickname, body.avatarUrl, body.bio);
+    String err = ProfilePayloadValidator.validate(body.nickname, body.avatarUrl, body.bio);
     if (err != null) {
       return ResponseEntity.ok(ApiResponse.fail(err));
     }
@@ -71,7 +69,7 @@ public class AdminPortalUserController {
         .map(
             (u) -> {
               ProfilePayloadValidator.applyToPortal(
-                  u, body.displayName, body.nickname, body.avatarUrl, body.bio, System.currentTimeMillis());
+                  u, body.nickname, body.avatarUrl, body.bio, System.currentTimeMillis());
               portalUserRepository.save(u);
               return ResponseEntity.ok(ApiResponse.success(toDto(u)));
             })
@@ -84,7 +82,6 @@ public class AdminPortalUserController {
     d.identifier = u.getIdentifier();
     d.createdAt = u.getCreatedAt();
     d.updatedAt = u.getUpdatedAt();
-    d.displayName = u.getDisplayName() == null ? "" : u.getDisplayName();
     d.nickname = u.getNickname() == null ? "" : u.getNickname();
     d.avatarUrl = u.getAvatarUrl() == null ? "" : u.getAvatarUrl();
     d.bio = u.getBio() == null ? "" : u.getBio();
@@ -96,14 +93,12 @@ public class AdminPortalUserController {
     public String identifier;
     public long createdAt;
     public long updatedAt;
-    public String displayName;
     public String nickname;
     public String avatarUrl;
     public String bio;
   }
 
   public static class UpdatePortalUserReq {
-    public String displayName;
     public String nickname;
     public String avatarUrl;
     public String bio;

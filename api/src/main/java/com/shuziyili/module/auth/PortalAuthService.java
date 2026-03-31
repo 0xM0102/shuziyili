@@ -168,7 +168,7 @@ public class PortalAuthService {
 
   @Transactional
   public ApiResponse<Map<String, String>> updateOwnProfile(
-      String bearerToken, String displayName, String nickname, String avatarUrl, String bio) {
+      String bearerToken, String nickname, String avatarUrl, String bio) {
     Optional<SessionEntity> row = resolveLivePortalSession(bearerToken);
     if (row.isEmpty()) {
       return ApiResponse.fail("unauthorized");
@@ -179,11 +179,11 @@ public class PortalAuthService {
       return ApiResponse.fail("unauthorized");
     }
     PortalUserEntity u = userOpt.get();
-    String err = ProfilePayloadValidator.validate(displayName, nickname, avatarUrl, bio);
+    String err = ProfilePayloadValidator.validate(nickname, avatarUrl, bio);
     if (err != null) {
       return ApiResponse.fail(err);
     }
-    ProfilePayloadValidator.applyToPortal(u, displayName, nickname, avatarUrl, bio, clock.millis());
+    ProfilePayloadValidator.applyToPortal(u, nickname, avatarUrl, bio, clock.millis());
     portalUserRepository.save(u);
     return ApiResponse.success(portalUserToMeMap(u, identifier));
   }
@@ -195,6 +195,11 @@ public class PortalAuthService {
     }
     sessionRepository.deleteById(bearerToken);
     return ApiResponse.success();
+  }
+
+  /** 门户登录态是否有效（未过期且 scope=PORTAL），供头像上传等接口使用。 */
+  public boolean isPortalSessionValid(String bearerToken) {
+    return resolveLivePortalSession(bearerToken).isPresent();
   }
 
   private ApiResponse<Map<String, String>> issueOtpAndSend(String recipient, String scene) {
@@ -277,7 +282,6 @@ public class PortalAuthService {
   private static Map<String, String> portalUserToMeMap(PortalUserEntity u, String identifier) {
     Map<String, String> m = new LinkedHashMap<>();
     m.put("identifier", identifier);
-    m.put("displayName", nullToEmpty(u.getDisplayName()));
     m.put("nickname", nullToEmpty(u.getNickname()));
     m.put("avatarUrl", nullToEmpty(u.getAvatarUrl()));
     m.put("bio", nullToEmpty(u.getBio()));
@@ -291,7 +295,6 @@ public class PortalAuthService {
     user.setIdentifier(identifier);
     user.setPasswordHash(passwordHash);
     user.setCreatedAt(now);
-    user.setDisplayName("");
     user.setNickname("");
     user.setAvatarUrl("");
     user.setBio("");

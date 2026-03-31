@@ -17,6 +17,9 @@ spring:
 shuziyili:
   cors:
     allowed-origin-patterns:
+      # Vite 管理后台默认端口；与通配一并列出，避免部分环境下 localhost:* 匹配异常
+      - "http://localhost:5174"
+      - "http://127.0.0.1:5174"
       - "http://localhost:*"
       - "http://127.0.0.1:*"
       - "https://shuziyili.com"

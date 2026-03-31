@@ -2,7 +2,11 @@ package com.shuziyili.module.auth;
 
 import com.shuziyili.common.ApiResponse;
 import com.shuziyili.common.BearerTokens;
+import com.shuziyili.module.media.CosStorageService;
+import com.shuziyili.module.media.CosStorageService.UploadResult;
+import com.shuziyili.module.media.CosUploadScope;
 import java.util.Map;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -10,7 +14,9 @@ import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 /** 门户 C 端鉴权（仅 {@link PortalUserEntity}） */
 @RestController
@@ -18,9 +24,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
   private final PortalAuthService portalAuthService;
+  private final CosStorageService cosStorageService;
 
-  public AuthController(PortalAuthService portalAuthService) {
+  public AuthController(PortalAuthService portalAuthService, CosStorageService cosStorageService) {
     this.portalAuthService = portalAuthService;
+    this.cosStorageService = cosStorageService;
   }
 
   @PostMapping("/login")
@@ -89,8 +97,27 @@ public class AuthController {
     String token = BearerTokens.extract(authorization);
     ProfileReq body = req == null ? new ProfileReq() : req;
     ApiResponse<Map<String, String>> resp =
-        portalAuthService.updateOwnProfile(token, body.displayName, body.nickname, body.avatarUrl, body.bio);
+        portalAuthService.updateOwnProfile(token, body.nickname, body.avatarUrl, body.bio);
     return ResponseEntity.ok(resp);
+  }
+
+  /** 门户用户头像上传（需登录；对象写入 COS {@code uploads/.../portal/avatars/}）。 */
+  @PostMapping(value = "/media/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+  public ResponseEntity<ApiResponse<UploadResult>> uploadAvatar(
+      @RequestHeader(value = "Authorization", required = false) String authorization,
+      @RequestParam("file") MultipartFile file) {
+    String token = BearerTokens.extract(authorization);
+    if (!portalAuthService.isPortalSessionValid(token)) {
+      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    }
+    try {
+      return ResponseEntity.ok(
+          ApiResponse.success(cosStorageService.upload(file, CosUploadScope.PORTAL_AVATAR)));
+    } catch (IllegalArgumentException e) {
+      return ResponseEntity.ok(ApiResponse.fail(e.getMessage()));
+    } catch (IllegalStateException e) {
+      return ResponseEntity.ok(ApiResponse.fail(e.getMessage()));
+    }
   }
 
   @PostMapping("/logout")
@@ -122,7 +149,6 @@ public class AuthController {
   }
 
   public static class ProfileReq {
-    public String displayName;
     public String nickname;
     public String avatarUrl;
     public String bio;

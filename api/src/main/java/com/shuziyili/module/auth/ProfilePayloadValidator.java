@@ -6,8 +6,7 @@ public final class ProfilePayloadValidator {
   private ProfilePayloadValidator() {}
 
   /** @return 错误码或 null */
-  public static String validate(String displayName, String nickname, String avatarUrl, String bio) {
-    if (displayName != null && displayName.length() > 64) return "invalid_profile";
+  public static String validate(String nickname, String avatarUrl, String bio) {
     if (nickname != null && nickname.length() > 64) return "invalid_profile";
     if (avatarUrl != null && avatarUrl.length() > 1024) return "invalid_profile";
     if (bio != null && bio.length() > 500) return "invalid_profile";
@@ -19,8 +18,7 @@ public final class ProfilePayloadValidator {
   }
 
   public static void applyToStaff(
-      StaffUserEntity u, String displayName, String nickname, String avatarUrl, String bio, long now) {
-    u.setDisplayName(trim(displayName, 64));
+      StaffUserEntity u, String nickname, String avatarUrl, String bio, long now) {
     u.setNickname(trim(nickname, 64));
     u.setAvatarUrl(trim(avatarUrl, 1024));
     u.setBio(trim(bio, 500));
@@ -28,8 +26,7 @@ public final class ProfilePayloadValidator {
   }
 
   public static void applyToPortal(
-      PortalUserEntity u, String displayName, String nickname, String avatarUrl, String bio, long now) {
-    u.setDisplayName(trim(displayName, 64));
+      PortalUserEntity u, String nickname, String avatarUrl, String bio, long now) {
     u.setNickname(trim(nickname, 64));
     u.setAvatarUrl(trim(avatarUrl, 1024));
     u.setBio(trim(bio, 500));

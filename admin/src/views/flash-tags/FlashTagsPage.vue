@@ -145,10 +145,6 @@ const columns = [
       <a-tab-pane key="ARTICLE" tab="文章" />
     </a-tabs>
 
-    <p class="mb-4 text-sm text-gray-500">
-      标签用于快讯时间线的分类展示。每个分类下标签名称要求唯一。
-    </p>
-
     <a-table
       :columns="columns"
       :data-source="rows"

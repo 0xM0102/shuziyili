@@ -4,7 +4,6 @@ export type AuthSession = {
   identifier: string;
   token: string;
   createdAt: number;
-  displayName: string;
   nickname: string;
   avatarUrl: string;
   bio: string;
@@ -73,7 +72,6 @@ function getStoredSession(): StoredSession | null {
     identifier: parsed.identifier,
     token: parsed.token,
     createdAt: typeof parsed.createdAt === "number" ? parsed.createdAt : Date.now(),
-    displayName: typeof parsed.displayName === "string" ? parsed.displayName : prof.displayName,
     nickname: typeof parsed.nickname === "string" ? parsed.nickname : prof.nickname,
     avatarUrl: typeof parsed.avatarUrl === "string" ? parsed.avatarUrl : prof.avatarUrl,
     bio: typeof parsed.bio === "string" ? parsed.bio : prof.bio,
@@ -91,9 +89,8 @@ export function getSession(): AuthSession | null {
   return s;
 }
 
-function emptyProfile(): Pick<AuthSession, "displayName" | "nickname" | "avatarUrl" | "bio" | "updatedAt"> {
+function emptyProfile(): Pick<AuthSession, "nickname" | "avatarUrl" | "bio" | "updatedAt"> {
   return {
-    displayName: "",
     nickname: "",
     avatarUrl: "",
     bio: "",
@@ -104,7 +101,6 @@ function emptyProfile(): Pick<AuthSession, "displayName" | "nickname" | "avatarU
 function meFieldsFromApi(data: Record<string, string>): Omit<AuthSession, "token" | "createdAt"> {
   return {
     identifier: data.identifier ?? "",
-    displayName: data.displayName ?? "",
     nickname: data.nickname ?? "",
     avatarUrl: data.avatarUrl ?? "",
     bio: data.bio ?? "",
@@ -144,6 +140,26 @@ async function apiRequest<T>(
       message: "network_error",
       data: null,
     };
+  }
+}
+
+async function uploadMultipart<T>(
+  path: string,
+  file: File,
+  token: string
+): Promise<ApiResponse<T>> {
+  const body = new FormData();
+  body.append("file", file);
+  const res = await fetch(`${apiBase()}${path}`, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token}` },
+    body,
+    credentials: "include",
+  });
+  try {
+    return (await res.json()) as ApiResponse<T>;
+  } catch {
+    return { ok: false, message: "network_error", data: null };
   }
 }
 
@@ -276,13 +292,10 @@ export async function loginByCode(identifierRaw: string, code: string) {
 export function navDisplayName(session: AuthSession): string {
   const nick = session.nickname?.trim();
   if (nick) return nick;
-  const dn = session.displayName?.trim();
-  if (dn) return dn;
   return session.identifier;
 }
 
 export async function updateProfile(payload: {
-  displayName: string;
   nickname: string;
   avatarUrl: string;
   bio: string;
@@ -307,6 +320,23 @@ export async function updateProfile(payload: {
   };
   setStoredSession(merged);
   return { ok: true, session: merged };
+}
+
+/** 门户头像上传到 COS（路径前缀 portal/avatars）；需登录。 */
+export async function uploadAvatarFile(
+  file: File
+): Promise<{ ok: true; url: string } | { ok: false; error: string }> {
+  const current = getStoredSession();
+  if (!current) return { ok: false, error: "unauthorized" };
+  const json = await uploadMultipart<{ key: string; url: string }>(
+    "/auth/media/upload",
+    file,
+    current.token
+  );
+  if (!json.ok || !json.data?.url) {
+    return { ok: false, error: json.message ?? "unknown" };
+  }
+  return { ok: true, url: json.data.url };
 }
 
 export async function logout() {

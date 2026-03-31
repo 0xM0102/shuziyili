@@ -42,8 +42,7 @@ public class MediaAdminController {
   @GetMapping("/config")
   public ResponseEntity<ApiResponse<Map<String, Object>>> config(
       @RequestHeader(value = "Authorization", required = false) String authorization) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.MEDIA_MANAGE).isOk()) {
+    if (!hasMediaManagePermission(authorization)) {
       return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
     }
     Map<String, Object> m = new LinkedHashMap<>();
@@ -60,8 +59,7 @@ public class MediaAdminController {
   public ResponseEntity<ApiResponse<Map<String, Object>>> list(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestParam(value = "prefix", required = false) String prefix) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.MEDIA_MANAGE).isOk()) {
+    if (!hasMediaManagePermission(authorization)) {
       return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
     }
     try {
@@ -72,16 +70,20 @@ public class MediaAdminController {
     }
   }
 
+  /**
+   * 上传文件到 COS。可选 {@code scope}：{@code cms}（默认，文章/Banner/媒体库）、{@code staff_avatar}（后台操作员头像）。
+   */
   @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
   public ResponseEntity<ApiResponse<UploadResult>> upload(
       @RequestHeader(value = "Authorization", required = false) String authorization,
+      @RequestParam(value = "scope", required = false) String scope,
       @RequestParam("file") MultipartFile file) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.MEDIA_MANAGE).isOk()) {
+    if (!hasMediaManagePermission(authorization)) {
       return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
     }
     try {
-      return ResponseEntity.ok(ApiResponse.success(cosStorageService.upload(file)));
+      CosUploadScope uploadScope = CosUploadScope.fromAdminQuery(scope);
+      return ResponseEntity.ok(ApiResponse.success(cosStorageService.upload(file, uploadScope)));
     } catch (IllegalArgumentException e) {
       return ResponseEntity.ok(ApiResponse.fail(e.getMessage()));
     } catch (IllegalStateException e) {
@@ -93,8 +95,7 @@ public class MediaAdminController {
   public ResponseEntity<ApiResponse<Void>> delete(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestParam("key") String key) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.MEDIA_MANAGE).isOk()) {
+    if (!hasMediaManagePermission(authorization)) {
       return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
     }
     try {
@@ -105,6 +106,11 @@ public class MediaAdminController {
     } catch (IllegalStateException e) {
       return ResponseEntity.ok(ApiResponse.fail(e.getMessage()));
     }
+  }
+
+  private boolean hasMediaManagePermission(String authorization) {
+    String token = BearerTokens.extract(authorization);
+    return staffAuthService.requireStaffPermission(token, StaffPermissionCodes.MEDIA_MANAGE).isOk();
   }
 
 }

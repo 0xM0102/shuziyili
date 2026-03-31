@@ -11,12 +11,14 @@
   "dependencies": {
     "@ant-design/icons-vue": "^7.0.1",
     "ant-design-vue": "^4",
+    "markdown-it": "^14.1.1",
     "pinia": "^3",
     "vue": "^3.5.0",
     "vue-router": "^4.5.0"
   },
   "devDependencies": {
     "@eslint/js": "^9",
+    "@types/markdown-it": "^14.1.2",
     "@types/node": "^20",
     "@vitejs/plugin-vue": "^6",
     "eslint": "^9",

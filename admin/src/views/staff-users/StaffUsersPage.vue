@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { PlusOutlined, ReloadOutlined } from "@ant-design/icons-vue";
 import { onMounted, ref } from "vue";
-import { api, type StaffUserDto } from "@/lib/api-client";
+import { api, type StaffRole, type StaffUserDto } from "@/lib/api-client";
 import { mapApiMessage } from "@/lib/auth-messages";
+import { STAFF_ROLE_OPTIONS, formatDateTimeZhCN, getStaffAvatarInitial } from "@/lib/staff-ui";
 import { message } from "ant-design-vue";
 
 type Row = StaffUserDto;
@@ -10,28 +11,35 @@ type Row = StaffUserDto;
 const loading = ref(false);
 const rows = ref<Row[]>([]);
 const searchKeyword = ref("");
+const changingRoleId = ref<number | null>(null);
+
+function newCreateForm() {
+  return {
+    identifier: "",
+    password: "",
+    role: "editor" as StaffRole,
+    nickname: "",
+    avatarUrl: "",
+    bio: "",
+  };
+}
 
 const createOpen = ref(false);
 const creating = ref(false);
-const createForm = ref({
-  identifier: "",
-  password: "",
-  role: "editor" as "admin" | "editor" | "operator" | "viewer",
-  displayName: "",
-  nickname: "",
-  avatarUrl: "",
-  bio: "",
-});
+const createForm = ref(newCreateForm());
 
 const editOpen = ref(false);
 const savingProfile = ref(false);
 const editRow = ref<Row | null>(null);
 const editForm = ref({
-  displayName: "",
   nickname: "",
   avatarUrl: "",
   bio: "",
 });
+
+function rowAvatarText(row: Row) {
+  return getStaffAvatarInitial(row);
+}
 
 async function refresh() {
   loading.value = true;
@@ -65,7 +73,6 @@ async function createUser() {
       identifier,
       password,
       role: createForm.value.role,
-      displayName: createForm.value.displayName.trim() || undefined,
       nickname: createForm.value.nickname.trim() || undefined,
       avatarUrl: createForm.value.avatarUrl.trim() || undefined,
       bio: createForm.value.bio.trim() || undefined,
@@ -76,15 +83,7 @@ async function createUser() {
     }
     void message.success("已创建后台账号");
     createOpen.value = false;
-    createForm.value = {
-      identifier: "",
-      password: "",
-      role: "editor",
-      displayName: "",
-      nickname: "",
-      avatarUrl: "",
-      bio: "",
-    };
+    createForm.value = newCreateForm();
     await refresh();
   } finally {
     creating.value = false;
@@ -94,7 +93,6 @@ async function createUser() {
 function openEdit(row: Row) {
   editRow.value = row;
   editForm.value = {
-    displayName: row.displayName ?? "",
     nickname: row.nickname ?? "",
     avatarUrl: row.avatarUrl ?? "",
     bio: row.bio ?? "",
@@ -108,7 +106,6 @@ async function saveProfile() {
   savingProfile.value = true;
   try {
     const r = await api.admin.staff.updateProfile(row.id, {
-      displayName: editForm.value.displayName,
       nickname: editForm.value.nickname,
       avatarUrl: editForm.value.avatarUrl,
       bio: editForm.value.bio,
@@ -126,23 +123,29 @@ async function saveProfile() {
   }
 }
 
-async function changeRole(row: Row, role: "admin" | "editor" | "operator" | "viewer") {
-  const r = await api.admin.staff.setRole(row.id, role);
-  if (!r.ok || !r.data) {
-    void message.error(mapApiMessage(r.message));
-    return;
+async function changeRole(row: Row, role: StaffRole) {
+  if (row.role === role) return;
+  changingRoleId.value = row.id;
+  try {
+    const r = await api.admin.staff.setRole(row.id, role);
+    if (!r.ok || !r.data) {
+      void message.error(mapApiMessage(r.message));
+      return;
+    }
+    void message.success("已更新角色");
+    await refresh();
+  } finally {
+    changingRoleId.value = null;
   }
-  void message.success("已更新角色");
-  await refresh();
 }
 
 const columns = [
-  { title: "账号", dataIndex: "identifier", key: "identifier", width: 180 },
-  { title: "昵称", dataIndex: "nickname", key: "nickname", width: 120, ellipsis: true },
-  { title: "显示名", dataIndex: "displayName", key: "displayName", width: 120, ellipsis: true },
-  { title: "角色", dataIndex: "role", key: "role", width: 160 },
-  { title: "创建时间", dataIndex: "createdAt", key: "createdAt", width: 120 },
-  { title: "操作", key: "actions", width: 200 },
+  { title: "头像", key: "avatar", width: 68, align: "center" as const },
+  { title: "账号", dataIndex: "identifier", key: "identifier", width: 200, ellipsis: true },
+  { title: "昵称", dataIndex: "nickname", key: "nickname", width: 160, ellipsis: true },
+  { title: "角色", key: "role", width: 132 },
+  { title: "创建时间", dataIndex: "createdAt", key: "createdAt", width: 168 },
+  { title: "操作", key: "actions", width: 100 },
 ];
 
 onMounted(() => void refresh());
@@ -163,7 +166,7 @@ onMounted(() => void refresh());
           <template #icon><ReloadOutlined /></template>
           刷新
         </a-button>
-        <a-button type="primary" size="small" @click="createOpen = true">
+        <a-button type="primary" @click="createOpen = true">
           <template #icon><PlusOutlined /></template>
           新建操作员
         </a-button>
@@ -177,32 +180,30 @@ onMounted(() => void refresh());
       row-key="id"
       :pagination="{ pageSize: 20 }"
       size="middle"
-      :scroll="{ x: 980 }"
+      :scroll="{ x: 1100 }"
     >
       <template #bodyCell="{ column, record }">
+        <template v-if="column.key === 'avatar'">
+          <a-avatar :size="40" :src="record.avatarUrl || undefined" class="row-avatar">
+            {{ rowAvatarText(record) }}
+          </a-avatar>
+        </template>
         <template v-if="column.key === 'role'">
-          <a-segmented
+          <a-select
             :value="record.role"
-            :options="[
-              { label: '管理员', value: 'admin' },
-              { label: '编辑', value: 'editor' },
-              { label: '运营', value: 'operator' },
-              { label: '只读', value: 'viewer' }
-            ]"
-            @change="(v: string | number) => changeRole(record, v as 'admin' | 'editor' | 'operator' | 'viewer')"
+            size="small"
+            class="role-select"
+            :options="STAFF_ROLE_OPTIONS"
+            :loading="changingRoleId === record.id"
+            :disabled="changingRoleId === record.id"
+            @change="(v: string) => changeRole(record, v as StaffRole)"
           />
         </template>
         <template v-if="column.key === 'createdAt'">
-          {{ new Date(record.createdAt).toISOString().slice(0, 10) }}
+          {{ formatDateTimeZhCN(record.createdAt) }}
         </template>
         <template v-if="column.key === 'actions'">
-          <a-space>
-            <a-button type="link" size="small" @click="openEdit(record)">编辑资料</a-button>
-            <a-button type="link" size="small" @click="changeRole(record, 'editor')">设为编辑</a-button>
-            <a-button type="link" size="small" @click="changeRole(record, 'admin')">设为管理员</a-button>
-            <a-button type="link" size="small" @click="changeRole(record, 'operator')">设为运营</a-button>
-            <a-button type="link" size="small" @click="changeRole(record, 'viewer')">设为只读</a-button>
-          </a-space>
+          <a-button type="link" size="small" @click="openEdit(record)">编辑资料</a-button>
         </template>
       </template>
     </a-table>
@@ -217,20 +218,9 @@ onMounted(() => void refresh());
         <a-input-password v-model:value="createForm.password" placeholder="至少 6 位" />
       </a-form-item>
       <a-form-item label="角色">
-        <a-segmented
-          v-model:value="createForm.role"
-          :options="[
-            { label: '管理员', value: 'admin' },
-            { label: '编辑', value: 'editor' },
-            { label: '运营', value: 'operator' },
-            { label: '只读', value: 'viewer' }
-          ]"
-        />
+        <a-select v-model:value="createForm.role" :options="STAFF_ROLE_OPTIONS" style="width: 100%" />
       </a-form-item>
       <a-divider orientation="left">可选资料</a-divider>
-      <a-form-item label="显示名">
-        <a-input v-model:value="createForm.displayName" placeholder="最多 64 字" :maxlength="64" show-count />
-      </a-form-item>
       <a-form-item label="昵称">
         <a-input v-model:value="createForm.nickname" placeholder="最多 64 字" :maxlength="64" show-count />
       </a-form-item>
@@ -250,11 +240,8 @@ onMounted(() => void refresh());
     width="520px"
     @ok="saveProfile"
   >
-    <p v-if="editRow" class="mb-3 text-sm text-gray-500">账号：{{ editRow.identifier }}</p>
+    <p v-if="editRow" class="edit-hint">账号：{{ editRow.identifier }}</p>
     <a-form layout="vertical">
-      <a-form-item label="显示名">
-        <a-input v-model:value="editForm.displayName" :maxlength="64" show-count />
-      </a-form-item>
       <a-form-item label="昵称">
         <a-input v-model:value="editForm.nickname" :maxlength="64" show-count />
       </a-form-item>
@@ -267,3 +254,19 @@ onMounted(() => void refresh());
     </a-form>
   </a-modal>
 </template>
+
+<style scoped>
+.row-avatar {
+  border: 1px solid #eef0f4;
+}
+
+.role-select {
+  min-width: 118px;
+}
+
+.edit-hint {
+  margin: 0 0 12px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.55);
+}
+</style>

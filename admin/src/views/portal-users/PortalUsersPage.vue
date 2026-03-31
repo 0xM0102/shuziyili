@@ -16,7 +16,6 @@ const editOpen = ref(false);
 const savingProfile = ref(false);
 const editRow = ref<Row | null>(null);
 const editForm = ref({
-  displayName: "",
   nickname: "",
   avatarUrl: "",
   bio: "",
@@ -40,7 +39,6 @@ async function refresh() {
 function openEdit(row: Row) {
   editRow.value = row;
   editForm.value = {
-    displayName: row.displayName ?? "",
     nickname: row.nickname ?? "",
     avatarUrl: row.avatarUrl ?? "",
     bio: row.bio ?? "",
@@ -54,7 +52,6 @@ async function saveProfile() {
   savingProfile.value = true;
   try {
     const r = await api.admin.portalUsers.updateProfile(row.id, {
-      displayName: editForm.value.displayName,
       nickname: editForm.value.nickname,
       avatarUrl: editForm.value.avatarUrl,
       bio: editForm.value.bio,
@@ -74,8 +71,7 @@ async function saveProfile() {
 
 const columns = [
   { title: "账号", dataIndex: "identifier", key: "identifier", width: 180 },
-  { title: "昵称", dataIndex: "nickname", key: "nickname", width: 120, ellipsis: true },
-  { title: "显示名", dataIndex: "displayName", key: "displayName", width: 120, ellipsis: true },
+  { title: "昵称", dataIndex: "nickname", key: "nickname", width: 160, ellipsis: true },
   { title: "注册时间", dataIndex: "createdAt", key: "createdAt", width: 120 },
   { title: "操作", key: "actions", width: 100 },
 ];
@@ -130,9 +126,6 @@ onMounted(() => void refresh());
   >
     <p v-if="editRow" class="mb-3 text-sm text-gray-500">账号：{{ editRow.identifier }}</p>
     <a-form layout="vertical">
-      <a-form-item label="显示名">
-        <a-input v-model:value="editForm.displayName" :maxlength="64" show-count />
-      </a-form-item>
       <a-form-item label="昵称">
         <a-input v-model:value="editForm.nickname" :maxlength="64" show-count />
       </a-form-item>

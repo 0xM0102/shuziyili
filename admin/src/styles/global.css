@@ -11,9 +11,60 @@ body,
 body {
   margin: 0;
   background: #f5f7fa;
-  color: #333;
+  color: rgba(0, 0, 0, 0.88);
   font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "PingFang SC",
     "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans SC", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/*
+ * 全局组件观感（不修改 AdminLayout 中 .contentInner 的 padding）。
+ */
+.ant-card {
+  border-color: #e5e8ef;
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.05);
+}
+
+.ant-card .ant-card-head {
+  border-bottom-color: #eef0f4;
+}
+
+.ant-card .ant-card-head-title {
+  font-weight: 600;
+}
+
+/* 嵌套卡片：避免双重阴影过重 */
+.ant-card .ant-card {
+  box-shadow: none;
+  border-color: #eef0f4;
+}
+
+.ant-descriptions-bordered .ant-descriptions-item-label {
+  background: #fafbfc;
+  font-weight: 500;
+}
+
+.ant-modal-content {
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.ant-modal-header {
+  border-bottom-color: #eef0f4;
+}
+
+.ant-alert {
+  border-radius: 8px;
+}
+
+.ant-table-wrapper .ant-table-thead > tr > th {
+  background: #fafbfc !important;
+  color: rgba(0, 0, 0, 0.75);
+  font-weight: 600;
+}
+
+.ant-table-wrapper .ant-table-tbody > tr.ant-table-row:hover > td {
+  background: #f7f9fc !important;
 }
 
 /* 全局隐藏滚动条（保留滚动能力） */

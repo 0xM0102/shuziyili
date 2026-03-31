@@ -31,7 +31,6 @@ public class BootstrapAdminRunner implements ApplicationRunner {
     u.setIdentifier("mang@gansa.top");
     u.setPasswordHash(passwordEncoder.encode("Aa111111"));
     u.setRole("admin");
-    u.setDisplayName("");
     u.setNickname("管理员");
     u.setAvatarUrl("");
     u.setBio("");

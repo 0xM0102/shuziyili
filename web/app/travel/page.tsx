@@ -1,6 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
-import { getPublicApiV1Base } from "@/lib/api-base";
+import { fetchPublicApiData } from "@/lib/api-base";
 import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -24,16 +24,8 @@ type TravelBanner = {
 };
 
 async function getTravelBanners(): Promise<TravelBanner[]> {
-  const base = getPublicApiV1Base();
-  try {
-    const res = await fetch(`${base}/travel/banners`, { next: { revalidate: 30 } });
-    if (!res.ok) return [];
-    const json = (await res.json()) as { ok: boolean; data?: { items?: TravelBanner[] } };
-    if (!json.ok) return [];
-    return json.data?.items ?? [];
-  } catch {
-    return [];
-  }
+  const data = await fetchPublicApiData<{ items?: TravelBanner[] }>("/travel/banners", { items: [] });
+  return data.items ?? [];
 }
 
 /** 场景入口：与侧栏二级栏目对应，后续可加 query 或 CMS 配置 */

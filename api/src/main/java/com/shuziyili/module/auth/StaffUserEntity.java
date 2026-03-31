@@ -30,9 +30,6 @@ public class StaffUserEntity {
   @Column(length = 32)
   private String role;
 
-  @Column(name = "display_name", nullable = false, length = 64)
-  private String displayName = "";
-
   @Column(nullable = false, length = 64)
   private String nickname = "";
 
@@ -86,14 +83,6 @@ public class StaffUserEntity {
 
   public void setCreatedAt(long createdAt) {
     this.createdAt = createdAt;
-  }
-
-  public String getDisplayName() {
-    return displayName;
-  }
-
-  public void setDisplayName(String displayName) {
-    this.displayName = displayName;
   }
 
   public String getNickname() {

@@ -8,3 +8,23 @@ export function getPublicApiV1Base(): string {
   if (raw.endsWith("/api/v1")) return raw;
   return `${raw}/api/v1`;
 }
+
+/** 门户首页等 ISR 页面与快讯列表共用的 revalidate 秒数（与路由表中的 30s 一致）。 */
+export const PUBLIC_API_REVALIDATE_SEC = 30;
+
+/**
+ * 服务端拉取 `ApiResponse<T>` 包装的公开 JSON（`data` 为业务体）。
+ * 非 2xx、`ok !== true` 或缺少 `data` 时返回 `fallback`，避免页面因单次接口失败整体崩溃。
+ */
+export async function fetchPublicApiData<T>(path: string, fallback: T): Promise<T> {
+  const base = getPublicApiV1Base();
+  try {
+    const res = await fetch(`${base}${path}`, { next: { revalidate: PUBLIC_API_REVALIDATE_SEC } });
+    if (!res.ok) return fallback;
+    const json = (await res.json()) as { ok?: boolean; data?: T };
+    if (!json.ok || json.data === undefined) return fallback;
+    return json.data;
+  } catch {
+    return fallback;
+  }
+}

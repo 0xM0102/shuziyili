@@ -221,10 +221,6 @@ onMounted(() => {
       </a-space>
     </template>
 
-    <p class="mb-4 text-sm text-gray-500">
-      全站 Banner 统一在此维护，按板块（Tab）区分展示位置；门户首页与旅游频道各自有主图与两个副位。
-    </p>
-
     <a-tabs v-model:activeKey="activeScope" class="banner-tabs">
       <a-tab-pane key="home" tab="门户首页" />
       <a-tab-pane key="travel" tab="旅游频道" />

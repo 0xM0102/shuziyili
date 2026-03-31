@@ -19,6 +19,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import javax.annotation.PostConstruct;
@@ -88,22 +89,15 @@ public class CosStorageService {
     return out;
   }
 
+  /** 默认写入 {@link CosUploadScope#CMS}（文章/Banner/媒体库等）。 */
   public UploadResult upload(MultipartFile file) {
-    ensureReady();
-    if (file == null || file.isEmpty()) {
-      throw new IllegalArgumentException("empty_file");
-    }
-    if (file.getSize() > MAX_BYTES) {
-      throw new IllegalArgumentException("file_too_large");
-    }
-    String ext = extensionOf(file.getOriginalFilename());
-    if (ext == null || !SAFE_EXT.matcher(ext).matches()) {
-      throw new IllegalArgumentException("unsupported_type");
-    }
+    return upload(file, CosUploadScope.CMS);
+  }
 
-    String day =
-        DateTimeFormatter.ofPattern("yyyy/MM/dd").withZone(ZoneOffset.UTC).format(Instant.now());
-    String key = normalizeKeyPrefix(props.getKeyPrefix()) + day + "/" + UUID.randomUUID() + "." + ext;
+  public UploadResult upload(MultipartFile file, CosUploadScope scope) {
+    ensureReady();
+    String ext = validateAndGetExtension(file);
+    String key = buildObjectKey(ext, Objects.requireNonNullElse(scope, CosUploadScope.CMS));
 
     ObjectMetadata meta = new ObjectMetadata();
     meta.setContentLength(file.getSize());
@@ -122,6 +116,28 @@ public class CosStorageService {
     r.key = key;
     r.url = publicUrl(key);
     return r;
+  }
+
+  /** 校验上传文件并返回小写扩展名。 */
+  private static String validateAndGetExtension(MultipartFile file) {
+    if (file == null || file.isEmpty()) {
+      throw new IllegalArgumentException("empty_file");
+    }
+    if (file.getSize() > MAX_BYTES) {
+      throw new IllegalArgumentException("file_too_large");
+    }
+    String ext = extensionOf(file.getOriginalFilename());
+    if (ext == null || !SAFE_EXT.matcher(ext).matches()) {
+      throw new IllegalArgumentException("unsupported_type");
+    }
+    return ext;
+  }
+
+  private String buildObjectKey(String ext, CosUploadScope scope) {
+    String day =
+        DateTimeFormatter.ofPattern("yyyy/MM/dd").withZone(ZoneOffset.UTC).format(Instant.now());
+    String base = normalizeKeyPrefix(props.getKeyPrefix()) + scope.folderUnderBasePrefix();
+    return base + day + "/" + UUID.randomUUID() + "." + ext;
   }
 
   public void delete(String key) {

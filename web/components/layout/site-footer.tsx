@@ -12,10 +12,18 @@ export function SiteFooter() {
       <div className="w-full min-w-0 max-w-full px-4 py-8 md:px-6 lg:px-8">
         <div className="flex flex-col gap-6 md:flex-row md:items-center md:justify-between">
           <div>
-            <div>
-              <SiteWordmark className="h-6 w-auto text-primary md:h-7" />
+            <Link href="/" className="inline-flex items-center gap-2 text-foreground">
+              {/* eslint-disable-next-line @next/next/no-img-element -- 与顶栏相同，品牌 SVG 来自 public */}
+              <img
+                src={siteConfig.logoPath}
+                alt=""
+                width={36}
+                height={36}
+                className="h-9 w-auto shrink-0 object-contain"
+              />
+              <SiteWordmark className="h-6 w-auto shrink-0 text-foreground md:h-7" />
               <span className="sr-only">{siteConfig.name}</span>
-            </div>
+            </Link>
             <p className="mt-1 max-w-md text-sm text-muted">{siteConfig.description}</p>
           </div>
           <div className="flex flex-wrap gap-4 text-sm text-muted">

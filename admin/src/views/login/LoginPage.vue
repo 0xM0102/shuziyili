@@ -106,9 +106,10 @@ const submit = async () => {
   width: 100%;
   max-width: 420px;
   background: #fff;
-  border: 1px solid #e7e7e7;
+  border: 1px solid #e5e8ef;
   border-radius: 12px;
-  padding: 20px;
+  padding: 24px;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.08);
 }
 .brand {
   display: flex;
