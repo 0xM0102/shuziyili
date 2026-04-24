@@ -1,0 +1,33 @@
+# 复制为 /etc/nginx/conf.d/admin.shuziyili.com.conf
+# 证书目录：/etc/nginx/ssl/admin.shuziyili.com/
+#   admin.shuziyili.com_bundle.crt
+#   admin.shuziyili.com.key
+# （.pem 与 .crt 常等价，Nginx 只需其一作 ssl_certificate）
+#
+# 前置：DNS 中 admin.shuziyili.com 的 A 记录指向本机；已构建 admin 到 root 所指目录。
+
+server {
+    listen 80;
+    server_name admin.shuziyili.com;
+    return 301 https://admin.shuziyili.com$request_uri;
+}
+
+server {
+    listen 443 ssl;
+    server_name admin.shuziyili.com;
+
+    ssl_certificate     /etc/nginx/ssl/admin.shuziyili.com/admin.shuziyili.com_bundle.crt;
+    ssl_certificate_key /etc/nginx/ssl/admin.shuziyili.com/admin.shuziyili.com.key;
+
+    root /opt/shuziyili/admin/dist;
+    index index.html;
+
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff2?)$ {
+        expires 7d;
+        add_header Cache-Control "public, immutable";
+    }
+}

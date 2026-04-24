@@ -34,6 +34,9 @@ scripts/dev.sh
 # 日志与调试
 npm-debug.log*
 *.pem
+*.key
+# TLS 证书（勿提交；私钥见 *.key）
+api/docs/*.crt
 
 # TypeScript（根目录若再有 TS 工具）
 *.tsbuildinfo

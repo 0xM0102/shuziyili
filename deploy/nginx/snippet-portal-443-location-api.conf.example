@@ -1,0 +1,17 @@
+# 将下列 `location /api/` 插入 **门户** `server { listen 443 ssl; ... }` 内，
+# 且必须写在 `location / { ... }` **之前**（更长的前缀优先匹配）。
+#
+# 适用：DV 证书只含主域 + www、**不含** api 子域时，避免浏览器
+# `ERR_CERT_COMMON_NAME_INVALID`。此时 API 公网地址用：
+#   https://shuziyili.com/api/v1/...
+# 管理端构建：`VITE_API_BASE_URL=https://shuziyili.com`
+# 门户构建：`NEXT_PUBLIC_API_BASE_URL=https://shuziyili.com`
+
+    location /api/ {
+        proxy_pass http://127.0.0.1:8081;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+    }

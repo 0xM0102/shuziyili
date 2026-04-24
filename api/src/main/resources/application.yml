@@ -36,7 +36,16 @@ shuziyili:
   cors:
     allowed-origin-patterns-csv: ${CORS_ALLOWED_ORIGINS:}
   # 腾讯云 COS（密钥务必用环境变量，勿提交仓库）
-  # 短信接入：实现 com.shuziyili.module.sms.SmsSender（模版申报文案见 api/docs/sms-templates.md）
+  # 短信：默认仅日志（LogSmsSender）。真实发送见 TencentSmsSender，模版文案见 api/docs/sms-templates.md
+  sms:
+    enabled: ${SHUZIYILI_SMS_ENABLED:false}
+    secret-id: ${SHUZIYILI_SMS_SECRET_ID:}
+    secret-key: ${SHUZIYILI_SMS_SECRET_KEY:}
+    sdk-app-id: ${SHUZIYILI_SMS_SDK_APP_ID:1401102717}
+    sign-name: ${SHUZIYILI_SMS_SIGN_NAME:干撒深圳信息科技}
+    template-login-id: ${SHUZIYILI_SMS_TEMPLATE_LOGIN:}
+    template-register-id: ${SHUZIYILI_SMS_TEMPLATE_REGISTER:}
+    region: ${SHUZIYILI_SMS_REGION:ap-guangzhou}
 
   # 是否在 sms_codes.plain_code 写入验证码明文（管理后台可见）。生产务必 false：SHUZIYILI_STORE_PLAIN_OTP=false
   auth:

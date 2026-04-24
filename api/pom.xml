@@ -55,6 +55,12 @@
       <artifactId>cos_api</artifactId>
       <version>5.6.247</version>
     </dependency>
+    <!-- 腾讯云短信（SmsSender 实现见 TencentSmsSender；密钥用环境变量） -->
+    <dependency>
+      <groupId>com.tencentcloudapi</groupId>
+      <artifactId>tencentcloud-sdk-java-sms</artifactId>
+      <version>3.1.962</version>
+    </dependency>
     <dependency>
       <groupId>org.springframework.security</groupId>
       <artifactId>spring-security-crypto</artifactId>

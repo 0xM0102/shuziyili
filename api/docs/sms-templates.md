@@ -8,14 +8,14 @@
 
 **用途**：已注册用户登录时下发一次性验证码。
 
-**建议签名**：`深圳干撒科技`（以短信平台控制台审核通过的签名为准）
+**建议签名**：`干撒深圳信息科技`（以短信平台控制台审核通过的签名为准）
 
 **模版名称（自建）**：`登录验证码`
 
 **模版正文（推荐，单变量）**：
 
 ```
-【深圳干撒科技】您的登录验证码为{1}，5分钟内有效。请勿向他人泄露。如非本人操作请忽略。
+【干撒深圳信息科技】您的登录验证码为{1}，5分钟内有效。请勿向他人泄露。如非本人操作请忽略。
 ```
 
 **变量说明**：
@@ -37,7 +37,7 @@
 **模版正文（推荐，单变量）**：
 
 ```
-【深圳干撒科技】您的注册验证码为{1}，5分钟内有效。如非本人操作请忽略。
+【干撒深圳信息科技】您的注册验证码为{1}，5分钟内有效。如非本人操作请忽略。
 ```
 
 **变量说明**：
@@ -85,9 +85,25 @@
 
 ## 六、接入第三方时的实现要点
 
-1. 新建类实现 `com.shuziyili.module.sms.SmsSender`（手机号短信）。
-2. 在 `sendVerificationCode(phone, scene, code)` 内：
-   - `scene` 为 `login` 时调用「登录」模版 ID；
-   - `scene` 为 `register` 时调用「注册」模版 ID。
-3. 使用 `@Primary` 或调整 `@Component` 优先级，使该实现替代默认的 `LogSmsSender`（开发环境可保留日志实现便于调试）。
-4. 邮箱验证码：实现 `com.shuziyili.module.sms.EmailSender` 并替代 `LogEmailSender`。
+项目已内置 **腾讯云短信** 实现：`com.shuziyili.module.sms.TencentSmsSender`。
+
+### 环境变量（服务器 / 本机，勿提交仓库）
+
+| 变量 | 说明 |
+| ---- | ---- |
+| `SHUZIYILI_SMS_ENABLED` | `true` 时走腾讯云；未设或 `false` 时仍为日志兜底 `LogSmsSender` |
+| `SHUZIYILI_SMS_SECRET_ID` | API 密钥 SecretId |
+| `SHUZIYILI_SMS_SECRET_KEY` | API 密钥 SecretKey |
+| `SHUZIYILI_SMS_SDK_APP_ID` | 短信应用 SdkAppId（默认 `1401102717`，可按控制台覆盖） |
+| `SHUZIYILI_SMS_SIGN_NAME` | 已审核签名（默认 `干撒深圳信息科技`） |
+| `SHUZIYILI_SMS_TEMPLATE_LOGIN` | 登录验证码模板 ID（控制台数字） |
+| `SHUZIYILI_SMS_TEMPLATE_REGISTER` | 注册验证码模板 ID |
+| `SHUZIYILI_SMS_REGION` | 可选，默认 `ap-guangzhou` |
+
+启用腾讯云且缺少 Secret/模板时，应用**启动会失败**并提示缺哪项，避免静默不发短信。
+
+### 历史说明（自定义实现）
+
+若不用腾讯云，可自行实现 `SmsSender` 并关闭 `SHUZIYILI_SMS_ENABLED`。
+
+邮箱验证码：实现 `com.shuziyili.module.sms.EmailSender` 并替代 `LogEmailSender`（与短信独立）。
