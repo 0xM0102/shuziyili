@@ -35,6 +35,49 @@
 
 ## 3. 本机发版（推荐：构建在本地，上传产物）
 
+### 3.0 日常闭环：本地 Git + 本机构建 + rsync（**服务器不走 git**）
+
+1. **本机先入库（GitHub 等）**——与发版解耦，服务器无需 `git pull`：
+
+```bash
+cd /path/to/shuziyili   # 本机仓库根目录
+git status
+git add -A
+git commit -m "你的说明"
+git push origin dev      # 或 main，按你们分支习惯
+```
+
+2. **本机构建并 rsync 上传**（把 `user@SERVER` 换成 SSH 目标，例如 `ubuntu@1.2.3.4`）：
+
+```bash
+export DEPLOY=user@SERVER
+
+# Web
+cd web && npm ci && npm run build
+rsync -avz --delete \
+  .next/ package.json package-lock.json next.config.ts public/ .env.production.local \
+  "$DEPLOY:/opt/shuziyili/web/"
+
+# Admin
+cd ../admin && npm ci && npm run build
+rsync -avz --delete dist/ "$DEPLOY:/opt/shuziyili/admin/dist/"
+
+# API
+cd ../api && ./mvnw -DskipTests package
+rsync -avz target/shuziyili-api.jar "$DEPLOY:/opt/shuziyili/api/shuziyili-api.jar"
+```
+
+3. **SSH 上服务器只做安装与重启**（不执行 git）：
+
+```bash
+ssh user@SERVER
+cd /opt/shuziyili/web && npm install --omit=dev && sudo systemctl restart shuziyili-web
+sudo systemctl restart shuziyili-api
+# Admin 静态若需修权限，见 §3.2
+```
+
+说明：**改 `NEXT_PUBLIC_*` 或业务代码后，必须在本机 `npm run build` 后再 rsync**；服务器只保留运行目录与 jar，不必克隆仓库。
+
 ### 3.1 Web（Next.js）
 
 ```bash
