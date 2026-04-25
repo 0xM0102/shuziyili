@@ -1,7 +1,6 @@
 package com.shuziyili.module.flashlink;
 
 import com.shuziyili.common.ApiResponse;
-import com.shuziyili.common.BearerTokens;
 import com.shuziyili.module.auth.StaffPermissionCodes;
 import com.shuziyili.module.auth.StaffAuthService;
 import java.util.List;
@@ -34,9 +33,9 @@ public class AdminFlashLinkController {
   @GetMapping
   public ResponseEntity<ApiResponse<Map<String, Object>>> list(
       @RequestHeader(value = "Authorization", required = false) String authorization) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.FLASH_LINKS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.FLASH_LINKS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     List<AdminFlashLinkService.FlashLinkDto> items = flashLinkService.list();
     return ResponseEntity.ok(ApiResponse.success(Map.of("items", items)));
@@ -46,9 +45,9 @@ public class AdminFlashLinkController {
   public ResponseEntity<ApiResponse<AdminFlashLinkService.FlashLinkDto>> create(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestBody UpsertReq req) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.FLASH_LINKS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.FLASH_LINKS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     AdminFlashLinkService.UpdateResult r = flashLinkService.create(req);
     if (!r.ok) {
@@ -62,9 +61,9 @@ public class AdminFlashLinkController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @PathVariable("id") Long id,
       @RequestBody UpsertReq req) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.FLASH_LINKS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.FLASH_LINKS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     AdminFlashLinkService.UpdateResult r = flashLinkService.update(id, req);
     if (!r.ok) {
@@ -77,9 +76,9 @@ public class AdminFlashLinkController {
   public ResponseEntity<ApiResponse<Void>> delete(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @PathVariable("id") Long id) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.FLASH_LINKS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.FLASH_LINKS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     boolean ok = flashLinkService.delete(id);
     return ResponseEntity.ok(ok ? ApiResponse.success() : ApiResponse.fail("not_found"));

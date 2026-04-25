@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ReloadOutlined, SaveOutlined } from "@ant-design/icons-vue";
+import type { CheckboxChangeEvent } from "ant-design-vue/es/checkbox/interface";
 import { computed, onMounted, ref } from "vue";
 import { api, type StaffPermissionDto, type StaffRoleDto } from "@/lib/api-client";
 import { mapApiMessage } from "@/lib/auth-messages";
@@ -174,7 +175,7 @@ onMounted(() => {
           <a-checkbox
             :checked="selectedPermissionCodes.includes(record.permissionCode)"
             :disabled="!record.enabled"
-            @change="(e: any) => onGrantChange(record, !!e?.target?.checked)"
+            @change="(e: CheckboxChangeEvent) => onGrantChange(record, !!e?.target?.checked)"
           />
         </template>
         <template v-if="column.key === 'status'">

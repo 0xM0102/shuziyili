@@ -6,6 +6,7 @@ After=network.target
 Type=simple
 User=www-data
 Group=www-data
+# 必须为运行目录 /opt/shuziyili/web，勿使用 /opt/shuziyili/repo/web（避免两套 .next）
 WorkingDirectory=/opt/shuziyili/web
 
 # 若使用 .env.production.local，确保文件存在且权限正确；或在此处 Environment= 逐项列出

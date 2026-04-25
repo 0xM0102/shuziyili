@@ -1,7 +1,6 @@
 package com.shuziyili.module.flashlink;
 
 import com.shuziyili.common.ApiResponse;
-import com.shuziyili.common.BearerTokens;
 import com.shuziyili.module.auth.StaffPermissionCodes;
 import com.shuziyili.module.auth.StaffAuthService;
 import java.util.List;
@@ -35,9 +34,9 @@ public class AdminFlashTagController {
   public ResponseEntity<ApiResponse<Map<String, Object>>> list(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestParam(value = "targetKind", required = false) String targetKind) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.FLASH_TAGS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.FLASH_TAGS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     List<AdminFlashTagService.FlashTagDto> items = flashTagService.list(targetKind);
     return ResponseEntity.ok(ApiResponse.success(Map.of("items", items)));
@@ -47,9 +46,9 @@ public class AdminFlashTagController {
   public ResponseEntity<ApiResponse<AdminFlashTagService.FlashTagDto>> create(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestBody UpsertReq req) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.FLASH_TAGS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.FLASH_TAGS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     AdminFlashTagService.UpdateResult r = flashTagService.create(req);
     if (!r.ok) {
@@ -63,9 +62,9 @@ public class AdminFlashTagController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @PathVariable("id") Long id,
       @RequestBody UpsertReq req) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.FLASH_TAGS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.FLASH_TAGS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     AdminFlashTagService.UpdateResult r = flashTagService.update(id, req);
     if (!r.ok) {
@@ -78,9 +77,9 @@ public class AdminFlashTagController {
   public ResponseEntity<ApiResponse<Void>> delete(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @PathVariable("id") Long id) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.FLASH_TAGS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.FLASH_TAGS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     boolean ok = flashTagService.delete(id);
     return ResponseEntity.ok(ok ? ApiResponse.success() : ApiResponse.fail("not_found"));

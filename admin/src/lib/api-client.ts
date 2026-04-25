@@ -79,7 +79,16 @@ function apiUrl(path: string) {
   return API_BASE ? `${API_BASE}${path}` : path;
 }
 
+/** 管理端列表 `?q=` 搜索（与 Spring `@RequestParam q` 约定一致） */
+function adminListPathWithQ(basePath: string, q?: string): string {
+  const needle = q?.trim();
+  return needle ? `${basePath}?q=${encodeURIComponent(needle)}` : basePath;
+}
+
 const TOKEN_KEY = "shuziyili_admin_token";
+
+/** 后台首页精选槽位（对应 API `AdminHomeArticleController`） */
+const ADMIN_HOME_ARTICLES_API = "/api/v1/admin/home-articles";
 
 export function getToken() {
   try {
@@ -103,10 +112,6 @@ export function clearToken() {
   } catch {
     // ignore
   }
-}
-
-function adminHomeFeaturedPath() {
-  return "/api/v1/admin/home-articles";
 }
 
 async function request<T>(path: string, init?: RequestInit): Promise<ApiResponse<T>> {
@@ -185,9 +190,7 @@ export const api = {
     },
     portalUsers: {
       async list(q?: string) {
-        const needle = q?.trim();
-        const qs = needle ? `?q=${encodeURIComponent(needle)}` : "";
-        return request<{ items: PortalUserDto[] }>(`/api/v1/admin/portal-users${qs}`, {
+        return request<{ items: PortalUserDto[] }>(adminListPathWithQ("/api/v1/admin/portal-users", q), {
           method: "GET",
         });
       },
@@ -203,9 +206,9 @@ export const api = {
     },
     staff: {
       async list(q?: string) {
-        const needle = q?.trim();
-        const qs = needle ? `?q=${encodeURIComponent(needle)}` : "";
-        return request<{ items: StaffUserDto[] }>(`/api/v1/admin/staff${qs}`, { method: "GET" });
+        return request<{ items: StaffUserDto[] }>(adminListPathWithQ("/api/v1/admin/staff", q), {
+          method: "GET",
+        });
       },
       async setRole(id: number, role: StaffRole) {
         return request<StaffUserDto>(`/api/v1/admin/staff/${id}/role`, {
@@ -457,10 +460,10 @@ export const api = {
           status: string;
           sortOrder: number;
         }[];
-      }>(adminHomeFeaturedPath(), { method: "GET" });
+      }>(ADMIN_HOME_ARTICLES_API, { method: "GET" });
     },
     async replaceHomeArticleSlots(articleIds: string[]) {
-      return request<void>(adminHomeFeaturedPath(), {
+      return request<void>(ADMIN_HOME_ARTICLES_API, {
         method: "PUT",
         body: JSON.stringify({ articleIds }),
       });

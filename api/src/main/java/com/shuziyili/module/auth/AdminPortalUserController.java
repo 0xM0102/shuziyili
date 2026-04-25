@@ -1,8 +1,7 @@
 package com.shuziyili.module.auth;
 
 import com.shuziyili.common.ApiResponse;
-import com.shuziyili.common.BearerTokens;
-import com.shuziyili.module.auth.StaffPermissionCodes;
+import com.shuziyili.common.SearchParams;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -34,11 +33,11 @@ public class AdminPortalUserController {
   public ResponseEntity<ApiResponse<Map<String, Object>>> list(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestParam(value = "q", required = false) String q) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.PORTAL_USERS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("forbidden"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.PORTAL_USERS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
-    String needle = q == null ? "" : q.trim();
+    String needle = SearchParams.normalizedOrEmpty(q);
     List<PortalUserEntity> entities =
         needle.isEmpty()
             ? portalUserRepository.findAll()
@@ -52,9 +51,9 @@ public class AdminPortalUserController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @PathVariable("id") Long id,
       @RequestBody(required = false) UpdatePortalUserReq req) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.PORTAL_USERS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("forbidden"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.PORTAL_USERS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     if (id == null) {
       return ResponseEntity.ok(ApiResponse.fail("empty"));

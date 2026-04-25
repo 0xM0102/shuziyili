@@ -1,7 +1,6 @@
 package com.shuziyili.module.banner;
 
 import com.shuziyili.common.ApiResponse;
-import com.shuziyili.common.BearerTokens;
 import com.shuziyili.module.auth.StaffPermissionCodes;
 import com.shuziyili.module.auth.StaffAuthService;
 import java.util.List;
@@ -35,9 +34,9 @@ public class AdminBannerController {
   public ResponseEntity<ApiResponse<Map<String, Object>>> list(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestParam(value = "scope", required = false) String scope) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.BANNERS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.BANNERS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     List<AdminBannerService.Banner> items = bannerService.list(scope);
     return ResponseEntity.ok(ApiResponse.success(Map.of("items", items)));
@@ -47,9 +46,9 @@ public class AdminBannerController {
   public ResponseEntity<ApiResponse<AdminBannerService.Banner>> create(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestBody UpsertReq req) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.BANNERS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.BANNERS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     if (req == null || req.imageUrl == null || req.imageUrl.trim().isEmpty()) {
       return ResponseEntity.ok(ApiResponse.fail("empty_image"));
@@ -66,9 +65,9 @@ public class AdminBannerController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @PathVariable("id") Long id,
       @RequestBody UpsertReq req) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.BANNERS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.BANNERS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     AdminBannerService.UpdateResult r = bannerService.update(id, req);
     if (!r.ok) {
@@ -81,9 +80,9 @@ public class AdminBannerController {
   public ResponseEntity<ApiResponse<Void>> delete(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @PathVariable("id") Long id) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.BANNERS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.BANNERS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     boolean ok = bannerService.delete(id);
     return ResponseEntity.ok(ok ? ApiResponse.success() : ApiResponse.fail("not_found"));

@@ -2,6 +2,8 @@
 
 民间便民门户：**前端**与**后端 API** 分目录存放、**可分开部署**；域名生产环境为 **https://shuziyili.com**。
 
+生产发版与服务器目录约定见 **[`deploy/RUNBOOK.md`](./deploy/RUNBOOK.md)**；首次装机步骤见 **[`deploy/README.md`](./deploy/README.md)**。
+
 ## 目录结构
 
 | 目录 | 说明 |

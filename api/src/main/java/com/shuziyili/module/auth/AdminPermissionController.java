@@ -1,7 +1,6 @@
 package com.shuziyili.module.auth;
 
 import com.shuziyili.common.ApiResponse;
-import com.shuziyili.common.BearerTokens;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -40,9 +39,9 @@ public class AdminPermissionController {
   @GetMapping("/staff-roles")
   public ResponseEntity<ApiResponse<List<StaffRoleDto>>> listRoles(
       @RequestHeader(value = "Authorization", required = false) String authorization) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.PERMISSIONS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("forbidden"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.PERMISSIONS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     List<StaffRoleEntity> roles = staffRoleRepository.findAllByOrderBySortOrderAscRoleNameAsc();
     List<StaffRoleDto> items = roles.stream().map(this::toRoleDto).collect(Collectors.toList());
@@ -52,9 +51,9 @@ public class AdminPermissionController {
   @GetMapping("/staff-permissions")
   public ResponseEntity<ApiResponse<List<StaffPermissionDto>>> listPermissions(
       @RequestHeader(value = "Authorization", required = false) String authorization) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.PERMISSIONS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("forbidden"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.PERMISSIONS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     List<StaffPermissionEntity> permissions =
         staffPermissionRepository.findAllByOrderByPermissionCodeAsc();
@@ -66,9 +65,9 @@ public class AdminPermissionController {
   public ResponseEntity<ApiResponse<Map<String, Object>>> listRolePermissions(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @PathVariable("roleName") String roleName) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.PERMISSIONS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("forbidden"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.PERMISSIONS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
 
     if (roleName == null || roleName.isBlank()) {
@@ -96,9 +95,9 @@ public class AdminPermissionController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @PathVariable("roleName") String roleName,
       @RequestBody(required = false) SetRolePermissionsReq req) {
-    String token = BearerTokens.extract(authorization);
-    if (!staffAuthService.requireStaffPermission(token, StaffPermissionCodes.PERMISSIONS_MANAGE).isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail("forbidden"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.PERMISSIONS_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
 
     if (roleName == null || roleName.isBlank()) {

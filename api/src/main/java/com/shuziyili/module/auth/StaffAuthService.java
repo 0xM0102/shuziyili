@@ -1,6 +1,7 @@
 package com.shuziyili.module.auth;
 
 import com.shuziyili.common.ApiResponse;
+import com.shuziyili.common.BearerTokens;
 import java.time.Clock;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -232,6 +233,18 @@ public class StaffAuthService {
     }
 
     return ApiResponse.success();
+  }
+
+  /**
+   * 从 {@code Authorization} 头解析 Bearer，并执行与 {@link #requireStaffPermission(String, String)} 相同的校验。
+   *
+   * @return {@code null} 表示通过；否则为失败码（{@code unauthorized} / {@code forbidden}），可直接用于 {@link
+   *     ApiResponse#fail(String)}。
+   */
+  @Transactional(readOnly = true)
+  public String staffPermissionDenied(String authorizationHeader, String permissionCode) {
+    ApiResponse<Void> gate = requireStaffPermission(BearerTokens.extract(authorizationHeader), permissionCode);
+    return gate.isOk() ? null : gate.getMessage();
   }
 
   private Optional<StaffUserEntity> resolveStaffFromValidSession(String bearerToken) {

@@ -1,7 +1,6 @@
 package com.shuziyili.module.system;
 
 import com.shuziyili.common.ApiResponse;
-import com.shuziyili.common.BearerTokens;
 import com.shuziyili.module.article.ArticleRepository;
 import com.shuziyili.module.auth.PortalUserRepository;
 import com.shuziyili.module.auth.StaffPermissionCodes;
@@ -51,11 +50,9 @@ public class AdminDashboardController {
   @GetMapping("/summary")
   public ResponseEntity<ApiResponse<Map<String, Object>>> summary(
       @RequestHeader(value = "Authorization", required = false) String authorization) {
-    String token = BearerTokens.extract(authorization);
-    ApiResponse<Void> perm =
-        staffAuthService.requireStaffPermission(token, StaffPermissionCodes.DASHBOARD_VIEW);
-    if (!perm.isOk()) {
-      return ResponseEntity.ok(ApiResponse.fail(perm.getMessage() == null ? "forbidden" : perm.getMessage()));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.DASHBOARD_VIEW);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
 
     Map<String, Object> m = new LinkedHashMap<>();

@@ -1,7 +1,6 @@
 package com.shuziyili.module.home;
 
 import com.shuziyili.common.ApiResponse;
-import com.shuziyili.common.BearerTokens;
 import com.shuziyili.module.auth.StaffAuthService;
 import com.shuziyili.module.auth.StaffPermissionCodes;
 import java.util.ArrayList;
@@ -32,8 +31,9 @@ public class AdminHomeArticleController {
   @GetMapping
   public ResponseEntity<ApiResponse<Map<String, Object>>> list(
       @RequestHeader(value = "Authorization", required = false) String authorization) {
-    if (!hasArticlesManage(authorization)) {
-      return ResponseEntity.ok(ApiResponse.fail("forbidden"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.ARTICLES_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     List<HomeCurationService.AdminSlotRow> rows = homeCurationService.listAdminFeaturedSlots();
     List<Map<String, Object>> items = new ArrayList<>(rows.size());
@@ -46,12 +46,13 @@ public class AdminHomeArticleController {
   @PutMapping
   public ResponseEntity<ApiResponse<Void>> replace(
       @RequestHeader(value = "Authorization", required = false) String authorization,
-      @RequestBody(required = false) ReplaceReq req) {
-    if (!hasArticlesManage(authorization)) {
-      return ResponseEntity.ok(ApiResponse.fail("forbidden"));
+      @RequestBody(required = false) HomeArticlesReplaceBody body) {
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.ARTICLES_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     try {
-      homeCurationService.replaceFeatured(req == null ? null : req.articleIds);
+      homeCurationService.replaceFeatured(body == null ? null : body.articleIds);
     } catch (IllegalArgumentException e) {
       if ("article_not_found".equals(e.getMessage())) {
         return ResponseEntity.ok(ApiResponse.fail("article_not_found"));
@@ -59,14 +60,5 @@ public class AdminHomeArticleController {
       throw e;
     }
     return ResponseEntity.ok(ApiResponse.success());
-  }
-
-  private boolean hasArticlesManage(String authorization) {
-    String token = BearerTokens.extract(authorization);
-    return staffAuthService.requireStaffPermission(token, StaffPermissionCodes.ARTICLES_MANAGE).isOk();
-  }
-
-  public static class ReplaceReq {
-    public List<String> articleIds;
   }
 }

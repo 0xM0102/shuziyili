@@ -1,7 +1,6 @@
 package com.shuziyili.module.media;
 
 import com.shuziyili.common.ApiResponse;
-import com.shuziyili.common.BearerTokens;
 import com.shuziyili.config.CosProperties;
 import com.shuziyili.module.auth.StaffAuthService;
 import com.shuziyili.module.auth.StaffPermissionCodes;
@@ -42,8 +41,9 @@ public class MediaAdminController {
   @GetMapping("/config")
   public ResponseEntity<ApiResponse<Map<String, Object>>> config(
       @RequestHeader(value = "Authorization", required = false) String authorization) {
-    if (!hasMediaManagePermission(authorization)) {
-      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.MEDIA_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     Map<String, Object> m = new LinkedHashMap<>();
     m.put("enabled", cosProperties.isEnabled());
@@ -59,8 +59,9 @@ public class MediaAdminController {
   public ResponseEntity<ApiResponse<Map<String, Object>>> list(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestParam(value = "prefix", required = false) String prefix) {
-    if (!hasMediaManagePermission(authorization)) {
-      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.MEDIA_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     try {
       List<MediaItem> items = cosStorageService.list(prefix);
@@ -78,8 +79,9 @@ public class MediaAdminController {
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestParam(value = "scope", required = false) String scope,
       @RequestParam("file") MultipartFile file) {
-    if (!hasMediaManagePermission(authorization)) {
-      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.MEDIA_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     try {
       CosUploadScope uploadScope = CosUploadScope.fromAdminQuery(scope);
@@ -95,8 +97,9 @@ public class MediaAdminController {
   public ResponseEntity<ApiResponse<Void>> delete(
       @RequestHeader(value = "Authorization", required = false) String authorization,
       @RequestParam("key") String key) {
-    if (!hasMediaManagePermission(authorization)) {
-      return ResponseEntity.ok(ApiResponse.fail("unauthorized"));
+    String denied = staffAuthService.staffPermissionDenied(authorization, StaffPermissionCodes.MEDIA_MANAGE);
+    if (denied != null) {
+      return ResponseEntity.ok(ApiResponse.fail(denied));
     }
     try {
       cosStorageService.delete(key);
@@ -106,11 +109,6 @@ public class MediaAdminController {
     } catch (IllegalStateException e) {
       return ResponseEntity.ok(ApiResponse.fail(e.getMessage()));
     }
-  }
-
-  private boolean hasMediaManagePermission(String authorization) {
-    String token = BearerTokens.extract(authorization);
-    return staffAuthService.requireStaffPermission(token, StaffPermissionCodes.MEDIA_MANAGE).isOk();
   }
 
 }

@@ -42,25 +42,20 @@ function safeParseJson<T>(value: string | null): T | null {
   }
 }
 
-function normalizeIdentifier(input: string) {
-  const s = input.trim();
-  if (s.includes("@")) return s.toLowerCase();
-  return s.replace(/\s+/g, "");
+/** 去空格并去掉常见 +86 / 86 前缀，得到 11 位大陆手机号形态（不含国家码）。 */
+export function normalizePhoneForRequest(raw: string) {
+  let s = raw.trim().replace(/\s+/g, "");
+  if (s.startsWith("+86")) s = s.slice(3);
+  else if (s.startsWith("86") && s.length === 13 && s[2] === "1") s = s.slice(2);
+  return s;
 }
 
-function isEmail(v: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
-}
-
-function isPhone(v: string) {
-  return /^\+?\d{6,20}$/.test(v.replace(/\s+/g, ""));
-}
-
-export function validateIdentifier(raw: string): string | null {
-  const v = normalizeIdentifier(raw);
+/** 门户仅支持手机号登录/注册（与短信通道一致）。 */
+export function validatePhone(raw: string): string | null {
+  const v = normalizePhoneForRequest(raw);
   if (!v) return "empty";
-  if (isEmail(v) || isPhone(v)) return null;
-  return "invalid";
+  if (!/^1[3-9]\d{9}$/.test(v)) return "invalid";
+  return null;
 }
 
 function getStoredSession(): StoredSession | null {
@@ -164,27 +159,29 @@ async function uploadMultipart<T>(
 }
 
 export async function sendRegisterCode(identifierRaw: string) {
-  const err = validateIdentifier(identifierRaw);
+  const err = validatePhone(identifierRaw);
   if (err) return { ok: false as const, error: err };
+  const phone = normalizePhoneForRequest(identifierRaw);
   const res = await apiRequest<{ sent: string }>("/auth/register/send", {
     method: "POST",
-    body: { identifier: identifierRaw.trim() },
+    body: { identifier: phone },
   });
   if (!res.ok) return { ok: false as const, error: res.message ?? "unknown" };
   return { ok: true as const };
 }
 
 export async function registerWithCode(identifierRaw: string, code: string, password: string) {
-  const err = validateIdentifier(identifierRaw);
+  const err = validatePhone(identifierRaw);
   if (err) return { ok: false as const, error: err };
   if (password.trim().length < 6) return { ok: false as const, error: "weak_password" };
   const c = code.trim();
   if (!c) return { ok: false as const, error: "invalid_code" };
+  const phone = normalizePhoneForRequest(identifierRaw);
 
   const res = await apiRequest<AuthLoginRegisterData>("/auth/register", {
     method: "POST",
     body: {
-      identifier: identifierRaw.trim(),
+      identifier: phone,
       code: c,
       password,
     },
@@ -205,14 +202,15 @@ export async function registerWithCode(identifierRaw: string, code: string, pass
 }
 
 export async function login(identifierRaw: string, password: string) {
-  const err = validateIdentifier(identifierRaw);
+  const err = validatePhone(identifierRaw);
   if (err) return { ok: false as const, error: err };
   if (!password.trim()) return { ok: false as const, error: "wrong_password" };
+  const phone = normalizePhoneForRequest(identifierRaw);
 
   const res = await apiRequest<AuthLoginRegisterData>("/auth/login", {
     method: "POST",
     body: {
-      identifier: identifierRaw,
+      identifier: phone,
       password,
     },
   });
@@ -254,25 +252,27 @@ export async function fetchMe(): Promise<AuthSession | null> {
 }
 
 export async function sendLoginCode(identifierRaw: string) {
-  const err = validateIdentifier(identifierRaw);
+  const err = validatePhone(identifierRaw);
   if (err) return { ok: false as const, error: err };
+  const phone = normalizePhoneForRequest(identifierRaw);
   const res = await apiRequest<{ sent: string }>("/auth/login/send", {
     method: "POST",
-    body: { identifier: identifierRaw.trim() },
+    body: { identifier: phone },
   });
   if (!res.ok) return { ok: false as const, error: res.message ?? "unknown" };
   return { ok: true as const };
 }
 
 export async function loginByCode(identifierRaw: string, code: string) {
-  const err = validateIdentifier(identifierRaw);
+  const err = validatePhone(identifierRaw);
   if (err) return { ok: false as const, error: err };
   const c = code.trim();
   if (!c) return { ok: false as const, error: "invalid_code" };
+  const phone = normalizePhoneForRequest(identifierRaw);
 
   const res = await apiRequest<AuthLoginRegisterData>("/auth/login/code", {
     method: "POST",
-    body: { identifier: identifierRaw.trim(), code: c },
+    body: { identifier: phone, code: c },
   });
 
   if (!res.ok || !res.data) {

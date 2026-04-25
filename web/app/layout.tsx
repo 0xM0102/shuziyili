@@ -38,7 +38,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="zh-CN" className="antialiased" suppressHydrationWarning>
+    <html lang="zh-CN" className="antialiased" data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="flex h-screen min-h-0 flex-col overflow-hidden bg-background text-foreground">
         <ThemeProvider>
           <TopNav />

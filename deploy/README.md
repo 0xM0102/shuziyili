@@ -6,11 +6,14 @@
 
 | 用途 | 域名 |
 |------|------|
-| 门户（Next.js） | `https://www.shuziyili.com`（建议主站），`https://shuziyili.com`（可与 www 二选一或做跳转） |
+| 门户（Next.js） | `https://shuziyili.com`（可与 `www` 二选一或做 301 跳转） |
 | 管理后台（静态） | `https://admin.shuziyili.com` |
-| API | `https://api.shuziyili.com` |
+| API（推荐） | **同域** `https://shuziyili.com/api/v1/...`（Nginx `location /api/` 反代到本机 API 端口，免 `api.` 子域证书） |
+| API（可选） | `https://api.shuziyili.com`（需单独 DNS、证书与 `server` 块） |
 
-对内只监听本机：**API `127.0.0.1:8080`**、**门户 `127.0.0.1:3000`**，由 Nginx 对外提供 **443**。
+日常发版路径与排障见 **[`deploy/RUNBOOK.md`](./RUNBOOK.md)**。
+
+对内只监听本机：**API 常用 `127.0.0.1:8080`（若被占用可改 8081）**、**门户 `127.0.0.1:3000`**，由 Nginx 对外提供 **443**。
 
 ---
 
@@ -91,9 +94,9 @@ ls -la /etc/nginx/sites-enabled/ 2>/dev/null || ls -la /etc/nginx/conf.d/
 | `@` | A | 你的服务器 IP |
 | `www` | A | 同上 |
 | `admin` | A | 同上 |
-| `api` | A | 同上 |
+| `api` | A | 同上（**若采用主站 `/api/` 反代，可不解析 `api` 子域**） |
 
-保存后等几分钟到几小时生效。可用 `ping www.shuziyili.com` 看是否指向正确 IP。
+保存后等几分钟到几小时生效。可用 `ping shuziyili.com` 看是否指向正确 IP。
 
 ---
 
@@ -244,44 +247,38 @@ curl -sS http://127.0.0.1:8080/actuator/health
 
 ## 步骤 10：构建门户（Next.js）并配置环境变量
 
-在服务器上：
+**运行目录只能是 `/opt/shuziyili/web`**（与 `deploy/systemd/shuziyili-web.service.example` 一致）。  
+不要在 `systemd` 里把 `WorkingDirectory` 写成 `/opt/shuziyili/repo/web`，否则易与 `/opt/shuziyili/web` 形成两套 `.next`，发版看起来像「没更新」。
+
+环境变量（**不要提交到 Git**），复制示例后编辑：
+
+```bash
+sudo mkdir -p /opt/shuziyili/web
+sudo cp /opt/shuziyili/repo/deploy/env/web.env.example /opt/shuziyili/web/.env.production.local
+sudo nano /opt/shuziyili/web/.env.production.local
+```
+
+同域反代时内容示例：
+
+```env
+NEXT_PUBLIC_SITE_URL=https://shuziyili.com
+NEXT_PUBLIC_API_BASE_URL=https://shuziyili.com
+```
+
+**构建方式二选一：**
+
+**A. 在服务器构建（源码可在 `repo/web` 临时目录，产物进运行目录）**
 
 ```bash
 cd /opt/shuziyili/repo/web
 npm ci
-```
-
-创建生产环境变量（**不要提交到 Git**）：
-
-```bash
-cp /opt/shuziyili/repo/deploy/env/web.env.example /opt/shuziyili/web/.env.production.local
-nano /opt/shuziyili/web/.env.production.local
-```
-
-内容应为：
-
-```env
-NEXT_PUBLIC_SITE_URL=https://www.shuziyili.com
-NEXT_PUBLIC_API_BASE_URL=https://api.shuziyili.com
-```
-
-构建与拷贝（一种做法：在 repo 里 build，再把 standalone 之外的标准输出拷到运行目录；这里采用 **在 repo/web 构建后整个目录同步到 /opt/shuziyili/web** 的简单方式）：
-
-```bash
-cd /opt/shuziyili/repo/web
 npm run build
 rsync -a --delete ./ /opt/shuziyili/web/ --exclude node_modules
 cd /opt/shuziyili/web
 npm ci --omit=dev
 ```
 
-把 **`.env.production.local`** 拷到 `/opt/shuziyili/web/`（若上一步 rsync 已包含则不用重复）：
-
-```bash
-cp /opt/shuziyili/repo/deploy/env/web.env.example /opt/shuziyili/web/.env.production.local
-# 再按上面内容编辑 NEXT_PUBLIC_*（与 web.env.example 一致即可）
-nano /opt/shuziyili/web/.env.production.local
-```
+**B. 在本机构建后 rsync 到 `/opt/shuziyili/web/`**（推荐机器内存较小时），见 [`deploy/RUNBOOK.md`](./RUNBOOK.md) §3。
 
 **注意**：`NEXT_PUBLIC_*` 在 **`npm run build` 时** 会打进产物；若改动了这两个变量，需要 **重新 `npm run build`** 再部署。
 
@@ -292,7 +289,7 @@ sudo cp /opt/shuziyili/repo/deploy/systemd/shuziyili-web.service.example /etc/sy
 sudo nano /etc/systemd/system/shuziyili-web.service
 ```
 
-将 `WorkingDirectory` 设为 `/opt/shuziyili/web`，`User` 能读该目录。
+将 **`WorkingDirectory=/opt/shuziyili/web`**（不要用 `repo/web`），`User` 能读该目录。
 
 ```bash
 sudo systemctl daemon-reload
@@ -308,7 +305,8 @@ curl -sS -I http://127.0.0.1:3000 | head -3
 ```bash
 cd /opt/shuziyili/repo/admin
 npm ci
-VITE_API_BASE_URL=https://api.shuziyili.com npm run build
+# 与主站同域 /api/ 反代时（推荐）：
+VITE_API_BASE_URL=https://shuziyili.com VITE_SITE_BASE_URL=https://shuziyili.com npm run build
 rsync -a --delete dist/ /opt/shuziyili/admin/dist/
 ```
 
@@ -367,9 +365,9 @@ sudo systemctl reload nginx
 
 在浏览器与命令行检查：
 
-1. `https://api.shuziyili.com/actuator/health` → 应正常 JSON。
-2. `https://www.shuziyili.com` → 门户打开，开发者工具里接口域名为 **`https://api.shuziyili.com/api/v1/...`**，无 CORS 错误。
-3. `https://admin.shuziyili.com` → 登录页能打开，登录后请求仍指向 **api** 域名且成功。
+1. `curl -sS https://shuziyili.com/api/v1/health` → `ok: true`。
+2. `https://shuziyili.com` → 门户打开；开发者工具里接口为 **`https://shuziyili.com/api/v1/...`**（同域），无 CORS 错误。
+3. `https://admin.shuziyili.com` → 登录页能打开，登录后请求仍指向 **`VITE_API_BASE_URL`** 且成功。
 4. 再打开 **mtt 原站点**，确认 **不受影响**。
 
 ---
@@ -380,10 +378,10 @@ sudo systemctl reload nginx
 cd /opt/shuziyili/repo && git pull
 # API
 cd api && ./mvnw -DskipTests package && cp target/shuziyili-api.jar /opt/shuziyili/api/ && sudo systemctl restart shuziyili-api
-# Web（若改了 NEXT_PUBLIC_* 须先改 .env.production.local 再 build）
+# Web（若改了 NEXT_PUBLIC_* 须先改 /opt/shuziyili/web/.env.production.local 再 build）
 cd ../web && npm ci && npm run build && rsync -a --delete ./ /opt/shuziyili/web/ --exclude node_modules && cd /opt/shuziyili/web && npm ci --omit=dev && sudo systemctl restart shuziyili-web
-# Admin
-cd ../admin && npm ci && VITE_API_BASE_URL=https://api.shuziyili.com npm run build && rsync -a --delete dist/ /opt/shuziyili/admin/dist/
+# Admin（同域 API）
+cd ../admin && npm ci && VITE_API_BASE_URL=https://shuziyili.com VITE_SITE_BASE_URL=https://shuziyili.com npm run build && rsync -a --delete dist/ /opt/shuziyili/admin/dist/
 sudo systemctl reload nginx
 ```
 
