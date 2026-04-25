@@ -42,41 +42,55 @@
 ```bash
 cd /path/to/shuziyili   # 本机仓库根目录
 git status
-git add -A
+# 建议显式 add 业务目录，避免误提交 .vscode 等本机配置：
+git add README.md admin api deploy web
 git commit -m "你的说明"
 git push origin dev      # 或 main，按你们分支习惯
 ```
 
-2. **本机构建并 rsync 上传**（把 `user@SERVER` 换成 SSH 目标，例如 `ubuntu@1.2.3.4`）：
+2. **本机构建并 rsync 上传**
+
+`DEPLOY` **必须是纯 ASCII 的 SSH 目标**，形如 `ubuntu@203.0.113.10`（**不要**写成文档里的中文占位「你的用户@服务器…」，也不要保留字面量 `SERVER`，否则 rsync 会报 `hostname contains invalid characters`）。
 
 ```bash
-export DEPLOY=user@SERVER
+# 示例：把下面整行换成你真实能 ssh 登录的目标（用户名 + 公网 IP 或域名）
+export DEPLOY=ubuntu@203.0.113.10
 
-# Web
+# 若本机开了系统代理（Clash / Surge 等），SSH/rsync 常被误导向 127.0.0.1:7890 导致中断。
+# 可先在本终端临时取消代理再同步（发版完可再开回去）：
+unset ALL_PROXY HTTP_PROXY HTTPS_PROXY http_proxy https_proxy all_proxy
+
+# Web（须在仓库根下先 cd web，或下面一行从根目录写路径）
 cd web && npm ci && npm run build
 rsync -avz --delete \
   .next/ package.json package-lock.json next.config.ts public/ .env.production.local \
   "$DEPLOY:/opt/shuziyili/web/"
 
-# Admin
 cd ../admin && npm ci && npm run build
 rsync -avz --delete dist/ "$DEPLOY:/opt/shuziyili/admin/dist/"
 
-# API
 cd ../api && ./mvnw -DskipTests package
 rsync -avz target/shuziyili-api.jar "$DEPLOY:/opt/shuziyili/api/shuziyili-api.jar"
 ```
 
+**排错速查**
+
+| 现象 | 常见原因 |
+|------|----------|
+| `hostname contains invalid characters` | `DEPLOY` 里混了中文/空格/未替换的占位符；或 `SERVER` 未改成真实主机 |
+| `Connection closed by 127.0.0.1 port 7890` | 本机代理劫持了 SSH；按上文 `unset …` 后重试，或把终端设为「直连」 |
+| `ssh: Could not resolve hostname` | IP/域名写错，或本机 DNS/网络问题 |
+
 3. **SSH 上服务器只做安装与重启**（不执行 git）：
 
 ```bash
-ssh user@SERVER
+ssh "$DEPLOY"
 cd /opt/shuziyili/web && npm install --omit=dev && sudo systemctl restart shuziyili-web
 sudo systemctl restart shuziyili-api
 # Admin 静态若需修权限，见 §3.2
 ```
 
-说明：**改 `NEXT_PUBLIC_*` 或业务代码后，必须在本机 `npm run build` 后再 rsync**；服务器只保留运行目录与 jar，不必克隆仓库。
+说明：**改 `NEXT_PUBLIC_*` 或业务代码后，必须在本机 `npm run build` 后再 rsync**；服务器只保留运行目录与 jar，不必克隆仓库。文档里**不会**写你的真实公网 IP，请你在本机用实际 `用户@IP` 替换 `DEPLOY`。
 
 ### 3.1 Web（Next.js）
 
