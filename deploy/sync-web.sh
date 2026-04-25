@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+WEB_DIR="${REPO_ROOT}/web"
+
+TARGET="${DEPLOY:-}"
+SITE_URL="${SITE_URL:-https://shuziyili.com}"
+WEB_REMOTE_DIR="${WEB_REMOTE_DIR:-/opt/shuziyili/web}"
+WEB_SERVICE_NAME="${WEB_SERVICE_NAME:-shuziyili-web}"
+API_SERVICE_NAME="${API_SERVICE_NAME:-shuziyili-api}"
+
+usage() {
+  cat <<'EOF'
+用法：
+  DEPLOY=user@host ./deploy/sync-web.sh
+
+可选环境变量：
+  SITE_URL         验收域名（默认 https://shuziyili.com）
+  WEB_REMOTE_DIR   远端 web 目录（默认 /opt/shuziyili/web）
+  WEB_SERVICE_NAME 远端 web systemd 名称（默认 shuziyili-web）
+  API_SERVICE_NAME 远端 api systemd 名称（默认 shuziyili-api）
+EOF
+}
+
+log() {
+  printf '\n[%s] %s\n' "$(date '+%F %T')" "$*"
+}
+
+die() {
+  printf '\n[ERROR] %s\n' "$*" >&2
+  exit 1
+}
+
+require_cmd() {
+  command -v "$1" >/dev/null 2>&1 || die "缺少命令：$1"
+}
+
+validate_target() {
+  [[ -n "${TARGET}" ]] || die "请先设置 DEPLOY=user@host"
+  [[ "${TARGET}" =~ ^[A-Za-z0-9._-]+@[A-Za-z0-9._:-]+$ ]] || die "DEPLOY 格式非法：${TARGET}"
+}
+
+validate_web_env() {
+  local env_file="${WEB_DIR}/.env.production.local"
+  [[ -f "${env_file}" ]] || die "缺少文件：${env_file}"
+  [[ -s "${env_file}" ]] || die "${env_file} 为空，已终止"
+
+  rg -q '^NEXT_PUBLIC_SITE_URL=' "${env_file}" || die "缺少 NEXT_PUBLIC_SITE_URL"
+  rg -q '^NEXT_PUBLIC_API_BASE_URL=' "${env_file}" || die "缺少 NEXT_PUBLIC_API_BASE_URL"
+}
+
+build_web() {
+  log "检查并构建 web"
+  cd "${WEB_DIR}"
+  npm ci
+  npm run build
+  [[ -d ".next" ]] || die "构建后未生成 .next 目录"
+}
+
+sync_web_files() {
+  log "rsync 上传 web 产物"
+  cd "${WEB_DIR}"
+  rsync -avz --delete \
+    ".next" "package.json" "package-lock.json" "next.config.ts" "public" ".env.production.local" \
+    "${TARGET}:${WEB_REMOTE_DIR}/"
+}
+
+restart_remote_services() {
+  log "远端安装依赖并重启服务"
+  ssh "${TARGET}" "set -euo pipefail; \
+    cd '${WEB_REMOTE_DIR}'; \
+    npm install --omit=dev; \
+    sudo systemctl restart '${WEB_SERVICE_NAME}'; \
+    sudo systemctl is-active '${WEB_SERVICE_NAME}' '${API_SERVICE_NAME}' nginx >/dev/null"
+}
+
+verify_remote() {
+  log "远端健康检查"
+  ssh "${TARGET}" "set -euo pipefail; \
+    curl -fsS http://127.0.0.1:3000 >/dev/null; \
+    curl -fsS http://127.0.0.1:8081/api/v1/health >/dev/null; \
+    test -s '${WEB_REMOTE_DIR}/.env.production.local'"
+}
+
+verify_public() {
+  log "公网验收"
+  curl -fsS "${SITE_URL}/api/v1/health" >/dev/null
+  curl -fsS "${SITE_URL}/api/v1/travel/banners" >/dev/null
+}
+
+main() {
+  [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]] && {
+    usage
+    exit 0
+  }
+
+  require_cmd npm
+  require_cmd rsync
+  require_cmd ssh
+  require_cmd curl
+  require_cmd rg
+
+  validate_target
+
+  log "临时关闭代理环境变量"
+  unset ALL_PROXY HTTP_PROXY HTTPS_PROXY all_proxy http_proxy https_proxy
+
+  validate_web_env
+  build_web
+  sync_web_files
+  restart_remote_services
+  verify_remote
+  verify_public
+
+  log "web 部署完成：${SITE_URL}"
+}
+
+main "$@"

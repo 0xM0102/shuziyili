@@ -35,90 +35,35 @@
 
 ## 3. 本机发版（推荐：构建在本地，上传产物）
 
-### 3.0 日常闭环：本地 Git + 本机构建 + rsync（**服务器不走 git**）
+### 3.0 Web 一键发版（推荐）
 
-1. **本机先入库（GitHub 等）**——与发版解耦，服务器无需 `git pull`：
-
-```bash
-cd /path/to/shuziyili   # 本机仓库根目录
-git status
-# 建议显式 add 业务目录，避免误提交 .vscode 等本机配置：
-git add README.md admin api deploy web
-git commit -m "你的说明"
-git push origin dev      # 或 main，按你们分支习惯
-```
-
-2. **本机构建并 rsync 上传**
-
-`DEPLOY` **必须是纯 ASCII 的 SSH 目标**，形如 `ubuntu@203.0.113.10`（**不要**写成文档里的中文占位「你的用户@服务器…」，也不要保留字面量 `SERVER`，否则 rsync 会报 `hostname contains invalid characters`）。
+仓库已提供脚本：[`deploy/sync-web.sh`](./sync-web.sh)。
 
 ```bash
-# 示例：把下面整行换成你真实能 ssh 登录的目标（用户名 + 公网 IP 或域名）
-export DEPLOY=ubuntu@203.0.113.10
-
-# 若本机开了系统代理（Clash / Surge 等），SSH/rsync 常被误导向 127.0.0.1:7890 导致中断。
-# 可先在本终端临时取消代理再同步（发版完可再开回去）：
-unset ALL_PROXY HTTP_PROXY HTTPS_PROXY http_proxy https_proxy all_proxy
-
-# Web（须在仓库根下先 cd web，或下面一行从根目录写路径）
-cd web && npm ci && npm run build
-rsync -avz --delete \
-  .next/ package.json package-lock.json next.config.ts public/ .env.production.local \
-  "$DEPLOY:/opt/shuziyili/web/"
-
-cd ../admin && npm ci && npm run build
-rsync -avz --delete dist/ "$DEPLOY:/opt/shuziyili/admin/dist/"
-
-cd ../api && ./mvnw -DskipTests package
-rsync -avz target/shuziyili-api.jar "$DEPLOY:/opt/shuziyili/api/shuziyili-api.jar"
+cd /path/to/shuziyili
+chmod +x deploy/sync-web.sh
+DEPLOY=ubuntu@203.0.113.10 ./deploy/sync-web.sh
 ```
 
-**排错速查**
+脚本内置以下保护：
 
-| 现象 | 常见原因 |
-|------|----------|
-| `hostname contains invalid characters` | `DEPLOY` 里混了中文/空格/未替换的占位符；或 `SERVER` 未改成真实主机 |
-| `Connection closed by 127.0.0.1 port 7890` | 本机代理劫持了 SSH；按上文 `unset …` 后重试，或把终端设为「直连」 |
-| `ssh: Could not resolve hostname` | IP/域名写错，或本机 DNS/网络问题 |
+- 自动 `unset ALL_PROXY/HTTP_PROXY/HTTPS_PROXY`，避免被本地代理劫持；
+- 强校验 `web/.env.production.local` 非空，且必须包含 `NEXT_PUBLIC_SITE_URL`、`NEXT_PUBLIC_API_BASE_URL`；
+- 固定执行 `npm ci && npm run build`；
+- 固定用正确 rsync 形态上传（`.next` 不用尾斜杠）；
+- 远端自动 `npm install --omit=dev` + `systemctl restart shuziyili-web`；
+- 自动执行远端与公网健康检查，任一步失败立即退出。
 
-3. **SSH 上服务器只做安装与重启**（不执行 git）：
+### 3.1 常见错误与处理
 
-```bash
-ssh "$DEPLOY"
-cd /opt/shuziyili/web && npm install --omit=dev && sudo systemctl restart shuziyili-web
-sudo systemctl restart shuziyili-api
-# Admin 静态若需修权限，见 §3.2
-```
+| 现象 | 常见原因 / 处理 |
+|------|------------------|
+| `hostname contains invalid characters` | `DEPLOY` 不是纯 ASCII 的 `user@host`（含中文、空格、未替换占位符） |
+| `Connection closed by 127.0.0.1 port 7890` | 本地代理劫持 SSH；使用脚本（已自动 `unset`）或手动取消代理 |
+| 发布后页面无数据 | `web/.env.production.local` 为空或内容错误；脚本会在构建前拦截 |
+| `502 Bad Gateway` | `shuziyili-web` 未成功启动；先看 `systemctl status shuziyili-web` 和端口 `127.0.0.1:3000` |
 
-说明：**改 `NEXT_PUBLIC_*` 或业务代码后，必须在本机 `npm run build` 后再 rsync**；服务器只保留运行目录与 jar，不必克隆仓库。文档里**不会**写你的真实公网 IP，请你在本机用实际 `用户@IP` 替换 `DEPLOY`。
-
-### 3.1 Web（Next.js）
-
-```bash
-cd web
-npm ci
-npm run build
-```
-
-上传到服务器 **`/opt/shuziyili/web/`**（示例，请改 IP/用户）：
-
-```bash
-rsync -avz --delete \
-  .next/ package.json package-lock.json next.config.ts public/ .env.production.local \
-  user@SERVER:/opt/shuziyili/web/
-```
-
-服务器：
-
-```bash
-cd /opt/shuziyili/web
-npm install --omit=dev
-sudo systemctl restart shuziyili-web
-```
-
-修改 **`NEXT_PUBLIC_*` 后必须重新 `npm run build`** 再上传。
-
-### 3.2 Admin（Vue 静态）
+### 3.2 Admin 发版（静态）
 
 ```bash
 cd admin
@@ -127,31 +72,26 @@ npm run build
 rsync -avz --delete dist/ user@SERVER:/opt/shuziyili/admin/dist/
 ```
 
-服务器（权限与 Nginx）：
+必要时修权限并重载 Nginx：
 
 ```bash
+ssh user@SERVER
 sudo chown -R root:root /opt/shuziyili/admin
 sudo find /opt/shuziyili/admin -type d -exec chmod 755 {} \;
 sudo find /opt/shuziyili/admin -type f -exec chmod 644 {} \;
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-### 3.3 API（Spring Boot）
+### 3.3 API 发版（jar）
 
 ```bash
 cd api
 ./mvnw -DskipTests package
-scp target/shuziyili-api.jar user@SERVER:/opt/shuziyili/api/
+rsync -avz target/shuziyili-api.jar user@SERVER:/opt/shuziyili/api/shuziyili-api.jar
+ssh user@SERVER "sudo systemctl restart shuziyili-api && curl -fsS http://127.0.0.1:8081/api/v1/health"
 ```
 
-服务器：
-
-```bash
-sudo systemctl restart shuziyili-api
-curl -sS http://127.0.0.1:8081/api/v1/health
-```
-
-端口以 `api.env` / `SERVER_PORT` 为准，Nginx `proxy_pass` 须一致。
+端口以 `api.env` / `SERVER_PORT` 为准，Nginx `proxy_pass` 必须一致。
 
 ---
 

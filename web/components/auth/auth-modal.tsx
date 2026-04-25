@@ -274,6 +274,17 @@ export function AuthModal({
     []
   );
 
+  useEffect(() => {
+    const active = document.activeElement;
+    if (!(active instanceof HTMLElement)) return;
+    if (!needsOtp && active.id === "auth-otp") {
+      active.blur();
+    }
+    if (!needsPassword && active.id === "auth-password") {
+      active.blur();
+    }
+  }, [needsOtp, needsPassword]);
+
   if (!open) return null;
 
   const headline = isLogin
@@ -464,7 +475,7 @@ export function AuthModal({
                     ? "mb-4 max-h-24 opacity-100"
                     : "pointer-events-none mb-0 max-h-0 border-transparent p-0 opacity-0"
                 }`}
-                aria-hidden={!isLogin}
+                inert={!isLogin}
               >
                 <button
                   type="button"
@@ -507,7 +518,7 @@ export function AuthModal({
                       ? "max-h-32 opacity-100"
                       : "pointer-events-none max-h-0 opacity-0"
                   }`}
-                  aria-hidden={!needsOtp}
+                  inert={!needsOtp}
                 >
                   <div className="flex gap-2">
                     <FloatingField
@@ -550,7 +561,7 @@ export function AuthModal({
                       ? "max-h-28 opacity-100"
                       : "pointer-events-none max-h-0 opacity-0"
                   }`}
-                  aria-hidden={!needsPassword}
+                  inert={!needsPassword}
                 >
                   <FloatingField
                     id="auth-password"

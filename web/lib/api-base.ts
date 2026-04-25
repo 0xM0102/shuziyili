@@ -4,7 +4,11 @@
  */
 export function getPublicApiV1Base(): string {
   const raw = process.env.NEXT_PUBLIC_API_BASE_URL?.trim().replace(/\/$/, "") ?? "";
-  if (!raw) return "http://localhost:8080/api/v1";
+  if (!raw) {
+    // Browser 端默认走同源反代，避免生产环境误落到 localhost。
+    if (typeof window !== "undefined") return "/api/v1";
+    return "http://localhost:8080/api/v1";
+  }
   if (raw.endsWith("/api/v1")) return raw;
   return `${raw}/api/v1`;
 }

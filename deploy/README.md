@@ -175,7 +175,7 @@ EXIT;
 
 ```bash
 cd /opt/shuziyili/repo
-git clone https://github.com/你的账号/shuziyili.git .
+git clone https://github.com/0xM0102/shuziyili.git .
 # 或你实际使用的仓库地址；若在其它分支如 dev：git checkout dev
 ```
 
@@ -265,20 +265,8 @@ NEXT_PUBLIC_SITE_URL=https://shuziyili.com
 NEXT_PUBLIC_API_BASE_URL=https://shuziyili.com
 ```
 
-**构建方式二选一：**
-
-**A. 在服务器构建（源码可在 `repo/web` 临时目录，产物进运行目录）**
-
-```bash
-cd /opt/shuziyili/repo/web
-npm ci
-npm run build
-rsync -a --delete ./ /opt/shuziyili/web/ --exclude node_modules
-cd /opt/shuziyili/web
-npm ci --omit=dev
-```
-
-**B. 在本机构建后 rsync 到 `/opt/shuziyili/web/`**（推荐机器内存较小时），见 [`deploy/RUNBOOK.md`](./RUNBOOK.md) §3。
+推荐：**在本机构建后 rsync 到 `/opt/shuziyili/web/`**（服务器只保留运行目录，不依赖 git）。  
+日常发布请直接使用 [`deploy/sync-web.sh`](./sync-web.sh)，详见 [`deploy/RUNBOOK.md`](./RUNBOOK.md) §3。
 
 **注意**：`NEXT_PUBLIC_*` 在 **`npm run build` 时** 会打进产物；若改动了这两个变量，需要 **重新 `npm run build`** 再部署。
 
@@ -372,17 +360,24 @@ sudo systemctl reload nginx
 
 ---
 
-## 以后更新版本
+## 以后更新版本（推荐流程）
+
+优先采用“本地构建 + 上传产物”：
 
 ```bash
-cd /opt/shuziyili/repo && git pull
-# API
-cd api && ./mvnw -DskipTests package && cp target/shuziyili-api.jar /opt/shuziyili/api/ && sudo systemctl restart shuziyili-api
-# Web（若改了 NEXT_PUBLIC_* 须先改 /opt/shuziyili/web/.env.production.local 再 build）
-cd ../web && npm ci && npm run build && rsync -a --delete ./ /opt/shuziyili/web/ --exclude node_modules && cd /opt/shuziyili/web && npm ci --omit=dev && sudo systemctl restart shuziyili-web
-# Admin（同域 API）
-cd ../admin && npm ci && VITE_API_BASE_URL=https://shuziyili.com VITE_SITE_BASE_URL=https://shuziyili.com npm run build && rsync -a --delete dist/ /opt/shuziyili/admin/dist/
-sudo systemctl reload nginx
+# Web（一键脚本）
+cd /path/to/shuziyili
+DEPLOY=user@SERVER ./deploy/sync-web.sh
+
+# API（改后端时）
+cd api && ./mvnw -DskipTests package
+rsync -avz target/shuziyili-api.jar user@SERVER:/opt/shuziyili/api/shuziyili-api.jar
+ssh user@SERVER "sudo systemctl restart shuziyili-api"
+
+# Admin（改后台时）
+cd ../admin && npm ci && npm run build
+rsync -avz --delete dist/ user@SERVER:/opt/shuziyili/admin/dist/
+ssh user@SERVER "sudo nginx -t && sudo systemctl reload nginx"
 ```
 
 ---
