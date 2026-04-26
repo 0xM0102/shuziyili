@@ -15,5 +15,4 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## 生产门户发版（约定）
 
-默认流程：**本机** `./deploy/sync-web.sh` → 生成 `deploy/shuziyili-web-dist-*.tgz` → **用户上传到服务器**后按 `deploy/RUNBOOK.md` §3.0 解压与 `systemctl restart`。  
-可选 **`./deploy/sync-web.sh --push`**（免密 SSH + rsync），依赖 `deploy/ssh-target.env` 中的 `DEPLOY`，非默认。
+**Git 不参与默认发版。** 本机 `./deploy/sync-web.sh` → `deploy/shuziyili-web-dist-*.tgz` → 用户上传后按 **`deploy/RUNBOOK.md` §8.1** 解压与 `systemctl restart`。可选 `./deploy/sync-web.sh --push`（需 `ssh-target.env`）。

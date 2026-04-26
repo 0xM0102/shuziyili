@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
-# 门户发版：默认「本机构建 + 打 tgz」，上传由你在腾讯云控制台 / OrcaTerm 完成。
-# 可选「--push」：免密 SSH + rsync + 远端重启（需 deploy/ssh-target.env 或 deploy.local.env）。
+# 门户发版：默认本机构建并打 tgz，上传由你在控制台完成；与 Git 无关。
+# 可选 --push：免密 SSH + rsync（需 deploy/ssh-target.env 或 deploy.local.env）。
 set -euo pipefail
 
 SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
-REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
-WEB_DIR="${REPO_ROOT}/web"
+WEB_DIR="$(cd -- "${SCRIPT_DIR}/.." && pwd)/web"
+
+# 打包与 rsync 上传的文件集合须保持一致
+WEB_ARTIFACTS=(.next package.json package-lock.json next.config.ts public .env.production.local)
 
 SITE_URL="${SITE_URL:-https://shuziyili.com}"
 WEB_REMOTE_DIR="${WEB_REMOTE_DIR:-/opt/shuziyili/web}"
@@ -18,20 +20,16 @@ TARGET=""
 
 usage() {
   cat <<'EOF'
-门户 Web 发版脚本（deploy/sync-web.sh）
+门户 Web：deploy/sync-web.sh
 
-  ./deploy/sync-web.sh              默认：本机 npm ci + build，生成 deploy/shuziyili-web-dist-*.tgz，自行上传服务器
-  ./deploy/sync-web.sh --pack-only  同上（显式别名）
-  ./deploy/sync-web.sh --push       可选：免密 SSH + rsync 到服务器并重启（需 deploy/ssh-target.env 等）
+  ./deploy/sync-web.sh              本机 npm ci + build → deploy/shuziyili-web-dist-*.tgz
+  ./deploy/sync-web.sh --pack-only  同上
+  ./deploy/sync-web.sh --push       免密 SSH + rsync + 远端重启（需 ssh-target.env 等）
 
-环境变量（仅 --push 会用到 DEPLOY；默认打包模式不需要）：
-  DEPLOY=user@host           覆盖 ssh 目标（优先于 deploy/deploy.local.env、deploy/ssh-target.env）
-  SITE_URL                   公网验收域名（默认 https://shuziyili.com）
-  WEB_REMOTE_DIR             远端 web 目录（默认 /opt/shuziyili/web）
-  WEB_SERVICE_NAME / API_SERVICE_NAME / WEB_LOCAL_PORT / API_LOCAL_PORT  见脚本内默认值
+仅 --push 读取：DEPLOY、deploy/deploy.local.env、deploy/ssh-target.env。
   SYNC_WEB_SKIP_SSH_CHECK=1  --push 时跳过免密 SSH 预检（不推荐）
 
-服务器解压与重启步骤见 deploy/RUNBOOK.md §3「门户 Web」。
+完整命令见 deploy/RUNBOOK.md §8。
 EOF
 }
 
@@ -46,6 +44,11 @@ die() {
 
 require_cmd() {
   command -v "$1" >/dev/null 2>&1 || die "缺少命令：$1"
+}
+
+unset_common_proxy() {
+  log "临时关闭代理环境变量"
+  unset ALL_PROXY HTTP_PROXY HTTPS_PROXY all_proxy http_proxy https_proxy
 }
 
 load_push_target() {
@@ -68,7 +71,7 @@ load_push_target() {
 }
 
 validate_target() {
-  [[ -n "${TARGET}" ]] || die "未得到 SSH 目标：请设置 DEPLOY=user@host，或配置 deploy/ssh-target.env / deploy/deploy.local.env（仅 --push 需要）"
+  [[ -n "${TARGET}" ]] || die "未得到 SSH 目标（仅 --push）：配置 DEPLOY 或 deploy/ssh-target.env / deploy.local.env"
   [[ "${TARGET}" =~ ^[A-Za-z0-9._-]+@[A-Za-z0-9._:-]+$ ]] || die "DEPLOY 格式非法：${TARGET}"
 }
 
@@ -81,21 +84,25 @@ precheck_ssh() {
   if ssh -o BatchMode=yes -o ConnectTimeout=12 -o StrictHostKeyChecking=accept-new "${TARGET}" "echo ok" >/dev/null 2>&1; then
     return 0
   fi
-  die "无法免密 SSH 到 ${TARGET}。请改用默认方式：./deploy/sync-web.sh（只打 tgz，再控制台上传），见 deploy/RUNBOOK.md。
-若坚持使用 --push：配置 ssh-copy-id 或改 deploy/ssh-target.env 中的用户；或 SYNC_WEB_SKIP_SSH_CHECK=1（rsync 会交互要密码）。"
+  die "无法免密 SSH 到 ${TARGET}。请使用默认：./deploy/sync-web.sh（打 tgz 后按 RUNBOOK §8 上传）。
+或配置 ssh-copy-id 后再 --push；或 SYNC_WEB_SKIP_SSH_CHECK=1（rsync 会交互要密码）。"
+}
+
+env_file_value() {
+  sed -n "s/^$2=//p" "$1" | tail -n 1 | tr -d '[:space:]'
 }
 
 validate_web_env() {
   local env_file="${WEB_DIR}/.env.production.local"
+  local site_url api_base_url
   [[ -f "${env_file}" ]] || die "缺少文件：${env_file}"
   [[ -s "${env_file}" ]] || die "${env_file} 为空，已终止"
 
   grep -qE '^NEXT_PUBLIC_SITE_URL=' "${env_file}" || die "缺少 NEXT_PUBLIC_SITE_URL"
   grep -qE '^NEXT_PUBLIC_API_BASE_URL=' "${env_file}" || die "缺少 NEXT_PUBLIC_API_BASE_URL"
 
-  local site_url api_base_url
-  site_url="$(sed -n 's/^NEXT_PUBLIC_SITE_URL=//p' "${env_file}" | tail -n 1 | tr -d '[:space:]')"
-  api_base_url="$(sed -n 's/^NEXT_PUBLIC_API_BASE_URL=//p' "${env_file}" | tail -n 1 | tr -d '[:space:]')"
+  site_url="$(env_file_value "${env_file}" NEXT_PUBLIC_SITE_URL)"
+  api_base_url="$(env_file_value "${env_file}" NEXT_PUBLIC_API_BASE_URL)"
 
   [[ -n "${site_url}" ]] || die "NEXT_PUBLIC_SITE_URL 不能为空"
   [[ -n "${api_base_url}" ]] || die "NEXT_PUBLIC_API_BASE_URL 不能为空"
@@ -113,17 +120,14 @@ pack_web_dist() {
   local out="${SCRIPT_DIR}/shuziyili-web-dist-$(date +%Y%m%d-%H%M%S).tgz"
   log "打包 web 产物：${out}"
   cd "${WEB_DIR}"
-  tar czf "${out}" \
-    .next package.json package-lock.json next.config.ts public .env.production.local
-  printf '\n已生成发版包。请将 tgz 上传到服务器后，按 deploy/RUNBOOK.md §3「门户 Web」解压到 %s 并执行 npm install 与 systemctl restart。\n' "${WEB_REMOTE_DIR}"
+  tar czf "${out}" "${WEB_ARTIFACTS[@]}"
+  printf '\n发版包已生成。上传与服务器命令见 deploy/RUNBOOK.md §8.1（解压目录：%s）。\n' "${WEB_REMOTE_DIR}"
 }
 
 sync_web_files() {
   log "rsync 上传 web 产物"
   cd "${WEB_DIR}"
-  rsync -avz --delete \
-    ".next" "package.json" "package-lock.json" "next.config.ts" "public" ".env.production.local" \
-    "${TARGET}:${WEB_REMOTE_DIR}/"
+  rsync -avz --delete "${WEB_ARTIFACTS[@]}" "${TARGET}:${WEB_REMOTE_DIR}/"
 }
 
 restart_remote_services() {
@@ -154,13 +158,11 @@ main_pack() {
   require_cmd grep
   require_cmd tar
 
-  log "临时关闭代理环境变量"
-  unset ALL_PROXY HTTP_PROXY HTTPS_PROXY all_proxy http_proxy https_proxy
-
+  unset_common_proxy
   validate_web_env
   build_web
   pack_web_dist
-  log "本机构建 + 打包完成（默认发版方式）。"
+  log "本机构建 + 打包完成。"
 }
 
 main_push() {
@@ -173,9 +175,7 @@ main_push() {
 
   validate_target
   precheck_ssh
-
-  log "临时关闭代理环境变量"
-  unset ALL_PROXY HTTP_PROXY HTTPS_PROXY all_proxy http_proxy https_proxy
+  unset_common_proxy
 
   validate_web_env
   build_web

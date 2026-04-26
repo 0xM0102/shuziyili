@@ -171,12 +171,15 @@ EXIT;
 
 ---
 
-## 步骤 7：拉取代码
+## 步骤 7：在服务器上拉取源码（可选，与发版解耦）
+
+仅当你希望在机器上保留一份 **Git 工作副本**（查配置、对照脚本）时使用；**门户上线不依赖**此目录的 `git pull`，发版见 RUNBOOK **§8**。
 
 ```bash
+sudo mkdir -p /opt/shuziyili/repo
 cd /opt/shuziyili/repo
 git clone https://github.com/0xM0102/shuziyili.git .
-# 或你实际使用的仓库地址；若在其它分支如 dev：git checkout dev
+# 或你的仓库地址；分支按需：git checkout dev
 ```
 
 ---
@@ -265,7 +268,7 @@ NEXT_PUBLIC_SITE_URL=https://shuziyili.com
 NEXT_PUBLIC_API_BASE_URL=https://shuziyili.com
 ```
 
-推荐：**本机构建后**用 [`deploy/sync-web.sh`](./sync-web.sh) 打 tgz，**上传到** `/opt/shuziyili/web/`（服务器只保留运行目录）。详见 [`deploy/RUNBOOK.md`](./RUNBOOK.md) §3.0。
+推荐：**本机构建后**用 [`deploy/sync-web.sh`](./sync-web.sh) 打 tgz，**上传到** `/opt/shuziyili/web/`。命令见 [`deploy/RUNBOOK.md`](./RUNBOOK.md) **§8.1**。
 
 **注意**：`NEXT_PUBLIC_*` 在 **`npm run build` 时** 会打进产物；若改动了这两个变量，需要 **重新 `npm run build`** 再部署。
 
@@ -361,10 +364,10 @@ sudo systemctl reload nginx
 
 ## 以后更新版本（推荐流程）
 
-优先采用「本机构建 + 上传产物」（控制台 / OrcaTerm 传文件；细节见 **RUNBOOK §3**）：
+优先采用「本机构建 + 上传产物」（控制台 / OrcaTerm 传文件；命令见 **RUNBOOK §8**）：
 
 ```bash
-# Web：本机打 tgz → 上传到服务器 /tmp/ 等 → 按 RUNBOOK §3.0 解压到 /opt/shuziyili/web 并 restart
+# Web：本机打 tgz → 上传 → 按 RUNBOOK §8.1 在服务器解压并 restart
 cd /path/to/shuziyili
 ./deploy/sync-web.sh
 
