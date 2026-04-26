@@ -365,19 +365,19 @@ sudo systemctl reload nginx
 优先采用“本地构建 + 上传产物”：
 
 ```bash
-# Web（一键脚本）
+# Web（一键脚本；默认 SSH 见 deploy/ssh-target.env，当前 ubuntu@45.40.243.131）
 cd /path/to/shuziyili
-DEPLOY=user@SERVER ./deploy/sync-web.sh
+./deploy/sync-web.sh
 
 # API（改后端时）
 cd api && ./mvnw -DskipTests package
-rsync -avz target/shuziyili-api.jar user@SERVER:/opt/shuziyili/api/shuziyili-api.jar
-ssh user@SERVER "sudo systemctl restart shuziyili-api"
+rsync -avz target/shuziyili-api.jar ubuntu@45.40.243.131:/opt/shuziyili/api/shuziyili-api.jar
+ssh ubuntu@45.40.243.131 "sudo systemctl restart shuziyili-api"
 
 # Admin（改后台时）
 cd ../admin && npm ci && npm run build
-rsync -avz --delete dist/ user@SERVER:/opt/shuziyili/admin/dist/
-ssh user@SERVER "sudo nginx -t && sudo systemctl reload nginx"
+rsync -avz --delete dist/ ubuntu@45.40.243.131:/opt/shuziyili/admin/dist/
+ssh ubuntu@45.40.243.131 "sudo nginx -t && sudo systemctl reload nginx"
 ```
 
 ---

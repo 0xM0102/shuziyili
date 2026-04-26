@@ -31,6 +31,9 @@ api/scripts/run-dev-with-cos.sh
 # 根目录本地一键启动脚本（可含 export 密钥）
 scripts/dev.sh
 
+# 发版 SSH 等本机覆盖（默认见 deploy/ssh-target.env）
+deploy/deploy.local.env
+
 # 日志与调试
 npm-debug.log*
 *.pem

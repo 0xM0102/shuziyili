@@ -42,8 +42,10 @@
 ```bash
 cd /path/to/shuziyili
 chmod +x deploy/sync-web.sh
-DEPLOY=ubuntu@203.0.113.10 ./deploy/sync-web.sh
+./deploy/sync-web.sh
 ```
+
+默认 SSH 目标见仓库内 [`deploy/ssh-target.env`](./ssh-target.env)（当前约定 `ubuntu@45.40.243.131`）。本机若要覆盖，可复制 [`deploy/deploy.local.env.example`](./deploy.local.env.example) 为 `deploy/deploy.local.env`（已 gitignore）。临时一次发版仍可用 `DEPLOY=user@host ./deploy/sync-web.sh`。
 
 脚本内置以下保护：
 
@@ -69,13 +71,13 @@ DEPLOY=ubuntu@203.0.113.10 ./deploy/sync-web.sh
 cd admin
 npm ci
 npm run build
-rsync -avz --delete dist/ user@SERVER:/opt/shuziyili/admin/dist/
+rsync -avz --delete dist/ ubuntu@45.40.243.131:/opt/shuziyili/admin/dist/
 ```
 
 必要时修权限并重载 Nginx：
 
 ```bash
-ssh user@SERVER
+ssh ubuntu@45.40.243.131
 sudo chown -R root:root /opt/shuziyili/admin
 sudo find /opt/shuziyili/admin -type d -exec chmod 755 {} \;
 sudo find /opt/shuziyili/admin -type f -exec chmod 644 {} \;
@@ -87,8 +89,8 @@ sudo nginx -t && sudo systemctl reload nginx
 ```bash
 cd api
 ./mvnw -DskipTests package
-rsync -avz target/shuziyili-api.jar user@SERVER:/opt/shuziyili/api/shuziyili-api.jar
-ssh user@SERVER "sudo systemctl restart shuziyili-api && curl -fsS http://127.0.0.1:8081/api/v1/health"
+rsync -avz target/shuziyili-api.jar ubuntu@45.40.243.131:/opt/shuziyili/api/shuziyili-api.jar
+ssh ubuntu@45.40.243.131 "sudo systemctl restart shuziyili-api && curl -fsS http://127.0.0.1:8081/api/v1/health"
 ```
 
 端口以 `api.env` / `SERVER_PORT` 为准，Nginx `proxy_pass` 必须一致。

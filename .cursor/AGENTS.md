@@ -12,3 +12,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 - 改 `web/`、`admin/`：若已有 dev 进程在跑，应结束旧进程再启动新的，避免用户手动处理。
 
 若无法确定当前是否在跑、或端口冲突，可先查看 `terminals` 元数据再决定。
+
+## 生产发版 SSH（约定）
+
+门户一键脚本 `deploy/sync-web.sh` 在未设置 `DEPLOY` 时会读取 `deploy/ssh-target.env`（当前为 **`ubuntu@45.40.243.131`**）。若实机登录用户不同，应修改该文件或在本机使用已 gitignore 的 `deploy/deploy.local.env` 覆盖。

@@ -5,6 +5,23 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
 WEB_DIR="${REPO_ROOT}/web"
 
+# 默认 SSH 见 deploy/ssh-target.env；可选 deploy/deploy.local.env 覆盖；命令行 DEPLOY= 仍优先。
+CLI_DEPLOY="${DEPLOY:-}"
+if [[ -f "${SCRIPT_DIR}/deploy.local.env" ]]; then
+  set -a
+  # shellcheck disable=1090
+  source "${SCRIPT_DIR}/deploy.local.env"
+  set +a
+elif [[ -f "${SCRIPT_DIR}/ssh-target.env" ]]; then
+  set -a
+  # shellcheck disable=1090
+  source "${SCRIPT_DIR}/ssh-target.env"
+  set +a
+fi
+if [[ -n "${CLI_DEPLOY}" ]]; then
+  DEPLOY="${CLI_DEPLOY}"
+fi
+
 TARGET="${DEPLOY:-}"
 SITE_URL="${SITE_URL:-https://shuziyili.com}"
 WEB_REMOTE_DIR="${WEB_REMOTE_DIR:-/opt/shuziyili/web}"
@@ -16,7 +33,8 @@ API_LOCAL_PORT="${API_LOCAL_PORT:-8081}"
 usage() {
   cat <<'EOF'
 用法：
-  DEPLOY=user@host ./deploy/sync-web.sh
+  ./deploy/sync-web.sh
+  DEPLOY=user@host ./deploy/sync-web.sh   # 临时覆盖默认目标（见 deploy/ssh-target.env）
 
 可选环境变量：
   SITE_URL         验收域名（默认 https://shuziyili.com）
