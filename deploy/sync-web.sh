@@ -34,7 +34,8 @@ usage() {
   cat <<'EOF'
 用法：
   ./deploy/sync-web.sh
-  DEPLOY=user@host ./deploy/sync-web.sh   # 临时覆盖默认目标（见 deploy/ssh-target.env）
+  ./deploy/sync-web.sh --pack-only      # 仅本机构建并打 tgz，不上传（适合控制台 / 网页传文件）
+  DEPLOY=user@host ./deploy/sync-web.sh # 临时覆盖默认目标（见 deploy/ssh-target.env）
 
 可选环境变量：
   SITE_URL                   验收域名（默认 https://shuziyili.com）
@@ -76,9 +77,10 @@ precheck_ssh() {
   if ssh -o BatchMode=yes -o ConnectTimeout=12 -o StrictHostKeyChecking=accept-new "${TARGET}" "echo ok" >/dev/null 2>&1; then
     return 0
   fi
-  die "无法免密 SSH 到 ${TARGET}。请在本机执行一次：ssh-copy-id ${TARGET}
-若登录用户不是 ubuntu，先改 deploy/ssh-target.env（或 deploy/deploy.local.env）里的 DEPLOY=。
-若服务器仅允许密码、暂不能配公钥，可：SYNC_WEB_SKIP_SSH_CHECK=1 ./deploy/sync-web.sh（rsync 仍会提示输密码）。"
+  die "无法免密 SSH 到 ${TARGET}。可选：
+  1) 本机：ssh-copy-id ${TARGET}（密码一直失败多半是用户名不对，腾讯云常见为 root 或其它账号，请与控制台「登录名」一致后再改 deploy/ssh-target.env）
+  2) 不配 SSH：./deploy/sync-web.sh --pack-only 生成 tgz，用 OrcaTerm/控制台「上传文件」传到服务器后按 RUNBOOK「控制台发版」解压
+  3) 临时：SYNC_WEB_SKIP_SSH_CHECK=1 ./deploy/sync-web.sh（rsync 仍会交互要密码）"
 }
 
 validate_web_env() {
@@ -104,6 +106,15 @@ build_web() {
   npm ci
   npm run build
   [[ -d ".next" ]] || die "构建后未生成 .next 目录"
+}
+
+pack_web_dist() {
+  local out="${SCRIPT_DIR}/shuziyili-web-dist-$(date +%Y%m%d-%H%M%S).tgz"
+  log "打包 web 产物（供控制台 / SFTP 上传）：${out}"
+  cd "${WEB_DIR}"
+  tar czf "${out}" \
+    .next package.json package-lock.json next.config.ts public .env.production.local
+  printf '\n下一步：把该 tgz 传到服务器后，按 deploy/RUNBOOK.md「控制台发版」解压到 %s 并重启服务。\n' "${WEB_REMOTE_DIR}"
 }
 
 sync_web_files() {
@@ -137,12 +148,21 @@ verify_public() {
   curl -fsS "${SITE_URL}/api/v1/travel/banners" >/dev/null
 }
 
-main() {
-  [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]] && {
-    usage
-    exit 0
-  }
+main_pack_only() {
+  require_cmd npm
+  require_cmd grep
+  require_cmd tar
 
+  log "临时关闭代理环境变量"
+  unset ALL_PROXY HTTP_PROXY HTTPS_PROXY all_proxy http_proxy https_proxy
+
+  validate_web_env
+  build_web
+  pack_web_dist
+  log "pack-only 结束（未使用 SSH/rsync）。"
+}
+
+main_full_sync() {
   require_cmd npm
   require_cmd rsync
   require_cmd ssh
@@ -163,6 +183,20 @@ main() {
   verify_public
 
   log "web 部署完成：${SITE_URL}"
+}
+
+main() {
+  [[ "${1:-}" == "-h" || "${1:-}" == "--help" ]] && {
+    usage
+    exit 0
+  }
+
+  if [[ "${1:-}" == "--pack-only" ]]; then
+    main_pack_only
+    return 0
+  fi
+
+  main_full_sync
 }
 
 main "$@"

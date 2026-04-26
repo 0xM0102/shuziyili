@@ -59,6 +59,28 @@ ssh-copy-id ubuntu@45.40.243.131
 
 成功后应能 **`ssh ubuntu@45.40.243.131`** 直接进入、不再要密码。若服务器禁用了密码、只能由运维手工写入公钥，请把你的 **`~/.ssh/id_ed25519.pub`** 或 **`id_rsa.pub`** 内容追加到服务器 **`~/.ssh/authorized_keys`**（注意权限 `chmod 600 ~/.ssh/authorized_keys`）。
 
+**`ssh-copy-id` 一直提示密码错误**：多半是 **SSH 用户名与腾讯云控制台不一致**（例如机器实际是 **`root`** 登录，而仓库写的是 `ubuntu`）。请在控制台确认「登录名」，并修改 [`deploy/ssh-target.env`](./ssh-target.env) 的 `DEPLOY=` 后再执行 `ssh-copy-id`。若服务器 **`PasswordAuthentication no`**，则无法靠密码装公钥，只能在已能登录的渠道里手工写入 `authorized_keys`。
+
+#### 不用 SSH/rsync：本机打包 + 控制台上传（与「HTTPS 传文件」同类）
+
+若你习惯用 **腾讯云 OrcaTerm 上传文件**、或没有可用的 SSH 密码：
+
+```bash
+cd /path/to/shuziyili
+./deploy/sync-web.sh --pack-only
+```
+
+会在本机生成 **`deploy/shuziyili-web-dist-时间戳.tgz`**（已 `.gitignore`）。把该文件通过控制台上传到服务器（如 `/tmp/`），再在 **OrcaTerm / SSH 已能登录的会话里**执行：
+
+```bash
+sudo mkdir -p /opt/shuziyili/web
+sudo tar xzf /tmp/shuziyili-web-dist-XXXXXXXX.tgz -C /opt/shuziyili/web
+cd /opt/shuziyili/web && sudo npm install --omit=dev
+sudo systemctl restart shuziyili-web
+```
+
+将 `/tmp/` 与文件名换成你实际上传的路径。`git clone https://...` 只解决**拿代码**，不会替代把 **`.next` 构建产物** 放到服务器；上述 tgz 才是与 `rsync` 等价的产物投递方式。
+
 脚本内置以下保护：
 
 - 自动 `unset ALL_PROXY/HTTP_PROXY/HTTPS_PROXY`，避免被本地代理劫持；
@@ -76,7 +98,8 @@ ssh-copy-id ubuntu@45.40.243.131
 | `Connection closed by 127.0.0.1 port 7890` | 本地代理劫持 SSH；使用脚本（已自动 `unset`）或手动取消代理 |
 | 发布后页面无数据 | `web/.env.production.local` 为空或内容错误；脚本会在构建前拦截 |
 | `502 Bad Gateway` | `shuziyili-web` 未成功启动；先看 `systemctl status shuziyili-web` 和端口 `127.0.0.1:3000` |
-| `Permission denied (publickey,...)` | 本机未配置到目标机的 **SSH 公钥** 或 `DEPLOY` 用户错误；见上节 `ssh-copy-id`。 |
+| `Permission denied (publickey,...)` | 未配置公钥或 `DEPLOY` 用户错误；见上节。密码总错先试 **`ssh-copy-id root@IP`** 等与控制台一致的账号。 |
+| 不想用 SSH 发门户 | 使用 `./deploy/sync-web.sh --pack-only` 再打 tgz 上传，见上节「控制台发版」。 |
 
 ### 3.2 Admin 发版（静态）
 
