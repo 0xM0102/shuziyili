@@ -36,7 +36,7 @@
 ## 3. 发版与 Git（解耦）
 
 - **Git** 只做本地/协作的**源码历史**，**不参与**默认发版；上线不靠服务器 `git pull`。  
-- **发版** = **本机构建** → **上传产物**到 **`/opt/shuziyili/...`** → 服务器 **`systemctl restart`**（及按需 `npm install`，见下）。  
+- **发版** = **本机构建** → **上传产物** → **服务器端更新**（解压覆盖、`npm install` 同步依赖、**`systemctl restart`**，见 §3.0）。  
 - **主流程命令写在 §3.0～3.2**；**§8** 为同一套命令的**速查副本**（方便复制），内容不替代 §3。
 
 ### 3.0 门户 Web（主流程：本机构建 → 上传 tgz → 服务器）
@@ -50,19 +50,25 @@ cd /path/to/shuziyili
 
 脚本会校验 `web/.env.production.local` 里的 `NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_API_BASE_URL`，并 `unset` 常见本机代理变量。
 
-**服务器**（把 tgz 传到如 `/tmp/`，文件名换成你实际上传的）：
+**服务器端更新**（把 tgz 传到如 `/tmp/`，文件名换成你实际上传的；在 **OrcaTerm / SSH** 里执行）：
+
+发版包**不含** `node_modules`，服务器上必须用 **`npm install --omit=dev`** 按本次 `package-lock.json` 同步生产依赖，再重启进程，否则可能缺包或版本不一致。
 
 ```bash
 sudo mkdir -p /opt/shuziyili/web
 sudo tar xzf /tmp/shuziyili-web-dist-XXXXXXXX.tgz -C /opt/shuziyili/web
+cd /opt/shuziyili/web && sudo npm install --omit=dev
 sudo systemctl restart shuziyili-web
 ```
 
-**说明（与你习惯的「上传完重启」对齐）：** 发版包**不含** `node_modules`。若线上依赖已与本次 `package-lock.json` 一致（仅代码/`.next` 变更），上面 **解压 + `restart` 往往足够**。若**首次部署**、**改过依赖或 lock**、或重启后报错缺包，再在服务器补一行：
+**（可选）发版后立刻验收**（仍在服务器上）：
 
 ```bash
-cd /opt/shuziyili/web && sudo npm install --omit=dev && sudo systemctl restart shuziyili-web
+sudo systemctl is-active shuziyili-web
+curl -fsSI http://127.0.0.1:3000 | head -n 5
 ```
+
+**说明：** 若你**非常确定**本次未改 `package.json` / `package-lock.json`、且线上 `node_modules` 已与 lock 一致，可临时省略 `npm install` 仅「解压 + `restart`」；拿不准时**建议保留**上面四步，与 `--push` 脚本在远端行为一致。
 
 ### 3.1 门户 `--push`（可选，与主流程二选一）
 
@@ -157,15 +163,16 @@ cd /path/to/shuziyili
 ./deploy/sync-web.sh
 ```
 
-**服务器**（tgz 传到 `/tmp/` 等，文件名替换；**最小步骤：解压 + restart**）
+**服务器**（与 §3.0 相同：解压 → **`npm install`** 服务端依赖 → **`restart`**）
 
 ```bash
 sudo mkdir -p /opt/shuziyili/web
 sudo tar xzf /tmp/shuziyili-web-dist-XXXXXXXX.tgz -C /opt/shuziyili/web
+cd /opt/shuziyili/web && sudo npm install --omit=dev
 sudo systemctl restart shuziyili-web
 ```
 
-**依赖有变或首次**：`cd /opt/shuziyili/web && sudo npm install --omit=dev && sudo systemctl restart shuziyili-web`（与 §3.0 说明一致）。
+**（可选）** `sudo systemctl is-active shuziyili-web`；`curl -fsSI http://127.0.0.1:3000 | head -n 5`。
 
 ### 8.2 门户 Web（可选：`--push`）
 

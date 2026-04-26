@@ -121,7 +121,7 @@ pack_web_dist() {
   log "打包 web 产物：${out}"
   cd "${WEB_DIR}"
   tar czf "${out}" "${WEB_ARTIFACTS[@]}"
-  printf '\n发版包已生成。上传与服务器步骤见 deploy/RUNBOOK.md §3.0（解压目录：%s）。\n' "${WEB_REMOTE_DIR}"
+  printf '\n发版包已生成。上传到服务器后请按 RUNBOOK §3.0 做服务端更新：解压到 %s → npm install --omit=dev → systemctl restart。\n' "${WEB_REMOTE_DIR}"
 }
 
 sync_web_files() {

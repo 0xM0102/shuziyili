@@ -367,7 +367,7 @@ sudo systemctl reload nginx
 优先采用「本机构建 + 上传产物」（控制台 / OrcaTerm 传文件；步骤 **RUNBOOK §3.0**，§8 速查）：
 
 ```bash
-# Web：本机打 tgz → 上传 → 按 RUNBOOK §3.0 在服务器解压并 restart
+# Web：本机打 tgz → 上传 → 服务器按 RUNBOOK §3.0：解压、npm install --omit=dev、restart
 cd /path/to/shuziyili
 ./deploy/sync-web.sh
 
