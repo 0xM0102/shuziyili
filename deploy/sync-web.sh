@@ -37,12 +37,15 @@ usage() {
   DEPLOY=user@host ./deploy/sync-web.sh   # 临时覆盖默认目标（见 deploy/ssh-target.env）
 
 可选环境变量：
-  SITE_URL         验收域名（默认 https://shuziyili.com）
-  WEB_REMOTE_DIR   远端 web 目录（默认 /opt/shuziyili/web）
-  WEB_SERVICE_NAME 远端 web systemd 名称（默认 shuziyili-web）
-  API_SERVICE_NAME 远端 api systemd 名称（默认 shuziyili-api）
-  WEB_LOCAL_PORT   远端 web 本地监听端口（默认 3000）
-  API_LOCAL_PORT   远端 api 本地监听端口（默认 8081）
+  SITE_URL                   验收域名（默认 https://shuziyili.com）
+  WEB_REMOTE_DIR             远端 web 目录（默认 /opt/shuziyili/web）
+  WEB_SERVICE_NAME           远端 web systemd 名称（默认 shuziyili-web）
+  API_SERVICE_NAME           远端 api systemd 名称（默认 shuziyili-api）
+  WEB_LOCAL_PORT             远端 web 本地监听端口（默认 3000）
+  API_LOCAL_PORT             远端 api 本地监听端口（默认 8081）
+  SYNC_WEB_SKIP_SSH_CHECK=1 跳过「免密 SSH」预检（不推荐；仅密码登录时可临时用）
+
+发版前须能免密 ssh 到目标机（见 deploy/ssh-target.env 中的 DEPLOY）。首次请执行：ssh-copy-id <同上 user@host>
 EOF
 }
 
@@ -62,6 +65,20 @@ require_cmd() {
 validate_target() {
   [[ -n "${TARGET}" ]] || die "未得到 SSH 目标：请设置 DEPLOY=user@host，或配置 deploy/ssh-target.env / deploy/deploy.local.env"
   [[ "${TARGET}" =~ ^[A-Za-z0-9._-]+@[A-Za-z0-9._:-]+$ ]] || die "DEPLOY 格式非法：${TARGET}"
+}
+
+precheck_ssh() {
+  if [[ "${SYNC_WEB_SKIP_SSH_CHECK:-0}" == "1" ]]; then
+    log "已跳过 SSH 预检（SYNC_WEB_SKIP_SSH_CHECK=1）"
+    return 0
+  fi
+  log "检查免密 SSH：${TARGET}"
+  if ssh -o BatchMode=yes -o ConnectTimeout=12 -o StrictHostKeyChecking=accept-new "${TARGET}" "echo ok" >/dev/null 2>&1; then
+    return 0
+  fi
+  die "无法免密 SSH 到 ${TARGET}。请在本机执行一次：ssh-copy-id ${TARGET}
+若登录用户不是 ubuntu，先改 deploy/ssh-target.env（或 deploy/deploy.local.env）里的 DEPLOY=。
+若服务器仅允许密码、暂不能配公钥，可：SYNC_WEB_SKIP_SSH_CHECK=1 ./deploy/sync-web.sh（rsync 仍会提示输密码）。"
 }
 
 validate_web_env() {
@@ -133,6 +150,7 @@ main() {
   require_cmd grep
 
   validate_target
+  precheck_ssh
 
   log "临时关闭代理环境变量"
   unset ALL_PROXY HTTP_PROXY HTTPS_PROXY all_proxy http_proxy https_proxy

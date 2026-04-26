@@ -15,4 +15,4 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## 生产发版 SSH（约定）
 
-门户一键脚本 `deploy/sync-web.sh` 在未设置 `DEPLOY` 时会读取 `deploy/ssh-target.env`（当前为 **`ubuntu@45.40.243.131`**）。若实机登录用户不同，应修改该文件或在本机使用已 gitignore 的 `deploy/deploy.local.env` 覆盖。
+门户一键脚本 `deploy/sync-web.sh` 在未设置 `DEPLOY` 时会读取 `deploy/ssh-target.env`（当前为 **`ubuntu@45.40.243.131`**）。发版前本机须已 **`ssh-copy-id`** 到该目标（免密）；否则脚本会在构建前失败并提示。若实机用户不同，改 `ssh-target.env` 或 `deploy/deploy.local.env`。

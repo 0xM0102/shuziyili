@@ -47,6 +47,18 @@ chmod +x deploy/sync-web.sh
 
 默认 SSH 目标见仓库内 [`deploy/ssh-target.env`](./ssh-target.env)（当前约定 `ubuntu@45.40.243.131`）。本机若要覆盖，可复制 [`deploy/deploy.local.env.example`](./deploy.local.env.example) 为 `deploy/deploy.local.env`（已 gitignore）。临时一次发版仍可用 `DEPLOY=user@host ./deploy/sync-web.sh`。
 
+#### 本机 SSH 公钥（发版前一次性）
+
+脚本在 **`npm ci` 之前**会检查能否 **免密** `ssh` 到目标机；`rsync`/`ssh` 在非交互下无法用密码完成。
+
+在本机终端执行（把用户与 IP 换成你的 `DEPLOY`，默认即 `ubuntu@45.40.243.131`）：
+
+```bash
+ssh-copy-id ubuntu@45.40.243.131
+```
+
+成功后应能 **`ssh ubuntu@45.40.243.131`** 直接进入、不再要密码。若服务器禁用了密码、只能由运维手工写入公钥，请把你的 **`~/.ssh/id_ed25519.pub`** 或 **`id_rsa.pub`** 内容追加到服务器 **`~/.ssh/authorized_keys`**（注意权限 `chmod 600 ~/.ssh/authorized_keys`）。
+
 脚本内置以下保护：
 
 - 自动 `unset ALL_PROXY/HTTP_PROXY/HTTPS_PROXY`，避免被本地代理劫持；
@@ -64,6 +76,7 @@ chmod +x deploy/sync-web.sh
 | `Connection closed by 127.0.0.1 port 7890` | 本地代理劫持 SSH；使用脚本（已自动 `unset`）或手动取消代理 |
 | 发布后页面无数据 | `web/.env.production.local` 为空或内容错误；脚本会在构建前拦截 |
 | `502 Bad Gateway` | `shuziyili-web` 未成功启动；先看 `systemctl status shuziyili-web` 和端口 `127.0.0.1:3000` |
+| `Permission denied (publickey,...)` | 本机未配置到目标机的 **SSH 公钥** 或 `DEPLOY` 用户错误；见上节 `ssh-copy-id`。 |
 
 ### 3.2 Admin 发版（静态）
 
