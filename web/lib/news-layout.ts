@@ -1,15 +1,17 @@
+/** 主内容区水平内边距：列表与资讯详情共用，避免与活动页等漂移。 */
+const mainColumnXPad = "px-4 md:px-5";
+
 /**
- * 资讯相关页面布局类名集中定义，避免列表/详情各处手写不一致（列表主列保持 max-w-4xl）。
+ * 资讯列表根容器：占满 AppShell 右侧（不设 max-w），宽屏不留大块空白。
  */
-export const newsIndexMainClassName =
-  "mx-auto max-w-4xl px-4 pb-8 pt-2 md:px-6 md:pb-10 md:pt-3";
+export const newsIndexMainClassName = `w-full min-w-0 ${mainColumnXPad} pb-8 pt-2 md:pb-10 md:pt-3`;
 
 export const newsEmptyHeadlinesClassName =
   "border border-dashed border-border py-14 text-center text-sm text-muted";
 
-export const newsArticleSectionClassName =
-  "mx-auto max-w-3xl space-y-6 px-4 py-6 md:px-5";
+/** 详情标题区下方的正文、外链与版权说明。 */
+export const newsArticleSectionClassName = `w-full min-w-0 ${mainColumnXPad} space-y-6 py-6`;
 
-/** 上游 HTML 正文外层：无 typography 插件时的最小可读样式。 */
+/** 上游 HTML：限制行长，超宽屏不致一行过长；图片仍 max-w-full。 */
 export const newsArticleBodyClassName =
-  "news-article-body max-w-none text-[15px] leading-relaxed text-foreground [&_a]:text-primary [&_a]:underline [&_img]:my-3 [&_img]:max-h-[min(70vh,520px)] [&_img]:max-w-full [&_img]:rounded-md [&_img]:object-contain [&_p]:mb-3 [&_p]:last:mb-0";
+  "news-article-body mx-auto w-full max-w-[min(100%,70ch)] text-[15px] leading-relaxed text-foreground [&_a]:text-primary [&_a]:underline [&_img]:my-3 [&_img]:max-h-[min(70vh,520px)] [&_img]:max-w-full [&_img]:rounded-md [&_img]:object-contain [&_p]:mb-3 [&_p]:last:mb-0";

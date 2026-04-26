@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shuziyili.config.JuheNewsProperties;
 import java.time.Duration;
 import java.time.Instant;
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -98,10 +99,7 @@ public class JuheNewsCacheService {
           return cacheListFallbackOrEmpty(key, fromList);
         }
         NewsItemDto merged = mergePreferList(fromList, fetched.item);
-        String html = fetched.html == null ? "" : fetched.html;
-        NewsDetailResult r = new NewsDetailResult(merged, html);
-        putDetailCache(key, r);
-        return Optional.of(r);
+        return cacheAndReturn(key, new NewsDetailResult(merged, fetched.html));
       } catch (Exception e) {
         log.warn("juhe news content fetch failed uniquekey={}: {}", key, e.getMessage());
         return cacheListFallbackOrEmpty(key, fromList);
@@ -114,9 +112,12 @@ public class JuheNewsCacheService {
     if (fromList == null) {
       return Optional.empty();
     }
-    NewsDetailResult r = new NewsDetailResult(fromList, "");
-    putDetailCache(key, r);
-    return Optional.of(r);
+    return cacheAndReturn(key, new NewsDetailResult(fromList, ""));
+  }
+
+  private Optional<NewsDetailResult> cacheAndReturn(String key, NewsDetailResult result) {
+    putDetailCache(key, result);
+    return Optional.of(result);
   }
 
   private boolean juheConfigured() {
@@ -146,11 +147,8 @@ public class JuheNewsCacheService {
     }
     Instant now = Instant.now();
     TypeSlot slot = slots.computeIfAbsent(juheType, k -> new TypeSlot());
-    if (slot.lastRemoteAttempt != null) {
-      long elapsed = Duration.between(slot.lastRemoteAttempt, now).getSeconds();
-      if (elapsed < properties.getRefreshSeconds()) {
-        return;
-      }
+    if (!listSlotCooldownElapsed(slot, now)) {
+      return;
     }
     slot.lastRemoteAttempt = now;
     try {
@@ -164,27 +162,40 @@ public class JuheNewsCacheService {
   }
 
   private List<NewsItemDto> fetchRemoteList(String juheType) throws Exception {
-    var uri =
-        UriComponentsBuilder.fromHttpUrl(properties.getListUrl())
-            .queryParam("key", properties.getKey())
-            .queryParam("type", juheType)
-            .queryParam("page", "1")
-            .queryParam("page_size", String.valueOf(properties.getPageSize()))
-            .build(true)
-            .toUri();
-    String body = restTemplate.getForObject(uri, String.class);
+    String body = restTemplate.getForObject(juheListUri(juheType), String.class);
     return parseListBody(body);
   }
 
   private ContentFetch fetchRemoteContent(String uniquekey) throws Exception {
-    var uri =
-        UriComponentsBuilder.fromHttpUrl(properties.getContentUrl())
-            .queryParam("key", properties.getKey())
-            .queryParam("uniquekey", uniquekey)
-            .build(true)
-            .toUri();
-    String body = restTemplate.getForObject(uri, String.class);
+    String body = restTemplate.getForObject(juheContentUri(uniquekey), String.class);
     return parseContentBody(body, uniquekey);
+  }
+
+  private URI juheListUri(String juheType) {
+    return UriComponentsBuilder.fromHttpUrl(properties.getListUrl())
+        .queryParam("key", properties.getKey())
+        .queryParam("type", juheType)
+        .queryParam("page", "1")
+        .queryParam("page_size", String.valueOf(properties.getPageSize()))
+        .build(true)
+        .toUri();
+  }
+
+  private URI juheContentUri(String uniquekey) {
+    return UriComponentsBuilder.fromHttpUrl(properties.getContentUrl())
+        .queryParam("key", properties.getKey())
+        .queryParam("uniquekey", uniquekey)
+        .build(true)
+        .toUri();
+  }
+
+  /** 距上次列表拉取未满 {@link JuheNewsProperties#getRefreshSeconds()} 则跳过，省配额。 */
+  private boolean listSlotCooldownElapsed(TypeSlot slot, Instant now) {
+    if (slot.lastRemoteAttempt == null) {
+      return true;
+    }
+    return Duration.between(slot.lastRemoteAttempt, now).getSeconds()
+        >= properties.getRefreshSeconds();
   }
 
   private void rebuildByUniquekeyIndex() {
@@ -323,9 +334,6 @@ public class JuheNewsCacheService {
   }
 
   private static String firstNonBlank(String... xs) {
-    if (xs == null) {
-      return "";
-    }
     for (String x : xs) {
       if (x != null && !x.isBlank()) {
         return x.trim();
@@ -346,7 +354,7 @@ public class JuheNewsCacheService {
     ContentFetch(boolean ok, NewsItemDto item, String html) {
       this.ok = ok;
       this.item = item;
-      this.html = html;
+      this.html = html != null ? html : "";
     }
 
     static ContentFetch fail() {

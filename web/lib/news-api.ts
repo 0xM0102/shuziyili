@@ -22,8 +22,12 @@ export type NewsHeadlinesPayload = {
   juheType?: string;
 };
 
+function normalizedUniquekey(uniquekey: string): string {
+  return uniquekey.trim();
+}
+
 export function buildNewsArticleHref(uniquekey: string): string {
-  return `/news/${encodeURIComponent(uniquekey.trim())}`;
+  return `/news/${encodeURIComponent(normalizedUniquekey(uniquekey))}`;
 }
 
 export type NewsDetailPayload = {
@@ -53,7 +57,7 @@ export async function getNewsHeadlines(type: NewsJuheType | string): Promise<New
 }
 
 async function fetchNewsDetailOnce(uniquekey: string): Promise<NewsDetailPayload | null> {
-  const key = uniquekey.trim();
+  const key = normalizedUniquekey(uniquekey);
   if (!key) return null;
   return fetchNewsApiData<NewsDetailPayload | null>(
     `/news/headlines/${encodeURIComponent(key)}`,

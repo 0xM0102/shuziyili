@@ -38,14 +38,15 @@ public class PublicNewsController {
       @PathVariable("uniquekey") String uniquekey) {
     return juheNewsCacheService
         .headlineDetail(uniquekey)
-        .map(
-            (detail) -> {
-              Map<String, Object> m = new LinkedHashMap<>();
-              m.put("item", detail.getItem());
-              m.put("contentHtml", detail.getContentHtml());
-              m.put("attribution", ATTRIBUTION);
-              return ResponseEntity.ok(ApiResponse.success(m));
-            })
+        .map((d) -> ResponseEntity.ok(ApiResponse.success(toDetailJson(d))))
         .orElseGet(() -> ResponseEntity.ok(ApiResponse.fail("not_found")));
+  }
+
+  private Map<String, Object> toDetailJson(NewsDetailResult detail) {
+    Map<String, Object> m = new LinkedHashMap<>(4);
+    m.put("item", detail.getItem());
+    m.put("contentHtml", detail.getContentHtml());
+    m.put("attribution", ATTRIBUTION);
+    return m;
   }
 }
