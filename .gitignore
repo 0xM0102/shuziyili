@@ -34,7 +34,7 @@ scripts/dev.sh
 # 发版 SSH 等本机覆盖（默认见 deploy/ssh-target.env）
 deploy/deploy.local.env
 
-# sync-web.sh --pack-only 生成的本机压缩包（勿提交）
+# sync-web.sh 默认生成的本机发版包（勿提交）
 deploy/shuziyili-web-dist-*.tgz
 
 # 日志与调试

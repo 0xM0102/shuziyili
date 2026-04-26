@@ -265,8 +265,7 @@ NEXT_PUBLIC_SITE_URL=https://shuziyili.com
 NEXT_PUBLIC_API_BASE_URL=https://shuziyili.com
 ```
 
-推荐：**在本机构建后 rsync 到 `/opt/shuziyili/web/`**（服务器只保留运行目录，不依赖 git）。  
-日常发布请直接使用 [`deploy/sync-web.sh`](./sync-web.sh)，详见 [`deploy/RUNBOOK.md`](./RUNBOOK.md) §3。
+推荐：**本机构建后**用 [`deploy/sync-web.sh`](./sync-web.sh) 打 tgz，**上传到** `/opt/shuziyili/web/`（服务器只保留运行目录）。详见 [`deploy/RUNBOOK.md`](./RUNBOOK.md) §3.0。
 
 **注意**：`NEXT_PUBLIC_*` 在 **`npm run build` 时** 会打进产物；若改动了这两个变量，需要 **重新 `npm run build`** 再部署。
 
@@ -362,22 +361,18 @@ sudo systemctl reload nginx
 
 ## 以后更新版本（推荐流程）
 
-优先采用“本地构建 + 上传产物”：
+优先采用「本机构建 + 上传产物」（控制台 / OrcaTerm 传文件；细节见 **RUNBOOK §3**）：
 
 ```bash
-# Web（一键脚本；默认 SSH 见 deploy/ssh-target.env，当前 ubuntu@45.40.243.131）
+# Web：本机打 tgz → 上传到服务器 /tmp/ 等 → 按 RUNBOOK §3.0 解压到 /opt/shuziyili/web 并 restart
 cd /path/to/shuziyili
 ./deploy/sync-web.sh
 
-# API（改后端时）
+# API：本机打 jar → 上传到 /opt/shuziyili/api/shuziyili-api.jar → 服务器上 systemctl restart shuziyili-api
 cd api && ./mvnw -DskipTests package
-rsync -avz target/shuziyili-api.jar ubuntu@45.40.243.131:/opt/shuziyili/api/shuziyili-api.jar
-ssh ubuntu@45.40.243.131 "sudo systemctl restart shuziyili-api"
 
-# Admin（改后台时）
+# Admin：本机 build → 上传 dist/ 到 /opt/shuziyili/admin/dist/ → 服务器上 reload nginx
 cd ../admin && npm ci && npm run build
-rsync -avz --delete dist/ ubuntu@45.40.243.131:/opt/shuziyili/admin/dist/
-ssh ubuntu@45.40.243.131 "sudo nginx -t && sudo systemctl reload nginx"
 ```
 
 ---

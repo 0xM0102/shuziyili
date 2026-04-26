@@ -13,6 +13,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 若无法确定当前是否在跑、或端口冲突，可先查看 `terminals` 元数据再决定。
 
-## 生产发版 SSH（约定）
+## 生产门户发版（约定）
 
-门户一键脚本 `deploy/sync-web.sh` 在未设置 `DEPLOY` 时会读取 `deploy/ssh-target.env`（当前为 **`ubuntu@45.40.243.131`**）。发版前本机须已 **`ssh-copy-id`** 到该目标（免密）；否则脚本会在构建前失败并提示。若实机用户不同，改 `ssh-target.env` 或 `deploy/deploy.local.env`。
+默认流程：**本机** `./deploy/sync-web.sh` → 生成 `deploy/shuziyili-web-dist-*.tgz` → **用户上传到服务器**后按 `deploy/RUNBOOK.md` §3.0 解压与 `systemctl restart`。  
+可选 **`./deploy/sync-web.sh --push`**（免密 SSH + rsync），依赖 `deploy/ssh-target.env` 中的 `DEPLOY`，非默认。

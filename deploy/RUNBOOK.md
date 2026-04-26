@@ -33,44 +33,22 @@
 
 ---
 
-## 3. 本机发版（推荐：构建在本地，上传产物）
+## 3. 本机发版（约定：**本机构建 + 上传产物**）
 
-### 3.0 Web 一键发版（推荐）
+线上不依赖「在服务器里 `git pull` 再 build」；把本机构建结果放到 **`/opt/shuziyili/...`** 即可。上传方式：**腾讯云控制台 / OrcaTerm 传文件**、或 SFTP 等，与 `git clone` 的 HTTPS 无关。
 
-仓库已提供脚本：[`deploy/sync-web.sh`](./sync-web.sh)。
+### 3.0 门户 Web（主流程）
+
+**本机**执行 [`deploy/sync-web.sh`](./sync-web.sh)（默认只构建并打压缩包，**不**走 SSH）：
 
 ```bash
 cd /path/to/shuziyili
-chmod +x deploy/sync-web.sh
 ./deploy/sync-web.sh
 ```
 
-默认 SSH 目标见仓库内 [`deploy/ssh-target.env`](./ssh-target.env)（当前约定 `ubuntu@45.40.243.131`）。本机若要覆盖，可复制 [`deploy/deploy.local.env.example`](./deploy.local.env.example) 为 `deploy/deploy.local.env`（已 gitignore）。临时一次发版仍可用 `DEPLOY=user@host ./deploy/sync-web.sh`。
+生成 **`deploy/shuziyili-web-dist-时间戳.tgz`**（已 `.gitignore`），内含 `.next`、`package.json`、`package-lock.json`、`next.config.ts`、`public`、`.env.production.local`。
 
-#### 本机 SSH 公钥（发版前一次性）
-
-脚本在 **`npm ci` 之前**会检查能否 **免密** `ssh` 到目标机；`rsync`/`ssh` 在非交互下无法用密码完成。
-
-在本机终端执行（把用户与 IP 换成你的 `DEPLOY`，默认即 `ubuntu@45.40.243.131`）：
-
-```bash
-ssh-copy-id ubuntu@45.40.243.131
-```
-
-成功后应能 **`ssh ubuntu@45.40.243.131`** 直接进入、不再要密码。若服务器禁用了密码、只能由运维手工写入公钥，请把你的 **`~/.ssh/id_ed25519.pub`** 或 **`id_rsa.pub`** 内容追加到服务器 **`~/.ssh/authorized_keys`**（注意权限 `chmod 600 ~/.ssh/authorized_keys`）。
-
-**`ssh-copy-id` 一直提示密码错误**：多半是 **SSH 用户名与腾讯云控制台不一致**（例如机器实际是 **`root`** 登录，而仓库写的是 `ubuntu`）。请在控制台确认「登录名」，并修改 [`deploy/ssh-target.env`](./ssh-target.env) 的 `DEPLOY=` 后再执行 `ssh-copy-id`。若服务器 **`PasswordAuthentication no`**，则无法靠密码装公钥，只能在已能登录的渠道里手工写入 `authorized_keys`。
-
-#### 不用 SSH/rsync：本机打包 + 控制台上传（与「HTTPS 传文件」同类）
-
-若你习惯用 **腾讯云 OrcaTerm 上传文件**、或没有可用的 SSH 密码：
-
-```bash
-cd /path/to/shuziyili
-./deploy/sync-web.sh --pack-only
-```
-
-会在本机生成 **`deploy/shuziyili-web-dist-时间戳.tgz`**（已 `.gitignore`）。把该文件通过控制台上传到服务器（如 `/tmp/`），再在 **OrcaTerm / SSH 已能登录的会话里**执行：
+**服务器**（已能通过控制台登录时）：把 tgz 上传到如 `/tmp/`，再执行（文件名按实际上传替换）：
 
 ```bash
 sudo mkdir -p /opt/shuziyili/web
@@ -79,57 +57,52 @@ cd /opt/shuziyili/web && sudo npm install --omit=dev
 sudo systemctl restart shuziyili-web
 ```
 
-将 `/tmp/` 与文件名换成你实际上传的路径。`git clone https://...` 只解决**拿代码**，不会替代把 **`.next` 构建产物** 放到服务器；上述 tgz 才是与 `rsync` 等价的产物投递方式。
+脚本会 `unset` 常见代理变量、并校验 `web/.env.production.local` 中 `NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_API_BASE_URL`。
 
-脚本内置以下保护：
+### 3.1 可选：门户 `--push`（免密 SSH + rsync）
 
-- 自动 `unset ALL_PROXY/HTTP_PROXY/HTTPS_PROXY`，避免被本地代理劫持；
-- 强校验 `web/.env.production.local` 非空，且必须包含 `NEXT_PUBLIC_SITE_URL`、`NEXT_PUBLIC_API_BASE_URL`；
-- 固定执行 `npm ci && npm run build`；
-- 固定用正确 rsync 形态上传（`.next` 不用尾斜杠）；
-- 远端自动 `npm install --omit=dev` + `systemctl restart shuziyili-web`；
-- 自动执行远端与公网健康检查，任一步失败立即退出。
-
-### 3.1 常见错误与处理
-
-| 现象 | 常见原因 / 处理 |
-|------|------------------|
-| `hostname contains invalid characters` | `DEPLOY` 不是纯 ASCII 的 `user@host`（含中文、空格、未替换占位符） |
-| `Connection closed by 127.0.0.1 port 7890` | 本地代理劫持 SSH；使用脚本（已自动 `unset`）或手动取消代理 |
-| 发布后页面无数据 | `web/.env.production.local` 为空或内容错误；脚本会在构建前拦截 |
-| `502 Bad Gateway` | `shuziyili-web` 未成功启动；先看 `systemctl status shuziyili-web` 和端口 `127.0.0.1:3000` |
-| `Permission denied (publickey,...)` | 未配置公钥或 `DEPLOY` 用户错误；见上节。密码总错先试 **`ssh-copy-id root@IP`** 等与控制台一致的账号。 |
-| 不想用 SSH 发门户 | 使用 `./deploy/sync-web.sh --pack-only` 再打 tgz 上传，见上节「控制台发版」。 |
-
-### 3.2 Admin 发版（静态）
+仅当本机已对生产机 **`ssh-copy-id`** 成功、且 [`deploy/ssh-target.env`](./ssh-target.env)（或已 gitignore 的 `deploy/deploy.local.env`）里 **`DEPLOY=user@IP`** 正确时：
 
 ```bash
-cd admin
-npm ci
-npm run build
-rsync -avz --delete dist/ ubuntu@45.40.243.131:/opt/shuziyili/admin/dist/
+./deploy/sync-web.sh --push
 ```
 
-必要时修权限并重载 Nginx：
+否则一律用 §3.0 打包上传。
+
+### 3.2 Admin（静态）
+
+**本机**：`cd admin && npm ci && npm run build`。将 **`dist/`** 内全部文件上传到服务器 **`/opt/shuziyili/admin/dist/`**（覆盖即可）。
+
+**服务器**：
 
 ```bash
-ssh ubuntu@45.40.243.131
-sudo chown -R root:root /opt/shuziyili/admin
-sudo find /opt/shuziyili/admin -type d -exec chmod 755 {} \;
-sudo find /opt/shuziyili/admin -type f -exec chmod 644 {} \;
+sudo chown -R root:root /opt/shuziyili/admin 2>/dev/null || true
+sudo find /opt/shuziyili/admin -type d -exec chmod 755 {} \; 2>/dev/null || true
+sudo find /opt/shuziyili/admin -type f -exec chmod 644 {} \; 2>/dev/null || true
 sudo nginx -t && sudo systemctl reload nginx
 ```
 
-### 3.3 API 发版（jar）
+### 3.3 API（jar）
+
+**本机**：`cd api && ./mvnw -DskipTests package`。将 **`target/shuziyili-api.jar`** 上传到 **`/opt/shuziyili/api/shuziyili-api.jar`**。
+
+**服务器**（端口以 `api.env` 的 `SERVER_PORT` 为准，示例 **8081**）：
 
 ```bash
-cd api
-./mvnw -DskipTests package
-rsync -avz target/shuziyili-api.jar ubuntu@45.40.243.131:/opt/shuziyili/api/shuziyili-api.jar
-ssh ubuntu@45.40.243.131 "sudo systemctl restart shuziyili-api && curl -fsS http://127.0.0.1:8081/api/v1/health"
+sudo systemctl restart shuziyili-api
+curl -fsS http://127.0.0.1:8081/api/v1/health
 ```
 
-端口以 `api.env` / `SERVER_PORT` 为准，Nginx `proxy_pass` 必须一致。
+Nginx `proxy_pass` 须与 API 监听端口一致。
+
+### 3.4 门户排障
+
+| 现象 | 处理 |
+|------|------|
+| 发布后页面无数据 / 白屏 | 检查 `web/.env.production.local`；改后须重新 `./deploy/sync-web.sh` 再打 tgz 上传。 |
+| `502 Bad Gateway` | `systemctl status shuziyili-web`；本机 `127.0.0.1:3000` 是否监听。 |
+| `--push` 报 `Permission denied` | 改用 §3.0；或配置免密 SSH 后再 `--push`。 |
+| `Connection closed by 127.0.0.1 port 7890` | 本机代理劫持；脚本已 `unset` 常见变量，仍异常则检查 Shell 代理。 |
 
 ---
 
@@ -139,7 +112,7 @@ ssh ubuntu@45.40.243.131 "sudo systemctl restart shuziyili-api && curl -fsS http
 
 1. `sudo systemctl stop shuziyili-web`
 2. `sudo mkdir -p /opt/shuziyili/web`
-3. `sudo rsync -a /opt/shuziyili/repo/web/ /opt/shuziyili/web/`（或按 §3 从本机 rsync 覆盖）
+3. `sudo rsync -a /opt/shuziyili/repo/web/ /opt/shuziyili/web/`（或按 §3.0 上传产物覆盖）
 4. `cd /opt/shuziyili/web && sudo npm install --omit=dev`
 5. 编辑 `/etc/systemd/system/shuziyili-web.service`：`WorkingDirectory=/opt/shuziyili/web`
 6. `sudo systemctl daemon-reload && sudo systemctl start shuziyili-web`
@@ -167,7 +140,7 @@ cat /opt/shuziyili/web/.next/BUILD_ID
 | 门户像「没更新」 | 强刷；检查是否传错目录；静态页 `Cache-Control` 过长时收紧 HTML 缓存或刷 CDN |
 | 接口 404 | 确认 Nginx `/api/` 反代端口与 API 监听一致；`NEXT_PUBLIC_API_BASE_URL` 为主域时路径为 `/api/v1` |
 | admin 登录全红 | `api.env` 里 `CORS_ALLOWED_ORIGINS` 含 `https://admin.shuziyili.com` |
-| 两套 `.next` BUILD_ID 不一致 | 统一 `WorkingDirectory` 与 rsync 目标为 `/opt/shuziyili/web` |
+| 两套 `.next` BUILD_ID 不一致 | 统一 `WorkingDirectory` 与上传目标为 `/opt/shuziyili/web` |
 | 后台接口返回 `forbidden` 以前显示成 `unauthorized` | 升级 API 后已统一为 `requireStaffPermission` 的真实 message；前端若写死判断需改为同时认 `unauthorized` 与 `forbidden` |
 
 ---
