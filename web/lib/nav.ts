@@ -1,4 +1,10 @@
 import type { NavIconName } from "@/components/icons/nav-icons";
+import {
+  NEWS_CHANNEL_LABELS,
+  NEWS_JUHE_TYPES,
+  buildNewsIndexHref,
+  type NewsJuheType,
+} from "@/lib/news-channels";
 
 export type NavItem = { href: string; label: string; icon?: NavIconName };
 
@@ -65,3 +71,11 @@ export const homeMoreNav: NavItem[] = [
   { href: "/travel", label: "旅游指南" },
   { href: "/about", label: "关于我们" },
 ];
+
+/** 资讯频道（Juhe type），不含头条：与侧栏首项「热点」(`/news`) 组合使用。 */
+export const hotNewsNav: NavItem[] = (NEWS_JUHE_TYPES.filter((t) => t !== "top") as NewsJuheType[]).map(
+  (t) => ({
+    href: buildNewsIndexHref(t),
+    label: NEWS_CHANNEL_LABELS[t],
+  })
+);

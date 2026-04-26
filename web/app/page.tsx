@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { SectionHead } from "@/components/layout/section-head";
 import { fetchPublicApiData } from "@/lib/api-base";
 import { FlashTitleLink } from "@/components/flash/flash-title-link";
 import { FlashTagBadge } from "@/components/flash/flash-tag-badge";
@@ -172,37 +173,6 @@ function RailCard({
     <Link href={href} className={containerCls}>
       {content}
     </Link>
-  );
-}
-
-/**
- * 区块标题（复用）：左侧彩色圆点用于“栏目识别”，右侧更多链接保持弱化视觉。
- * dotTone=blue 用于主栏目；pink 用于快讯等“高频”块，形成视觉分组。
- */
-function SectionHead({
-  title,
-  moreHref,
-  dotTone = "blue",
-}: {
-  title: string;
-  moreHref?: string;
-  dotTone?: "blue" | "pink";
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <div className="flex items-center gap-2">
-        <span
-          className={`h-2 w-2 rounded-full ${dotTone === "pink" ? "bg-pink-500" : "bg-primary"}`}
-          aria-hidden
-        />
-        <h2 className="text-base font-semibold text-foreground">{title}</h2>
-      </div>
-      {moreHref ? (
-        <Link href={moreHref} className="text-xs text-muted hover:text-primary">
-          更多 &gt;
-        </Link>
-      ) : null}
-    </div>
   );
 }
 

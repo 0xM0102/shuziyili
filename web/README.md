@@ -9,6 +9,13 @@ npm run dev
 
 浏览器打开 <http://localhost:3000>。生产域名默认 `https://shuziyili.com`（见 `.env.example`）。
 
+若本地页面能打开但接口无数据，先补齐本地环境变量：
+
+```bash
+cp .env.example .env.local
+# 然后把 .env.local 中 NEXT_PUBLIC_API_BASE_URL 改为 http://localhost:8080
+```
+
 ## 结构速览
 
 | 路径 | 作用 |

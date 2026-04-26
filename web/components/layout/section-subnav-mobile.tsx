@@ -1,12 +1,12 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Suspense } from "react";
+import { usePathname, useSearchParams } from "next/navigation";
 import type { NavItem } from "@/lib/nav";
-import { navItemIsActive, type NavActiveVariant } from "@/lib/nav-active";
+import { channelEntryIsActive, type NavActiveVariant } from "@/lib/nav-active";
 
-/** 窄屏：与桌面侧栏一致的横向二级入口 */
-export function SectionSubnavMobile({
+function SectionSubnavMobileInner({
   items,
   title,
   variant,
@@ -15,10 +15,10 @@ export function SectionSubnavMobile({
   items: NavItem[];
   title: string;
   variant: NavActiveVariant;
-  /** 如果热点是选项而非小标题，则传 false 隐藏标题文字 */
   showTitle?: boolean;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
 
   return (
     <div className="mb-4 md:hidden">
@@ -29,7 +29,7 @@ export function SectionSubnavMobile({
             key={item.href}
             href={item.href}
             className={`shrink-0 rounded-full px-3 py-1.5 text-sm font-medium whitespace-nowrap ${
-              navItemIsActive(pathname, item.href, variant)
+              channelEntryIsActive(pathname, searchParams, item.href, variant)
                 ? "bg-primary text-white"
                 : "border border-border bg-card text-foreground/85"
             }`}
@@ -39,5 +39,19 @@ export function SectionSubnavMobile({
         ))}
       </div>
     </div>
+  );
+}
+
+/** 窄屏：与桌面侧栏一致的横向二级入口 */
+export function SectionSubnavMobile(props: {
+  items: NavItem[];
+  title: string;
+  variant: NavActiveVariant;
+  showTitle?: boolean;
+}) {
+  return (
+    <Suspense fallback={<div className="mb-4 h-10 animate-pulse rounded-md bg-muted md:hidden" aria-hidden />}>
+      <SectionSubnavMobileInner {...props} />
+    </Suspense>
   );
 }

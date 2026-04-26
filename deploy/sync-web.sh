@@ -10,6 +10,8 @@ SITE_URL="${SITE_URL:-https://shuziyili.com}"
 WEB_REMOTE_DIR="${WEB_REMOTE_DIR:-/opt/shuziyili/web}"
 WEB_SERVICE_NAME="${WEB_SERVICE_NAME:-shuziyili-web}"
 API_SERVICE_NAME="${API_SERVICE_NAME:-shuziyili-api}"
+WEB_LOCAL_PORT="${WEB_LOCAL_PORT:-3000}"
+API_LOCAL_PORT="${API_LOCAL_PORT:-8081}"
 
 usage() {
   cat <<'EOF'
@@ -21,6 +23,8 @@ usage() {
   WEB_REMOTE_DIR   远端 web 目录（默认 /opt/shuziyili/web）
   WEB_SERVICE_NAME 远端 web systemd 名称（默认 shuziyili-web）
   API_SERVICE_NAME 远端 api systemd 名称（默认 shuziyili-api）
+  WEB_LOCAL_PORT   远端 web 本地监听端口（默认 3000）
+  API_LOCAL_PORT   远端 api 本地监听端口（默认 8081）
 EOF
 }
 
@@ -44,11 +48,19 @@ validate_target() {
 
 validate_web_env() {
   local env_file="${WEB_DIR}/.env.production.local"
+  local site_url
+  local api_base_url
   [[ -f "${env_file}" ]] || die "缺少文件：${env_file}"
   [[ -s "${env_file}" ]] || die "${env_file} 为空，已终止"
 
   rg -q '^NEXT_PUBLIC_SITE_URL=' "${env_file}" || die "缺少 NEXT_PUBLIC_SITE_URL"
   rg -q '^NEXT_PUBLIC_API_BASE_URL=' "${env_file}" || die "缺少 NEXT_PUBLIC_API_BASE_URL"
+
+  site_url="$(sed -n 's/^NEXT_PUBLIC_SITE_URL=//p' "${env_file}" | tail -n 1 | tr -d '[:space:]')"
+  api_base_url="$(sed -n 's/^NEXT_PUBLIC_API_BASE_URL=//p' "${env_file}" | tail -n 1 | tr -d '[:space:]')"
+
+  [[ -n "${site_url}" ]] || die "NEXT_PUBLIC_SITE_URL 不能为空"
+  [[ -n "${api_base_url}" ]] || die "NEXT_PUBLIC_API_BASE_URL 不能为空"
 }
 
 build_web() {
@@ -79,8 +91,8 @@ restart_remote_services() {
 verify_remote() {
   log "远端健康检查"
   ssh "${TARGET}" "set -euo pipefail; \
-    curl -fsS http://127.0.0.1:3000 >/dev/null; \
-    curl -fsS http://127.0.0.1:8081/api/v1/health >/dev/null; \
+    curl -fsS 'http://127.0.0.1:${WEB_LOCAL_PORT}' >/dev/null; \
+    curl -fsS 'http://127.0.0.1:${API_LOCAL_PORT}/api/v1/health' >/dev/null; \
     test -s '${WEB_REMOTE_DIR}/.env.production.local'"
 }
 

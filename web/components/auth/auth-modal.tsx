@@ -3,6 +3,7 @@
 import { cloneElement, useEffect, useRef, useState } from "react";
 import type { FormEvent, InputHTMLAttributes, ReactElement } from "react";
 import Image from "next/image";
+import { BrandPanelBackdrop } from "@/components/brand/brand-panel-backdrop";
 import { SiteWordmark } from "@/components/brand/site-wordmark";
 import { uiText } from "@/lib/i18n";
 import type { LangCode } from "@/lib/i18n";
@@ -406,9 +407,8 @@ export function AuthModal({
           <CloseIcon />
         </button>
 
-        <aside className="relative hidden w-[42%] min-w-[280px] flex-col justify-between bg-linear-to-br from-[#0c1220] via-[#111827] to-[#1e3a5f] p-8 text-white md:flex">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,rgba(33,116,255,0.22),transparent_55%)]" />
-          <div className="pointer-events-none absolute inset-0 opacity-[0.07] bg-[linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-size-[24px_24px]" />
+        <aside className="relative hidden w-[42%] min-w-[280px] flex-col justify-between overflow-hidden p-8 text-white md:flex">
+          <BrandPanelBackdrop />
           <div className="relative z-1 flex items-center gap-3">
             <Image
               src={siteConfig.logoPath}

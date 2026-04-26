@@ -51,6 +51,17 @@ shuziyili:
   auth:
     store-plain-otp: ${SHUZIYILI_STORE_PLAIN_OTP:true}
 
+  # 聚合数据「新闻头条」https://www.juhe.cn/docs/api/id/235 —— 密钥仅环境变量，列表进程内缓存，默认 3600s 才请求一次上游
+  juhe:
+    news:
+      enabled: ${JUHE_NEWS_ENABLED:false}
+      key: ${JUHE_NEWS_KEY:}
+      list-url: ${JUHE_NEWS_LIST_URL:http://v.juhe.cn/toutiao/index}
+      content-url: ${JUHE_NEWS_CONTENT_URL:https://v.juhe.cn/toutiao/content}
+      type: ${JUHE_NEWS_TYPE:top}
+      page-size: ${JUHE_NEWS_PAGE_SIZE:30}
+      refresh-seconds: ${JUHE_NEWS_REFRESH_SECONDS:3600}
+
   cos:
     enabled: ${SHUZIYILI_COS_ENABLED:true}
     secret-id: ${SHUZIYILI_COS_SECRET_ID:}

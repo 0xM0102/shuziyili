@@ -30,3 +30,11 @@ shuziyili:
     # bucket: shuziyili-1322855353
     # public-base-url: https://shuziyili-1322855353.cos.ap-chengdu.myqcloud.com
     # key-prefix: uploads/
+
+  # 聚合数据「新闻头条」资讯（https://www.juhe.cn/docs/api/id/235）；默认 3600 秒才请求一次上游，控制日配额
+  # juhe:
+  #   news:
+  #     enabled: true
+  #     key: "在此填写 JUHE_NEWS_KEY"
+  #     # refresh-seconds: 3600
+  #     # content-url: https://v.juhe.cn/toutiao/content

@@ -1,4 +1,5 @@
-/** 侧栏 / 移动端二级导航的激活规则 */
+import type { ReadonlyURLSearchParams } from "next/navigation";
+import { normalizeNewsType, parseNewsNavLinkHref } from "@/lib/news-channels";
 
 export type NavActiveVariant = "primary" | "nested";
 
@@ -10,8 +11,7 @@ function normalizePath(pathname: string) {
 }
 
 /**
- * primary：顶栏级，如 /travel 在 /travel/... 下也高亮。
- * nested：栏目内，/travel、/convenience 仅精确匹配，子路径走子项高亮。
+ * 通用路径高亮：`primary` 用于顶栏级前缀；`nested` 下 `/travel`、`/convenience` 根路径精确匹配。
  */
 export function navItemIsActive(
   pathname: string,
@@ -24,11 +24,37 @@ export function navItemIsActive(
     if (href === "/travel" || href === "/convenience") {
       return p === href;
     }
-  } else {
-    if (href === "/") {
-      return p === "/" || p === "";
-    }
+  } else if (href === "/") {
+    return p === "/" || p === "";
   }
 
   return p === href || p.startsWith(`${href}/`);
+}
+
+/**
+ * 含 `/news?type=` 的侧栏条目：列表页按 query 与 `href` 对齐；详情 `/news/slug` 仅「热点」(`/news` 无 query) 高亮。
+ */
+export function channelEntryIsActive(
+  pathname: string,
+  searchParams: ReadonlyURLSearchParams,
+  href: string,
+  variant: NavActiveVariant
+): boolean {
+  const link = parseNewsNavLinkHref(href);
+  if (link.kind === "not-news") {
+    return navItemIsActive(pathname, href, variant);
+  }
+
+  const p = normalizePath(pathname);
+  if (!p.startsWith("/news")) return false;
+
+  if (p !== "/news" && p.startsWith("/news/")) {
+    return link.kind === "news-hotspot";
+  }
+
+  const current = normalizeNewsType(searchParams.get("type") ?? undefined);
+  if (link.kind === "news-hotspot") {
+    return current === "top";
+  }
+  return link.channel === current;
 }
