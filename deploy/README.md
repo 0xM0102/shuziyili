@@ -268,7 +268,7 @@ NEXT_PUBLIC_SITE_URL=https://shuziyili.com
 NEXT_PUBLIC_API_BASE_URL=https://shuziyili.com
 ```
 
-推荐：**本机构建后**用 [`deploy/sync-web.sh`](./sync-web.sh) 打 tgz，**上传到** `/opt/shuziyili/web/`。命令见 [`deploy/RUNBOOK.md`](./RUNBOOK.md) **§8.1**。
+推荐：**本机构建后**用 [`deploy/sync-web.sh`](./sync-web.sh) 打 tgz，**上传到** `/opt/shuziyili/web/`。步骤见 [`deploy/RUNBOOK.md`](./RUNBOOK.md) **§3.0**（§8 速查）。
 
 **注意**：`NEXT_PUBLIC_*` 在 **`npm run build` 时** 会打进产物；若改动了这两个变量，需要 **重新 `npm run build`** 再部署。
 
@@ -364,10 +364,10 @@ sudo systemctl reload nginx
 
 ## 以后更新版本（推荐流程）
 
-优先采用「本机构建 + 上传产物」（控制台 / OrcaTerm 传文件；命令见 **RUNBOOK §8**）：
+优先采用「本机构建 + 上传产物」（控制台 / OrcaTerm 传文件；步骤 **RUNBOOK §3.0**，§8 速查）：
 
 ```bash
-# Web：本机打 tgz → 上传 → 按 RUNBOOK §8.1 在服务器解压并 restart
+# Web：本机打 tgz → 上传 → 按 RUNBOOK §3.0 在服务器解压并 restart
 cd /path/to/shuziyili
 ./deploy/sync-web.sh
 

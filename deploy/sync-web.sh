@@ -29,7 +29,7 @@ usage() {
 仅 --push 读取：DEPLOY、deploy/deploy.local.env、deploy/ssh-target.env。
   SYNC_WEB_SKIP_SSH_CHECK=1  --push 时跳过免密 SSH 预检（不推荐）
 
-完整命令见 deploy/RUNBOOK.md §8。
+主流程见 deploy/RUNBOOK.md §3.0（§8 为速查副本）。
 EOF
 }
 
@@ -121,7 +121,7 @@ pack_web_dist() {
   log "打包 web 产物：${out}"
   cd "${WEB_DIR}"
   tar czf "${out}" "${WEB_ARTIFACTS[@]}"
-  printf '\n发版包已生成。上传与服务器命令见 deploy/RUNBOOK.md §8.1（解压目录：%s）。\n' "${WEB_REMOTE_DIR}"
+  printf '\n发版包已生成。上传与服务器步骤见 deploy/RUNBOOK.md §3.0（解压目录：%s）。\n' "${WEB_REMOTE_DIR}"
 }
 
 sync_web_files() {

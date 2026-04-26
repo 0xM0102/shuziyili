@@ -35,29 +35,65 @@
 
 ## 3. 发版与 Git（解耦）
 
-- **Git**（本地或 GitHub 等）只用于**源码版本管理**，与默认发版流程**无关联**：不在服务器上依赖 `git pull` 来上线。  
-- **发版** = 在**本机**仓库内执行构建（`npm` / `mvn`），把**产物**上传到 **`/opt/shuziyili/...`**（OrcaTerm、控制台上传、SFTP 等均可）。  
-- **可复制命令**一律集中在下方 **§8 部署命令速查**；本节只做约定说明。
+- **Git** 只做本地/协作的**源码历史**，**不参与**默认发版；上线不靠服务器 `git pull`。  
+- **发版** = **本机构建** → **上传产物**到 **`/opt/shuziyili/...`** → 服务器 **`systemctl restart`**（及按需 `npm install`，见下）。  
+- **主流程命令写在 §3.0～3.2**；**§8** 为同一套命令的**速查副本**（方便复制），内容不替代 §3。
 
-### 3.0 门户 Web
+### 3.0 门户 Web（主流程：本机构建 → 上传 tgz → 服务器）
 
-本机运行 [`deploy/sync-web.sh`](./sync-web.sh) → 生成 `deploy/shuziyili-web-dist-*.tgz`（已在仓库 `.gitignore`）。将 tgz 上传服务器后，按 **§8.1** 解压并重启 `shuziyili-web`。脚本会校验 `web/.env.production.local` 中的 `NEXT_PUBLIC_*` 并 `unset` 常见本机代理变量。
+**本机**（在仓库根目录；生成 `deploy/shuziyili-web-dist-时间戳.tgz`，路径已 `.gitignore`）：
 
-### 3.1 门户 `--push`（可选）
+```bash
+cd /path/to/shuziyili
+./deploy/sync-web.sh
+```
 
-本机已对该机 **`ssh-copy-id`** 且 [`deploy/ssh-target.env`](./ssh-target.env)（或 `deploy/deploy.local.env`）中 **`DEPLOY`** 正确时，可用一键推送，见 **§8.2**。
+脚本会校验 `web/.env.production.local` 里的 `NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_API_BASE_URL`，并 `unset` 常见本机代理变量。
 
-### 3.2 Admin / API
+**服务器**（把 tgz 传到如 `/tmp/`，文件名换成你实际上传的）：
 
-见 **§8.4**、**§8.3**。
+```bash
+sudo mkdir -p /opt/shuziyili/web
+sudo tar xzf /tmp/shuziyili-web-dist-XXXXXXXX.tgz -C /opt/shuziyili/web
+sudo systemctl restart shuziyili-web
+```
 
-### 3.3 门户排障
+**说明（与你习惯的「上传完重启」对齐）：** 发版包**不含** `node_modules`。若线上依赖已与本次 `package-lock.json` 一致（仅代码/`.next` 变更），上面 **解压 + `restart` 往往足够**。若**首次部署**、**改过依赖或 lock**、或重启后报错缺包，再在服务器补一行：
+
+```bash
+cd /opt/shuziyili/web && sudo npm install --omit=dev && sudo systemctl restart shuziyili-web
+```
+
+### 3.1 门户 `--push`（可选，与主流程二选一）
+
+本机已对生产机 **`ssh-copy-id`**，且 [`deploy/ssh-target.env`](./ssh-target.env)（或 `deploy/deploy.local.env`）里 **`DEPLOY=user@IP`** 正确时：
+
+```bash
+cd /path/to/shuziyili
+./deploy/sync-web.sh --push
+```
+
+（等价于本机构建 + rsync + 远端 `npm install` + 重启 + 健康检查；仍与 Git 无关。）
+
+### 3.2 Admin（静态）
+
+**本机**：`cd admin && npm ci && npm run build`。将 **`dist/`** 内全部文件上传到 **`/opt/shuziyili/admin/dist/`**。
+
+**服务器**：`sudo nginx -t && sudo systemctl reload nginx`（仅静态资源时一般**只需 reload**；若改过 Nginx 配置再按需调整）。
+
+### 3.3 API（jar）
+
+**本机**：`cd api && ./mvnw -DskipTests package`。将 **`target/shuziyili-api.jar`** 上传到 **`/opt/shuziyili/api/shuziyili-api.jar`**。
+
+**服务器**（端口以 `SERVER_PORT` / `api.env` 为准，示例 **8081**）：`sudo systemctl restart shuziyili-api`；可选验收：`curl -fsS http://127.0.0.1:8081/api/v1/health`。
+
+### 3.4 门户排障
 
 | 现象 | 处理 |
 |------|------|
 | 发布后页面无数据 / 白屏 | 检查 `web/.env.production.local`；改后须重新 `./deploy/sync-web.sh` 再打 tgz 上传。 |
 | `502 Bad Gateway` | `systemctl status shuziyili-web`；本机 `127.0.0.1:3000` 是否监听。 |
-| `--push` 报 `Permission denied` | 改用 §8.1 打包上传；或配置免密 SSH 后再 `--push`。 |
+| `--push` 报 `Permission denied` | 改用 §3.0 打包上传；或配置免密 SSH 后再 `--push`。 |
 | `Connection closed by 127.0.0.1 port 7890` | 本机代理劫持；脚本已 `unset` 常见变量，仍异常则检查 Shell 代理。 |
 
 ---
@@ -68,7 +104,7 @@
 
 1. `sudo systemctl stop shuziyili-web`
 2. `sudo mkdir -p /opt/shuziyili/web`
-3. `sudo rsync -a /opt/shuziyili/repo/web/ /opt/shuziyili/web/`（或按 §8.1 上传产物覆盖）
+3. `sudo rsync -a /opt/shuziyili/repo/web/ /opt/shuziyili/web/`（或按 §3.0 上传产物覆盖）
 4. `cd /opt/shuziyili/web && sudo npm install --omit=dev`
 5. 编辑 `/etc/systemd/system/shuziyili-web.service`：`WorkingDirectory=/opt/shuziyili/web`
 6. `sudo systemctl daemon-reload && sudo systemctl start shuziyili-web`
@@ -108,11 +144,11 @@ cat /opt/shuziyili/web/.next/BUILD_ID
 
 ---
 
-## 8. 部署命令速查
+## 8. 部署命令速查（与 §3 相同，便于复制）
 
-路径 `/path/to/shuziyili` 请换为你本机仓库根目录；服务器上命令在 **OrcaTerm / 已登录会话** 中执行。
+路径 `/path/to/shuziyili` 换成本机仓库；服务器在 **OrcaTerm / 已登录会话** 执行。
 
-### 8.1 门户 Web（默认：本机构建 → 上传 tgz）
+### 8.1 门户 Web（本机构建 → 上传 tgz → 服务器）
 
 **本机**
 
@@ -121,14 +157,15 @@ cd /path/to/shuziyili
 ./deploy/sync-web.sh
 ```
 
-**服务器**（先把 `deploy/shuziyili-web-dist-*.tgz` 传到例如 `/tmp/`，文件名按实际上传替换）
+**服务器**（tgz 传到 `/tmp/` 等，文件名替换；**最小步骤：解压 + restart**）
 
 ```bash
 sudo mkdir -p /opt/shuziyili/web
 sudo tar xzf /tmp/shuziyili-web-dist-XXXXXXXX.tgz -C /opt/shuziyili/web
-cd /opt/shuziyili/web && sudo npm install --omit=dev
 sudo systemctl restart shuziyili-web
 ```
+
+**依赖有变或首次**：`cd /opt/shuziyili/web && sudo npm install --omit=dev && sudo systemctl restart shuziyili-web`（与 §3.0 说明一致）。
 
 ### 8.2 门户 Web（可选：`--push`）
 
