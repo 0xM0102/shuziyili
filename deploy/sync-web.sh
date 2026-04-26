@@ -60,7 +60,7 @@ require_cmd() {
 }
 
 validate_target() {
-  [[ -n "${TARGET}" ]] || die "请先设置 DEPLOY=user@host"
+  [[ -n "${TARGET}" ]] || die "未得到 SSH 目标：请设置 DEPLOY=user@host，或配置 deploy/ssh-target.env / deploy/deploy.local.env"
   [[ "${TARGET}" =~ ^[A-Za-z0-9._-]+@[A-Za-z0-9._:-]+$ ]] || die "DEPLOY 格式非法：${TARGET}"
 }
 
@@ -71,8 +71,8 @@ validate_web_env() {
   [[ -f "${env_file}" ]] || die "缺少文件：${env_file}"
   [[ -s "${env_file}" ]] || die "${env_file} 为空，已终止"
 
-  rg -q '^NEXT_PUBLIC_SITE_URL=' "${env_file}" || die "缺少 NEXT_PUBLIC_SITE_URL"
-  rg -q '^NEXT_PUBLIC_API_BASE_URL=' "${env_file}" || die "缺少 NEXT_PUBLIC_API_BASE_URL"
+  grep -qE '^NEXT_PUBLIC_SITE_URL=' "${env_file}" || die "缺少 NEXT_PUBLIC_SITE_URL"
+  grep -qE '^NEXT_PUBLIC_API_BASE_URL=' "${env_file}" || die "缺少 NEXT_PUBLIC_API_BASE_URL"
 
   site_url="$(sed -n 's/^NEXT_PUBLIC_SITE_URL=//p' "${env_file}" | tail -n 1 | tr -d '[:space:]')"
   api_base_url="$(sed -n 's/^NEXT_PUBLIC_API_BASE_URL=//p' "${env_file}" | tail -n 1 | tr -d '[:space:]')"
@@ -130,7 +130,7 @@ main() {
   require_cmd rsync
   require_cmd ssh
   require_cmd curl
-  require_cmd rg
+  require_cmd grep
 
   validate_target
 
