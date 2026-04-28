@@ -13,13 +13,9 @@ import { UserAccountMenu } from "./user-account-menu";
 import { AuthModal } from "../auth/auth-modal";
 import { getBrowserLang, navLabels, uiText, type LangCode } from "@/lib/i18n";
 import { fetchMe, getSession, type AuthSession } from "@/lib/auth-client";
+import { navItemIsActive } from "@/lib/nav-active";
 
-function isActive(pathname: string, href: string) {
-  if (href === "/") return pathname === "/";
-  return pathname === href || pathname.startsWith(`${href}/`);
-}
-
-/** 全屏门户顶栏：一级菜单通栏（伊犁蓝实底，对齐 Bee 式结构） */
+/** 全站顶栏：一级导航与账号区；与 `body`  flex 首行固定，勿再用 `sticky`（主滚动在 `main` 内）。 */
 export function TopNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
@@ -83,14 +79,13 @@ export function TopNav() {
     "inline-flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-foreground/80 transition-colors hover:bg-sidebar-hover hover:text-primary";
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border bg-background text-foreground">
+    <header className="relative z-50 shrink-0 border-b border-border bg-background pt-[env(safe-area-inset-top,0px)] text-foreground">
       <div className="flex h-16 w-full items-center gap-3 px-4 md:gap-4 md:px-5">
         <Link
           href="/"
           className="flex shrink-0 items-center gap-2 text-foreground"
           onClick={() => setOpen(false)}
         >
-          {/* 将 yl_logo.svg 置于 web/public/ */}
           {/* eslint-disable-next-line @next/next/no-img-element -- 品牌 SVG 来自 public */}
           <img
             src={siteConfig.logoPath}
@@ -112,7 +107,7 @@ export function TopNav() {
               key={item.href}
               href={item.href}
               className={`shrink-0 rounded-lg px-3 py-2.5 text-[15px] font-medium transition-colors ${
-                isActive(pathname, item.href)
+                navItemIsActive(pathname, item.href, "primary")
                   ? "bg-primary/10 text-primary"
                   : "text-foreground/85 hover:bg-sidebar-hover hover:text-foreground"
               }`}
@@ -201,7 +196,7 @@ export function TopNav() {
                 <Link
                   href={item.href}
                   className={`block rounded-lg px-3 py-2.5 text-sm font-medium ${
-                    isActive(pathname, item.href)
+                    navItemIsActive(pathname, item.href, "primary")
                       ? "bg-primary/10 text-primary"
                       : "text-foreground/90"
                   }`}

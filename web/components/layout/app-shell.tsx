@@ -1,5 +1,6 @@
 "use client";
 
+import { useLayoutEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import {
   hotConvenienceNav,
@@ -65,6 +66,14 @@ function getSidebarConfig(pathname: string): SidebarConfig {
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const cfg = getSidebarConfig(pathname);
+  const mainScrollRef = useRef<HTMLDivElement>(null);
+
+  /** 客户端路由切换时主列滚动位置保留在旧页，会导致新页「顶部像被挡住」；回到内容区顶部。 */
+  useLayoutEffect(() => {
+    const el = mainScrollRef.current;
+    if (!el) return;
+    el.scrollTop = 0;
+  }, [pathname]);
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-1 items-stretch overflow-hidden">
@@ -89,7 +98,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       ) : null}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-canvas">
-        <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
+        <div
+          ref={mainScrollRef}
+          className="min-h-0 flex-1 overflow-y-auto overscroll-contain"
+        >
           {cfg.showSidebar ? (
             <div className="px-4 py-3 md:hidden">
               {cfg.groups.map((g) => (

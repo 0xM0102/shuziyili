@@ -70,6 +70,13 @@ curl -fsSI http://127.0.0.1:3000 | head -n 5
 
 **说明：** 若你**非常确定**本次未改 `package.json` / `package-lock.json`、且线上 `node_modules` 已与 lock 一致，可临时省略 `npm install` 仅「解压 + `restart`」；拿不准时**建议保留**上面四步，与 `--push` 脚本在远端行为一致。
 
+**本机上传 tgz（可选，`user@host` 以你服务器为准，仓库默认见 `deploy/ssh-target.env`）：**
+
+```bash
+latest="$(ls -t deploy/shuziyili-web-dist-*.tgz | head -n 1)"
+scp "$latest" user@your-server-ip:/tmp/
+```
+
 ### 3.1 门户 `--push`（可选，与主流程二选一）
 
 本机已对生产机 **`ssh-copy-id`**，且 [`deploy/ssh-target.env`](./ssh-target.env)（或 `deploy/deploy.local.env`）里 **`DEPLOY=user@IP`** 正确时：
@@ -89,11 +96,28 @@ cd /path/to/shuziyili
 
 ### 3.3 API（jar）
 
-**本机**：`cd api && ./mvnw -DskipTests package`。将 **`target/shuziyili-api.jar`** 上传到 **`/opt/shuziyili/api/shuziyili-api.jar`**。
+**本机**：`cd api && ./mvnw -DskipTests package`。
 
-**服务器**（端口以 `SERVER_PORT` / `api.env` 为准，示例 **8081**）：`sudo systemctl restart shuziyili-api`；可选验收：`curl -fsS http://127.0.0.1:8081/api/v1/health`。
+**本机上传 jar**（示例；`user@host` 以实机为准）：
 
-### 3.4 门户排障
+```bash
+scp target/shuziyili-api.jar user@your-server-ip:/opt/shuziyili/api/shuziyili-api.jar
+```
+
+**服务器**：`sudo systemctl restart shuziyili-api`。
+
+**`api.env` 必备**：除 `SPRING_DATASOURCE_USERNAME` / `PASSWORD` 外，须有 **`SPRING_DATASOURCE_URL`**（完整 JDBC），否则日志会出现 `jdbcUrl, ${SPRING_DATASOURCE_URL}` 且进程起不来、`8081` 短暂 `Connection refused`。示例见 [`deploy/env/api.env.example`](./env/api.env.example)。
+
+**验收**（端口以 `SERVER_PORT` 为准，示例 **8081**）：
+
+```bash
+curl -fsS http://127.0.0.1:8081/api/v1/health
+curl -fsS "http://127.0.0.1:8081/api/v1/news/headlines?type=top"
+```
+
+若 **`/api/v1/news/headlines` 返回 404** 而 `health` 正常，多半是线上 **`shuziyili-api.jar` 仍为旧包**（不含资讯模块）；上传新 jar 并重启即可。仅改 `JUHE_NEWS_*` 不会自动出现路由。
+
+### 3.4 发版排障（门户 / API / 上传）
 
 | 现象 | 处理 |
 |------|------|
@@ -101,6 +125,9 @@ cd /path/to/shuziyili
 | `502 Bad Gateway` | `systemctl status shuziyili-web`；本机 `127.0.0.1:3000` 是否监听。 |
 | `--push` 报 `Permission denied` | 改用 §3.0 打包上传；或配置免密 SSH 后再 `--push`。 |
 | `Connection closed by 127.0.0.1 port 7890` | 本机代理劫持；脚本已 `unset` 常见变量，仍异常则检查 Shell 代理。 |
+| API `8081` 刚重启立刻 `Connection refused` | Spring 启动需十余秒；`sleep 8` 后再 `ss`/`curl`，或看 `journalctl -u shuziyili-api`。 |
+| `news/headlines` 404、`health` 正常 | 上传含资讯模块的 **新 `shuziyili-api.jar`** 并重启（见 §3.3）。 |
+| 日志 `jdbcUrl, ${SPRING_DATASOURCE_URL}` | 在 `api.env` 补全 **`SPRING_DATASOURCE_URL=`** 一行后重启。 |
 
 ---
 
@@ -122,6 +149,7 @@ cd /path/to/shuziyili
 
 ```bash
 curl -sS https://shuziyili.com/api/v1/health
+curl -sS "https://shuziyili.com/api/v1/news/headlines?type=top"
 curl -sS https://shuziyili.com/api/v1/travel/banners
 curl -sS -I https://shuziyili.com/travel
 curl -sS -I https://admin.shuziyili.com
@@ -136,10 +164,11 @@ cat /opt/shuziyili/web/.next/BUILD_ID
 | 现象 | 处理 |
 |------|------|
 | 门户像「没更新」 | 强刷；检查是否传错目录；静态页 `Cache-Control` 过长时收紧 HTML 缓存或刷 CDN |
-| 接口 404 | 确认 Nginx `/api/` 反代端口与 API 监听一致；`NEXT_PUBLIC_API_BASE_URL` 为主域时路径为 `/api/v1` |
+| 接口 404 | 确认 Nginx `/api/` 反代端口与 API 监听一致；`NEXT_PUBLIC_API_BASE_URL` 为主域时路径为 `/api/v1`；若为 **`/news/headlines`** 且 health 正常，多为 **jar 未含该接口**，需换包（§3.3）。 |
 | admin 登录全红 | `api.env` 里 `CORS_ALLOWED_ORIGINS` 含 `https://admin.shuziyili.com` |
 | 两套 `.next` BUILD_ID 不一致 | 统一 `WorkingDirectory` 与上传目标为 `/opt/shuziyili/web` |
 | 后台接口返回 `forbidden` 以前显示成 `unauthorized` | 升级 API 后已统一为 `requireStaffPermission` 的真实 message；前端若写死判断需改为同时认 `unauthorized` 与 `forbidden` |
+| API 起不来、日志 `jdbcUrl, ${SPRING_DATASOURCE_URL}` | 在 `api.env` 设置 **`SPRING_DATASOURCE_URL`**（完整 JDBC），见 `deploy/env/api.env.example` |
 
 ---
 
@@ -174,6 +203,13 @@ sudo systemctl restart shuziyili-web
 
 **（可选）** `sudo systemctl is-active shuziyili-web`；`curl -fsSI http://127.0.0.1:3000 | head -n 5`。
 
+**本机上传（与 §3.0 一致）：**
+
+```bash
+latest="$(ls -t deploy/shuziyili-web-dist-*.tgz | head -n 1)"
+scp "$latest" user@your-server-ip:/tmp/
+```
+
 ### 8.2 门户 Web（可选：`--push`）
 
 ```bash
@@ -190,14 +226,22 @@ cd /path/to/shuziyili/api
 ./mvnw -DskipTests package
 ```
 
-将 **`target/shuziyili-api.jar`** 上传到服务器 **`/opt/shuziyili/api/shuziyili-api.jar`**。
+将 **`target/shuziyili-api.jar`** 上传到服务器 **`/opt/shuziyili/api/shuziyili-api.jar`**，例如：
+
+```bash
+scp target/shuziyili-api.jar user@your-server-ip:/opt/shuziyili/api/shuziyili-api.jar
+```
 
 **服务器**（端口以 `SERVER_PORT` / `api.env` 为准，示例 **8081**）
 
 ```bash
 sudo systemctl restart shuziyili-api
+sleep 6
 curl -fsS http://127.0.0.1:8081/api/v1/health
+curl -fsS "http://127.0.0.1:8081/api/v1/news/headlines?type=top"
 ```
+
+`api.env` 须含 **`SPRING_DATASOURCE_URL`**（见 `deploy/env/api.env.example`）；资讯路由依赖 **含该模块的 jar**。
 
 ### 8.4 Admin（静态）
 

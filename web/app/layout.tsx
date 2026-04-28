@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { AppShell } from "@/components/layout/app-shell";
 import { TopNav } from "@/components/layout/top-nav";
 import { AppToaster } from "@/components/app-toaster";
@@ -6,6 +6,13 @@ import { CookieConsentSlot } from "@/components/cookie-consent-slot";
 import { ThemeProvider } from "@/components/theme-provider";
 import { siteConfig } from "@/lib/site";
 import "./globals.css";
+
+/** 刘海屏下 `env(safe-area-inset-*)` 生效，避免顶栏/底栏与系统 UI 重叠。 */
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteConfig.url),
@@ -39,13 +46,13 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="zh-CN" className="antialiased" data-scroll-behavior="smooth" suppressHydrationWarning>
-      <body className="flex h-screen min-h-0 flex-col overflow-hidden bg-background text-foreground">
+      <body className="flex h-dvh max-h-dvh min-h-0 flex-col overflow-hidden bg-background text-foreground">
         <ThemeProvider>
           <TopNav />
           <AppToaster />
           <CookieConsentSlot />
-          {/* 禁止整页滚动：滚动只发生在侧栏与右侧内容列各自的 overflow 区域内。 */}
-          <main className="flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden">
+          {/* 整页不滚动：`main` 内单列滚动；`z-0` 与顶栏 `z-50` 分层，避免内容层叠盖住顶栏。 */}
+          <main className="relative z-0 flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden">
             <AppShell>{children}</AppShell>
           </main>
         </ThemeProvider>
