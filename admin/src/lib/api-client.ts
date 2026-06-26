@@ -31,6 +31,68 @@ export type PortalUserDto = {
 
 export type EventCategoryCode = "market" | "exhibition" | "show" | "family" | "sports";
 
+export type ConvenienceServiceStatus = "common" | "external" | "pending" | "verified";
+
+export type ConvenienceCategoryAdminDto = {
+  slug: string;
+  title: string;
+  shortTitle: string;
+  description: string;
+  icon: string;
+  keywords: string[];
+  enabled: boolean;
+  sortOrder: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type ConvenienceServiceAdminDto = {
+  id: string;
+  category: string;
+  title: string;
+  area: string;
+  address: string;
+  contact: string;
+  hours: string;
+  summary: string;
+  tags: string[];
+  status: ConvenienceServiceStatus;
+  sourceUrl: string | null;
+  mapUrl: string | null;
+  emergency: boolean;
+  enabled: boolean;
+  sortOrder: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type ConvenienceCategoryUpsertPayload = {
+  title: string;
+  shortTitle?: string;
+  description?: string;
+  icon?: string;
+  keywordsText?: string;
+  enabled?: boolean;
+  sortOrder?: number;
+};
+
+export type ConvenienceServiceUpsertPayload = {
+  category: string;
+  title: string;
+  area?: string;
+  address?: string;
+  contact?: string;
+  hours?: string;
+  summary?: string;
+  tagsText?: string;
+  status: ConvenienceServiceStatus;
+  sourceUrl?: string;
+  mapUrl?: string;
+  emergency?: boolean;
+  enabled?: boolean;
+  sortOrder?: number;
+};
+
 export type EventAdminDto = {
   id: string;
   title: string;
@@ -450,6 +512,58 @@ export const api = {
         return request<void>(`/api/v1/admin/events/${encodeURIComponent(id)}`, { method: "DELETE" });
       },
     },
+    convenience: {
+      async listCategories() {
+        return request<{ items: ConvenienceCategoryAdminDto[] }>("/api/v1/admin/convenience/categories", {
+          method: "GET",
+        });
+      },
+      async createCategory(payload: ConvenienceCategoryUpsertPayload & { slug: string }) {
+        return request<ConvenienceCategoryAdminDto>("/api/v1/admin/convenience/categories", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      },
+      async updateCategory(slug: string, payload: ConvenienceCategoryUpsertPayload) {
+        return request<ConvenienceCategoryAdminDto>(
+          `/api/v1/admin/convenience/categories/${encodeURIComponent(slug)}`,
+          {
+            method: "PUT",
+            body: JSON.stringify(payload),
+          }
+        );
+      },
+      async removeCategory(slug: string) {
+        return request<void>(`/api/v1/admin/convenience/categories/${encodeURIComponent(slug)}`, {
+          method: "DELETE",
+        });
+      },
+      async listServices() {
+        return request<{ items: ConvenienceServiceAdminDto[] }>("/api/v1/admin/convenience/services", {
+          method: "GET",
+        });
+      },
+      async createService(payload: ConvenienceServiceUpsertPayload & { id: string }) {
+        return request<ConvenienceServiceAdminDto>("/api/v1/admin/convenience/services", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      },
+      async updateService(id: string, payload: ConvenienceServiceUpsertPayload) {
+        return request<ConvenienceServiceAdminDto>(
+          `/api/v1/admin/convenience/services/${encodeURIComponent(id)}`,
+          {
+            method: "PUT",
+            body: JSON.stringify(payload),
+          }
+        );
+      },
+      async removeService(id: string) {
+        return request<void>(`/api/v1/admin/convenience/services/${encodeURIComponent(id)}`, {
+          method: "DELETE",
+        });
+      },
+    },
     async listArticles() {
       return request<{
         items: {
@@ -658,4 +772,3 @@ export const api = {
     },
   },
 };
-

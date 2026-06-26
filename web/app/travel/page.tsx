@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { fetchPublicApiData } from "@/lib/api-base";
+import { sidebarContentWidthClassName } from "@/lib/page-layout";
 import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -28,7 +29,7 @@ async function getTravelBanners(): Promise<TravelBanner[]> {
   return data.items ?? [];
 }
 
-/** 场景入口：与侧栏二级栏目对应，后续可加 query 或 CMS 配置 */
+/** 场景入口：与侧栏二级栏目对应。 */
 const SCENE_ENTRIES = [
   { label: "花海", href: "/travel/guide", hint: "花季·摄影" },
   { label: "草原", href: "/travel/attractions", hint: "牧场·风光" },
@@ -36,7 +37,7 @@ const SCENE_ENTRIES = [
   { label: "自驾", href: "/travel/transport", hint: "路况·补给" },
 ] as const;
 
-/** 精选路线：暂无独立 API，结构化占位，后续可接「路线」接口或文章标签 */
+/** 精选路线入口。 */
 const FEATURED_ROUTES = [
   {
     title: "杏花沟一日游",
@@ -58,7 +59,7 @@ const FEATURED_ROUTES = [
   },
 ] as const;
 
-/** 攻略：公开接口暂无文章列表，链到资讯列表占位 */
+/** 旅行灵感入口。 */
 const INSPIRATION_TEASERS = [
   { title: "伊犁杏花节什么时候去最好？", href: "/news", meta: "攻略" },
   { title: "新疆自驾避坑指南", href: "/news", meta: "自驾" },
@@ -103,7 +104,6 @@ function SectionHead({
 type Forecast = { day: string; icon: string; hi: number; lo: number; note: string };
 
 function WeatherCard() {
-  // 先用占位数据；后续可接入真实天气 API（避免现在就引入外部依赖与 key 管理）
   const now = new Date();
   const stamp = now.toLocaleString("zh-CN", { hour12: false });
   const forecast: Forecast[] = [
@@ -115,7 +115,7 @@ function WeatherCard() {
   return (
     <aside className="border-t border-border bg-background lg:border-t-0 lg:border-l">
       <div className="px-4 py-4 md:px-5">
-        <SectionHead title="伊宁天气（占位）" moreHref="/travel/guide" />
+        <SectionHead title="伊宁天气" moreHref="/travel/guide" />
         <p className="mt-1 text-xs text-muted">更新时间：{stamp}</p>
 
         <div className="mt-4 rounded-xl border border-border bg-card p-4">
@@ -231,7 +231,7 @@ export default async function TravelPage() {
       </section>
 
       {/* 下半区：按首页风格，用分区标题+卡片+边框 */}
-      <div className="mx-auto max-w-6xl space-y-0">
+      <div className={`${sidebarContentWidthClassName} space-y-0`}>
         {/* ========== 你想怎么玩 ========== */}
         <section aria-labelledby="travel-scenes" className="bg-background px-4 py-10 md:px-5">
           <SectionHead title="你想怎么玩" moreHref="/travel/guide" />
@@ -255,7 +255,7 @@ export default async function TravelPage() {
         {/* ========== 精选路线 ========== */}
         <section aria-labelledby="travel-routes" className="border-t border-border bg-background px-4 py-10 md:px-5">
           <SectionHead title="精选路线" moreHref="/travel/guide" />
-          <p className="mt-2 text-sm text-muted">示例结构，后续可接路线数据或文章合集</p>
+          <p className="mt-2 text-sm text-muted">按季节、路况和停留时间快速选择方向</p>
           <div className="mt-6 grid gap-4 md:grid-cols-3">
             {FEATURED_ROUTES.map((r) => (
               <Link
@@ -276,7 +276,7 @@ export default async function TravelPage() {
         {/* ========== 旅行灵感 / 攻略 ========== */}
         <section aria-labelledby="travel-guides" className="border-t border-border bg-background px-4 py-10 md:px-5">
           <SectionHead title="旅行灵感 · 攻略" moreHref="/news" />
-          <p className="mt-2 text-sm text-muted">公开接口暂无文章列表；先链到资讯，接入列表 API 后可替换为真实数据</p>
+          <p className="mt-2 text-sm text-muted">从路线、季节和出行方式开始，先收藏几篇最常用的攻略</p>
           <div className="mt-6 grid gap-4 md:grid-cols-2">
             {INSPIRATION_TEASERS.map((a) => (
               <Link

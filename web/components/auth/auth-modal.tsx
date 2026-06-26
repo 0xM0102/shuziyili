@@ -1,6 +1,6 @@
 "use client";
 
-import { cloneElement, useEffect, useRef, useState } from "react";
+import { cloneElement, useCallback, useEffect, useRef, useState } from "react";
 import type { FormEvent, InputHTMLAttributes, ReactElement } from "react";
 import Image from "next/image";
 import { BrandPanelBackdrop } from "@/components/brand/brand-panel-backdrop";
@@ -205,7 +205,7 @@ export function AuthModal({
     }
   };
 
-  const clearTransientState = () => {
+  const clearTransientState = useCallback(() => {
     setPassword("");
     setOtpCode("");
     setLoading(false);
@@ -213,7 +213,7 @@ export function AuthModal({
     setCooldown(0);
     setError(null);
     setSubmitted(false);
-  };
+  }, []);
 
   const switchMode = (nextMode: AuthMode) => {
     setActiveMode(nextMode);
@@ -225,20 +225,20 @@ export function AuthModal({
     setError(null);
   };
 
-  const resetModalState = () => {
+  const resetModalState = useCallback(() => {
     setActiveMode(mode);
     setLoginKind("password");
     setPhone(readRememberedPhone());
     setRememberMe(true);
     clearTransientState();
-  };
+  }, [clearTransientState, mode]);
 
   useEffect(() => {
     if (!open) return;
     resetModalState();
     skipPanelFadeRef.current = true;
     setContentOpaque(true);
-  }, [open, mode]);
+  }, [open, resetModalState]);
 
   useEffect(() => {
     if (!open) return;

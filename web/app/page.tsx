@@ -64,24 +64,24 @@ async function getHomeBanners(): Promise<HomeBanner[]> {
   return data.items ?? [];
 }
 
-/** 无主 Banner 且无后台精选首条时的 Hero 兜底（渐变块）。 */
+/** 无主 Banner 且无后台精选首条时的 Hero 兜底。 */
 const featured: Teaser[] = [
   {
-    title: "伊犁春季赏花路线与避堵建议（占位）",
+    title: "伊犁春季赏花路线与避堵建议",
     tag: "焦点",
     meta: "今日更新",
     href: "/news",
     tone: "blue",
   },
   {
-    title: "本周活动合集：市集/露营/展览（占位）",
+    title: "本周活动合集：市集/露营/展览",
     tag: "活动",
     meta: "本周",
     href: "/events",
     tone: "warm",
   },
   {
-    title: "数字游民短住：选址、网络与空间（占位）",
+    title: "数字游民短住：选址、网络与空间",
     tag: "游民",
     meta: "指南",
     href: "/nomad",
@@ -107,10 +107,7 @@ function Dot({ active }: { active: boolean }) {
   );
 }
 
-/**
- * 右侧小卡（上半区）：保持与大焦点一致的“封面位 + 标题 + 简述 + 导流”结构。
- * 说明：这里的背景同样是占位渐变，后续可替换为真实封面图。
- */
+/** 右侧小卡（上半区）：保持与大焦点一致的“封面位 + 标题 + 简述 + 导流”结构。 */
 function RailCard({
   title,
   sub,
@@ -217,14 +214,14 @@ export default async function HomePage() {
             <button
               type="button"
               className="absolute left-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center text-4xl leading-none text-white/85 transition-colors hover:text-white md:flex"
-              aria-label="上一条（占位）"
+              aria-label="上一条"
             >
               ‹
             </button>
             <button
               type="button"
               className="absolute right-3 top-1/2 hidden h-10 w-10 -translate-y-1/2 items-center justify-center text-4xl leading-none text-white/85 transition-colors hover:text-white md:flex"
-              aria-label="下一条（占位）"
+              aria-label="下一条"
             >
               ›
             </button>
@@ -264,7 +261,7 @@ export default async function HomePage() {
 
         <aside className="grid gap-0 border-t border-border lg:border-t-0 lg:grid-rows-2 lg:border-l">
           <RailCard
-            title={sideTop?.title ?? "AI 数智课程：从入门到实战（占位）"}
+            title={sideTop?.title ?? "AI 数智课程：从入门到实战"}
             sub={sideTop ? null : "适合本地从业者/游客：快速了解数字工具与本地资源。"}
             href={sideTop?.linkUrl ?? "/news"}
             imageUrl={sideTop?.imageUrl ?? null}
@@ -272,7 +269,7 @@ export default async function HomePage() {
           />
           <RailCard
             className="border-t border-border"
-            title={sideBottom?.title ?? "伊犁周末去哪儿：露营/自驾/美食（占位）"}
+            title={sideBottom?.title ?? "伊犁周末去哪儿：露营/自驾/美食"}
             sub={sideBottom ? null : "精选路线与时间表，让你少做攻略也能玩得舒服。"}
             href={sideBottom?.linkUrl ?? "/travel"}
             imageUrl={sideBottom?.imageUrl ?? null}

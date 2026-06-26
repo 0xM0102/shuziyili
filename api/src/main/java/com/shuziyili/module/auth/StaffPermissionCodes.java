@@ -14,7 +14,7 @@ public final class StaffPermissionCodes {
   public static final String FLASH_LINKS_MANAGE = "flash_links.manage";
   public static final String FLASH_TAGS_MANAGE = "flash_tags.manage";
   public static final String EVENTS_MANAGE = "events.manage";
+  public static final String CONVENIENCE_MANAGE = "convenience.manage";
   public static final String MEDIA_MANAGE = "media.manage";
   public static final String PERMISSIONS_MANAGE = "permissions.manage";
 }
-

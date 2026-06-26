@@ -1,7 +1,9 @@
 import type { MetadataRoute } from "next";
+import { fetchConveniencePayload } from "@/lib/convenience-api";
+import { buildConvenienceCategoryHref } from "@/lib/convenience-data";
 import { siteConfig } from "@/lib/site";
 
-const staticPaths = [
+const baseStaticPaths = [
   "/",
   "/travel",
   "/travel/attractions",
@@ -10,22 +12,23 @@ const staticPaths = [
   "/travel/transport",
   "/travel/guide",
   "/convenience",
-  "/convenience/government",
-  "/convenience/health",
-  "/convenience/shipping",
   "/nomad",
   "/events",
   "/news",
   "/flash",
   "/about",
+  "/contact",
   "/cookies",
 ];
 
-export default function sitemap(): MetadataRoute.Sitemap {
+export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = siteConfig.url.replace(/\/$/, "");
   const lastModified = new Date();
+  const data = await fetchConveniencePayload();
+  const conveniencePaths = data.categories.map((item) => buildConvenienceCategoryHref(item.slug));
+  const paths = [...baseStaticPaths, ...conveniencePaths];
 
-  return staticPaths.map((path) => ({
+  return paths.map((path) => ({
     url: `${base}${path}`,
     lastModified,
     changeFrequency: path === "/" ? "daily" : "weekly",

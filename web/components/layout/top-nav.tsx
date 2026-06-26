@@ -48,15 +48,31 @@ export function TopNav() {
     const root = document.documentElement;
     if (!el) return;
 
+    let frame = 0;
+
     const sync = () => {
-      root.style.setProperty(APP_HEADER_OFFSET_VAR, `${el.offsetHeight}px`);
+      frame = 0;
+      const height = Math.ceil(el.getBoundingClientRect().height);
+      root.style.setProperty(APP_HEADER_OFFSET_VAR, `${height}px`);
     };
+
+    const scheduleSync = () => {
+      if (frame) window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(sync);
+    };
+
     sync();
-    const ro = new ResizeObserver(sync);
+
+    const ro = new ResizeObserver(scheduleSync);
     ro.observe(el);
+    window.addEventListener("resize", scheduleSync);
+    window.visualViewport?.addEventListener("resize", scheduleSync);
+
     return () => {
+      if (frame) window.cancelAnimationFrame(frame);
       ro.disconnect();
-      root.style.removeProperty(APP_HEADER_OFFSET_VAR);
+      window.removeEventListener("resize", scheduleSync);
+      window.visualViewport?.removeEventListener("resize", scheduleSync);
     };
   }, []);
 

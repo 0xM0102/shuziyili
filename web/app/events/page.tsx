@@ -17,8 +17,12 @@ type PageProps = {
   searchParams?: Promise<{ status?: string | string[]; category?: string | string[] }>;
 };
 
+function getRenderTimestampMs() {
+  return Date.now();
+}
+
 export default async function HuodongPage({ searchParams }: PageProps) {
-  const nowMs = Date.now();
+  const nowMs = getRenderTimestampMs();
   const filters = parseEventListFilters((await searchParams) ?? {});
   const { all: allEvents, filtered } = await fetchPortalEventsForListPage(
     filters.status,

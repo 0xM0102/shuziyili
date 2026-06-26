@@ -32,6 +32,11 @@ const routes: RouteRecordRaw[] = [
         name: "events",
         component: () => import("@/views/events/EventsPage.vue"),
       },
+      {
+        path: "convenience",
+        name: "convenience",
+        component: () => import("@/views/convenience/ConveniencePage.vue"),
+      },
       { path: "media", name: "media", component: () => import("@/views/media/MediaPage.vue") },
       {
         path: "banners",

@@ -12,6 +12,8 @@ export const PAGE_HELP: Record<string, string> = {
     "门户登录/注册时验证码发送记录。若 API 开启 shuziyili.auth.store-plain-otp（默认 true），「验证码」列显示明文；上线前请设 SHUZIYILI_STORE_PLAIN_OTP=false 并勿在库中保留明文。仅 admin 可访问。",
   "/events":
     "管理门户「活动」频道：标题、时间、地点、封面、亮点与报名链接。未发布的活动不会在门户展示。",
+  "/convenience":
+    "管理门户「便民」频道：分类决定前台入口，服务条目决定电话、地址、外链、状态与应急专区。禁用后不会在门户展示；删除分类前需先删除或迁移该分类下的服务。",
   "/permissions":
     "权限管理：选择角色后，对应勾选其可访问的权限码（系统预置 roles 与 permissions）。仅管理员默认拥有 `permissions.manage`；若无权限将提示「权限不足」。\n\n为当前角色勾选可访问的后台能力；保存后生效。仅管理员可修改本页。",
   "/articles":

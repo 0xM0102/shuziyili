@@ -1,6 +1,12 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
+import {
+  standaloneContentGridClassName,
+  standaloneHeaderClassName,
+  standaloneSideRailClassName,
+  standaloneWidePageClassName,
+} from "@/lib/page-layout";
 import { siteConfig } from "@/lib/site";
 
 export const metadata: Metadata = {
@@ -41,8 +47,8 @@ function PolicyItem({ tag, title, children }: ItemProps) {
 
 export default function CookiesPage() {
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 pb-24 md:px-6 md:py-10 md:pb-28">
-      <header className="border-b border-border pb-8 md:pb-10">
+    <div className={standaloneWidePageClassName}>
+      <header className={`${standaloneHeaderClassName} border-b border-border pb-8 md:pb-10`}>
         <span className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xs font-semibold text-primary">
           合规说明
         </span>
@@ -55,7 +61,7 @@ export default function CookiesPage() {
         </p>
       </header>
 
-      <div className="mt-10 space-y-10">
+      <div className={`mt-10 ${standaloneContentGridClassName}`}>
         <section className="space-y-5">
           <h2 className="flex items-center gap-2.5 text-lg font-semibold text-foreground">
             <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
@@ -75,34 +81,36 @@ export default function CookiesPage() {
           </ul>
         </section>
 
-        <section className="rounded-2xl border border-border bg-card p-6 md:p-8">
-          <h2 className="flex items-center gap-2.5 text-lg font-semibold text-foreground">
-            <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
-            您的选择
-          </h2>
-          <p className="mt-4 text-sm leading-relaxed text-muted">
-            您可以在浏览器设置中清除 Cookie 与网站数据；清除后可能需要重新登录，主题等偏好也会恢复为默认。若关闭
-            JavaScript 或禁止本地存储，部分功能可能无法正常使用。
-          </p>
-        </section>
+        <aside className={standaloneSideRailClassName}>
+          <section className="rounded-2xl border border-border bg-card p-6 md:p-8">
+            <h2 className="flex items-center gap-2.5 text-lg font-semibold text-foreground">
+              <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
+              您的选择
+            </h2>
+            <p className="mt-4 text-sm leading-relaxed text-muted">
+              您可以在浏览器设置中清除 Cookie 与网站数据；清除后可能需要重新登录，主题等偏好也会恢复为默认。若关闭
+              JavaScript 或禁止本地存储，部分功能可能无法正常使用。
+            </p>
+          </section>
 
-        <nav
-          className="flex flex-col gap-3 border-t border-border pt-8 sm:flex-row sm:flex-wrap sm:items-center"
-          aria-label="页面导航"
-        >
-          <Link
-            href="/"
-            className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-95 sm:w-auto"
+          <nav
+            className="flex flex-col gap-3 border-t border-border pt-8 sm:flex-row sm:flex-wrap sm:items-center"
+            aria-label="页面导航"
           >
-            回首页
-          </Link>
-          <Link
-            href="/about"
-            className="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-background px-5 text-sm font-semibold text-foreground/90 transition-colors hover:bg-sidebar-hover sm:w-auto"
-          >
-            关于我们
-          </Link>
-        </nav>
+            <Link
+              href="/"
+              className="inline-flex h-11 items-center justify-center rounded-xl bg-primary px-5 text-sm font-semibold text-primary-foreground transition-opacity hover:opacity-95 sm:w-auto"
+            >
+              回首页
+            </Link>
+            <Link
+              href="/about"
+              className="inline-flex h-11 items-center justify-center rounded-xl border border-border bg-background px-5 text-sm font-semibold text-foreground/90 transition-colors hover:bg-sidebar-hover sm:w-auto"
+            >
+              关于我们
+            </Link>
+          </nav>
+        </aside>
       </div>
     </div>
   );

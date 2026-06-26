@@ -21,7 +21,15 @@ export function AppShellInner({ children, searchKey }: Props) {
   useLayoutEffect(() => {
     const el = mainScrollRef.current;
     if (!el) return;
-    el.scrollTop = 0;
+
+    const resetScroll = () => {
+      el.scrollTop = 0;
+      el.scrollLeft = 0;
+    };
+
+    resetScroll();
+    const frame = window.requestAnimationFrame(resetScroll);
+    return () => window.cancelAnimationFrame(frame);
   }, [pathname, searchKey]);
 
   return (

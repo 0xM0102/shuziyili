@@ -15,8 +15,6 @@ export const uiText: Record<
     logout: string;
     account: string;
     close: string;
-    searchTitle: string;
-    searchEmpty: string;
     personalCenter: string;
     accountHint: string;
     accountGoLogin: string;
@@ -41,8 +39,6 @@ export const uiText: Record<
     logout: "退出",
     account: "账号",
     close: "关闭",
-    searchTitle: "搜索结果（占位）",
-    searchEmpty: "暂无结果（占位）。",
     personalCenter: "个人中心",
     accountHint: "登录后可编辑资料、查看账号信息并安全退出。",
     accountGoLogin: "去登录",
@@ -66,8 +62,6 @@ export const uiText: Record<
     logout: "Logout",
     account: "Account",
     close: "Close",
-    searchTitle: "Search Results (Placeholder)",
-    searchEmpty: "No results (placeholder).",
     personalCenter: "Profile",
     accountHint: "Sign in to edit your profile and manage your account.",
     accountGoLogin: "Sign in",
@@ -99,6 +93,7 @@ export const navLabels: Record<
     "/news": "资讯",
     "/account": "个人中心",
     "/about": "关于",
+    "/contact": "联系",
   },
   en: {
     "/": "Home",
@@ -109,6 +104,7 @@ export const navLabels: Record<
     "/news": "News",
     "/account": "Profile",
     "/about": "About",
+    "/contact": "Contact",
   },
 };
 
@@ -121,4 +117,3 @@ export function getBrowserLang(): LangCode {
     return "zh";
   }
 }
-

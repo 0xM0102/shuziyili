@@ -15,7 +15,14 @@ export type NavIconName =
   | "guide"
   | "government"
   | "health"
-  | "shipping";
+  | "shipping"
+  | "transport"
+  | "telecom"
+  | "banking"
+  | "shopping"
+  | "repair"
+  | "emergency"
+  | "community";
 
 type IconProps = ComponentProps<"svg">;
 
@@ -206,6 +213,83 @@ export function ShippingIcon(props: IconProps) {
   );
 }
 
+export function TransportIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M6 17h12" />
+      <path d="M7 17V8a3 3 0 0 1 3-3h4a3 3 0 0 1 3 3v9" />
+      <path d="M8 11h8" />
+      <path d="M9 20h0M15 20h0" />
+    </IconBase>
+  );
+}
+
+export function TelecomIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M8 18h8" />
+      <path d="M10 22h4" />
+      <path d="M12 18V8" />
+      <path d="M7 9a7 7 0 0 1 10 0" />
+      <path d="M9.5 12a3.5 3.5 0 0 1 5 0" />
+      <path d="M12 15h0" />
+    </IconBase>
+  );
+}
+
+export function BankingIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 9h16" />
+      <path d="M6 9V7l6-4 6 4v2" />
+      <path d="M7 13h10" />
+      <path d="M7 17h10" />
+      <path d="M5 21h14" />
+    </IconBase>
+  );
+}
+
+export function ShoppingIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M6 8h15l-2 8H8L6 4H3" />
+      <path d="M9 20h0M17 20h0" />
+      <path d="M10 12h6" />
+    </IconBase>
+  );
+}
+
+export function RepairIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M14 7l3-3 3 3-3 3" />
+      <path d="M4 20l8.5-8.5" />
+      <path d="M12 6l6 6" />
+      <path d="M7 17l-3 3" />
+    </IconBase>
+  );
+}
+
+export function EmergencyIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M12 3l9 16H3L12 3Z" />
+      <path d="M12 9v4" />
+      <path d="M12 17h0" />
+    </IconBase>
+  );
+}
+
+export function CommunityIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <path d="M4 20V9l8-5 8 5v11" />
+      <path d="M9 20v-6h6v6" />
+      <path d="M7 11h2M15 11h2" />
+    </IconBase>
+  );
+}
+
 /** 图标表：`NavItem.icon` 存 key，渲染时从这里取组件，便于统一替换与管理。 */
 export const navIcons: Record<NavIconName, (p: IconProps) => ReactElement> = {
   hot: HotIcon,
@@ -221,5 +305,11 @@ export const navIcons: Record<NavIconName, (p: IconProps) => ReactElement> = {
   government: GovernmentIcon,
   health: HealthIcon,
   shipping: ShippingIcon,
+  transport: TransportIcon,
+  telecom: TelecomIcon,
+  banking: BankingIcon,
+  shopping: ShoppingIcon,
+  repair: RepairIcon,
+  emergency: EmergencyIcon,
+  community: CommunityIcon,
 };
-

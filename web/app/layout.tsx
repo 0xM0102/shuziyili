@@ -4,6 +4,7 @@ import { TopNav } from "@/components/layout/top-nav";
 import { AppToaster } from "@/components/app-toaster";
 import { CookieConsentSlot } from "@/components/cookie-consent-slot";
 import { ThemeProvider } from "@/components/theme-provider";
+import { APP_HEADER_OFFSET_VAR } from "@/lib/layout-tokens";
 import { siteConfig } from "@/lib/site";
 import "./globals.css";
 
@@ -51,8 +52,14 @@ export default function RootLayout({
           <TopNav />
           <AppToaster />
           <CookieConsentSlot />
-          {/* 顶栏 `fixed` 不占文档流：`pt` 与 `--app-header-offset` 对齐，避免内容被顶栏盖住。 */}
-          <main className="relative z-0 flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden pt-[var(--app-header-offset)] isolate">
+          {/* 顶栏 `fixed` 不占文档流：主区整体下移并扣除顶栏高度，避免内部滚动层钻到顶栏下方。 */}
+          <main
+            className="relative z-0 flex min-h-0 w-full max-w-full flex-none flex-col overflow-hidden isolate"
+            style={{
+              height: `calc(100dvh - var(${APP_HEADER_OFFSET_VAR}))`,
+              marginTop: `var(${APP_HEADER_OFFSET_VAR})`,
+            }}
+          >
             <AppShell>{children}</AppShell>
           </main>
         </ThemeProvider>

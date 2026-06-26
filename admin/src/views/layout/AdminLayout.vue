@@ -13,6 +13,7 @@ import {
   MenuUnfoldOutlined,
   KeyOutlined,
   PictureOutlined,
+  PhoneOutlined,
   SendOutlined,
   SettingOutlined,
   UserOutlined,
@@ -52,6 +53,7 @@ const menuItems = [
   { key: "media", path: "/media" },
   { key: "home-curation", path: "/home-curation" },
   { key: "events", path: "/events" },
+  { key: "convenience", path: "/convenience" },
 ] as const;
 
 /** 归入「内容管理」子菜单的路由前缀 */
@@ -63,6 +65,7 @@ const CONTENT_PATH_PREFIXES = [
   "/flash-tags",
   "/media",
   "/events",
+  "/convenience",
 ] as const;
 /** 归入「后台管理」子菜单的路由前缀 */
 const ADMIN_PATH_PREFIXES = ["/staff-users", "/permissions", "/verification-records"] as const;
@@ -74,6 +77,7 @@ const PAGE_TITLES = [
   { prefix: "/flash-tags", title: "标签管理" },
   { prefix: "/media", title: "媒体库" },
   { prefix: "/events", title: "活动管理" },
+  { prefix: "/convenience", title: "便民管理" },
   { prefix: "/portal-users", title: "平台用户" },
   { prefix: "/staff-users", title: "后台账号" },
   { prefix: "/verification-records", title: "验证发送记录" },
@@ -213,6 +217,10 @@ const logout = async () => {
             <a-menu-item key="events">
               <template #icon><CalendarOutlined /></template>
               <span>活动管理</span>
+            </a-menu-item>
+            <a-menu-item key="convenience">
+              <template #icon><PhoneOutlined /></template>
+              <span>便民管理</span>
             </a-menu-item>
           </a-sub-menu>
         </a-menu>
@@ -395,4 +403,3 @@ const logout = async () => {
   font-size: 14px;
 }
 </style>
-

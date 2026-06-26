@@ -33,12 +33,9 @@ export function SiteFooter() {
             <Link href="/cookies" className="hover:text-primary">
               Cookie 说明
             </Link>
-            <a
-              href={`mailto:hello@${new URL(siteConfig.url).host}`}
-              className="hover:text-primary"
-            >
+            <Link href="/contact" className="hover:text-primary">
               联系
-            </a>
+            </Link>
           </div>
         </div>
         <p className="mt-6 text-center text-xs text-muted md:text-left">
