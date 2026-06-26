@@ -81,7 +81,7 @@ public class PortalAuthService {
 
   /** 发送注册验证码（邮箱或手机号）。 */
   @Transactional
-  public ApiResponse<Map<String, String>> sendRegisterCode(String identifierRaw) {
+  public ApiResponse<Map<String, String>> sendRegisterCode(String identifierRaw, String requestOrigin) {
     String identifier = AccountIdentifiers.normalize(identifierRaw);
     String validation = AccountIdentifiers.validate(identifier);
     if (validation != null) {
@@ -90,7 +90,7 @@ public class PortalAuthService {
     if (portalUserRepository.findByIdentifier(identifier).isPresent()) {
       return ApiResponse.fail("already_exists");
     }
-    return issueOtpAndSend(identifier, SmsScene.REGISTER);
+    return issueOtpAndSend(identifier, SmsScene.REGISTER, requestOrigin);
   }
 
   /** 验证码 + 密码完成注册（邮箱或手机号）。 */
@@ -120,7 +120,7 @@ public class PortalAuthService {
 
   /** 发送登录验证码（邮箱或手机号，账号须已存在）。 */
   @Transactional
-  public ApiResponse<Map<String, String>> sendLoginCode(String identifierRaw) {
+  public ApiResponse<Map<String, String>> sendLoginCode(String identifierRaw, String requestOrigin) {
     String identifier = AccountIdentifiers.normalize(identifierRaw);
     String validation = AccountIdentifiers.validate(identifier);
     if (validation != null) {
@@ -129,7 +129,7 @@ public class PortalAuthService {
     if (portalUserRepository.findByIdentifier(identifier).isEmpty()) {
       return ApiResponse.fail("not_found");
     }
-    return issueOtpAndSend(identifier, SmsScene.LOGIN);
+    return issueOtpAndSend(identifier, SmsScene.LOGIN, requestOrigin);
   }
 
   /** 验证码登录（邮箱或手机号）。 */
@@ -202,7 +202,8 @@ public class PortalAuthService {
     return resolveLivePortalSession(bearerToken).isPresent();
   }
 
-  private ApiResponse<Map<String, String>> issueOtpAndSend(String recipient, String scene) {
+  private ApiResponse<Map<String, String>> issueOtpAndSend(
+      String recipient, String scene, String requestOrigin) {
     long now = clock.millis();
     Optional<SmsCodeEntity> lastOpt =
         smsCodeRepository.findFirstByPhoneAndSceneOrderByCreatedAtDesc(recipient, scene);
@@ -214,6 +215,7 @@ public class PortalAuthService {
     e.setPhone(recipient);
     e.setScene(scene);
     e.setCodeHash(sha256Hex("shuziyili:" + recipient + ":" + scene + ":" + code));
+    e.setRequestOrigin(requestOrigin);
     e.setCreatedAt(now);
     e.setExpiresAt(now + SMS_CODE_TTL_MS);
     e.setUsed(false);

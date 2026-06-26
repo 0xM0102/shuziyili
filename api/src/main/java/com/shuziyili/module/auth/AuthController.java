@@ -2,9 +2,11 @@ package com.shuziyili.module.auth;
 
 import com.shuziyili.common.ApiResponse;
 import com.shuziyili.common.BearerTokens;
+import com.shuziyili.common.RequestOriginSupport;
 import com.shuziyili.module.media.CosStorageService;
 import com.shuziyili.module.media.CosStorageService.UploadResult;
 import com.shuziyili.module.media.CosUploadScope;
+import javax.servlet.http.HttpServletRequest;
 import java.util.Map;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -43,11 +45,12 @@ public class AuthController {
   /** 发送注册验证码（邮箱或手机号） */
   @PostMapping("/register/send")
   public ResponseEntity<ApiResponse<Map<String, String>>> sendRegisterCode(
-      @RequestBody IdentifierReq req) {
+      @RequestBody IdentifierReq req, HttpServletRequest httpRequest) {
     if (req == null || req.identifier == null || req.identifier.trim().isEmpty()) {
       return ResponseEntity.ok(ApiResponse.fail("empty"));
     }
-    ApiResponse<Map<String, String>> resp = portalAuthService.sendRegisterCode(req.identifier);
+    ApiResponse<Map<String, String>> resp =
+        portalAuthService.sendRegisterCode(req.identifier, RequestOriginSupport.resolve(httpRequest));
     return ResponseEntity.ok(resp);
   }
 
@@ -64,11 +67,13 @@ public class AuthController {
 
   /** 发送登录验证码（邮箱或手机号，账号须已存在） */
   @PostMapping("/login/send")
-  public ResponseEntity<ApiResponse<Map<String, String>>> sendLoginCode(@RequestBody IdentifierReq req) {
+  public ResponseEntity<ApiResponse<Map<String, String>>> sendLoginCode(
+      @RequestBody IdentifierReq req, HttpServletRequest httpRequest) {
     if (req == null || req.identifier == null || req.identifier.trim().isEmpty()) {
       return ResponseEntity.ok(ApiResponse.fail("empty"));
     }
-    ApiResponse<Map<String, String>> resp = portalAuthService.sendLoginCode(req.identifier);
+    ApiResponse<Map<String, String>> resp =
+        portalAuthService.sendLoginCode(req.identifier, RequestOriginSupport.resolve(httpRequest));
     return ResponseEntity.ok(resp);
   }
 

@@ -27,6 +27,11 @@ const routes: RouteRecordRaw[] = [
         name: "home-curation",
         component: () => import("@/views/home-curation/HomeCurationPage.vue"),
       },
+      {
+        path: "events",
+        name: "events",
+        component: () => import("@/views/events/EventsPage.vue"),
+      },
       { path: "media", name: "media", component: () => import("@/views/media/MediaPage.vue") },
       {
         path: "banners",

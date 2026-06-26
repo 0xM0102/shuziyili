@@ -3,6 +3,7 @@ import { PlusOutlined, ReloadOutlined } from "@ant-design/icons-vue";
 import { computed, onMounted, reactive, ref, watch } from "vue";
 import { api } from "@/lib/api-client";
 import { mapApiMessage } from "@/lib/auth-messages";
+import { datetimeLocalInputToMsOrNow, msToDatetimeLocalInput } from "@/lib/datetime-local";
 import { message } from "ant-design-vue";
 
 type LinkKind = "EXTERNAL" | "INTERNAL";
@@ -72,17 +73,6 @@ watch(
   }
 );
 
-function msToLocalInput(ms: number): string {
-  const d = new Date(ms);
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function localInputToMs(s: string): number {
-  const t = new Date(s).getTime();
-  return Number.isFinite(t) ? t : Date.now();
-}
-
 function resetForm() {
   form.linkKind = "EXTERNAL";
   form.title = "";
@@ -91,7 +81,7 @@ function resetForm() {
   form.tagId = 0;
   form.sortOrder = 0;
   form.enabled = true;
-  form.publishedAtLocal = msToLocalInput(Date.now());
+  form.publishedAtLocal = msToDatetimeLocalInput(Date.now());
   editingId.value = null;
 }
 
@@ -152,7 +142,7 @@ function openEdit(row: Row) {
   form.tagId = row.tagId ?? 0;
   form.sortOrder = row.sortOrder;
   form.enabled = row.enabled;
-  form.publishedAtLocal = msToLocalInput(row.publishedAt);
+  form.publishedAtLocal = msToDatetimeLocalInput(row.publishedAt);
 
   // 进入编辑态时同步“外链缓存”，避免切换类型后丢失你原来填的外链信息
   if (row.linkKind === "EXTERNAL") {
@@ -174,7 +164,7 @@ async function save() {
     void message.warning("请填写跳转链接");
     return;
   }
-  const publishedAt = localInputToMs(form.publishedAtLocal);
+  const publishedAt = datetimeLocalInputToMsOrNow(form.publishedAtLocal);
   saving.value = true;
   try {
     const payload = {

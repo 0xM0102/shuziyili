@@ -35,6 +35,10 @@ public class SmsCodeEntity {
   @Column(name = "plain_code", length = 8)
   private String plainCode;
 
+  /** HTTP 来源（Origin / Referer / Host），管理后台审计用。 */
+  @Column(name = "request_origin", length = 255)
+  private String requestOrigin;
+
   @Column(nullable = false)
   private long createdAt;
 
@@ -85,6 +89,14 @@ public class SmsCodeEntity {
 
   public void setPlainCode(String plainCode) {
     this.plainCode = plainCode;
+  }
+
+  public String getRequestOrigin() {
+    return requestOrigin;
+  }
+
+  public void setRequestOrigin(String requestOrigin) {
+    this.requestOrigin = requestOrigin;
   }
 
   public long getCreatedAt() {

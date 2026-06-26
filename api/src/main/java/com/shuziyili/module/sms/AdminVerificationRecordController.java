@@ -68,6 +68,7 @@ public class AdminVerificationRecordController {
     m.put("used", e.isUsed());
     m.put("usedAt", e.getUsedAt());
     m.put("plainCode", e.getPlainCode());
+    m.put("requestOrigin", e.getRequestOrigin());
     return m;
   }
 }

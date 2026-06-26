@@ -51,8 +51,8 @@ export default function RootLayout({
           <TopNav />
           <AppToaster />
           <CookieConsentSlot />
-          {/* 整页不滚动：`main` 内单列滚动；`z-0` 与顶栏 `z-50` 分层，避免内容层叠盖住顶栏。 */}
-          <main className="relative z-0 flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden">
+          {/* 顶栏 `fixed` 不占文档流：`pt` 与 `--app-header-offset` 对齐，避免内容被顶栏盖住。 */}
+          <main className="relative z-0 flex min-h-0 w-full max-w-full flex-1 flex-col overflow-hidden pt-[var(--app-header-offset)] isolate">
             <AppShell>{children}</AppShell>
           </main>
         </ThemeProvider>

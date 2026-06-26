@@ -14,6 +14,7 @@ type Row = {
   used: boolean;
   usedAt: number;
   plainCode: string | null;
+  requestOrigin: string | null;
 };
 
 const loading = ref(false);
@@ -53,6 +54,7 @@ function onTableChange(pag: { current?: number; pageSize?: number }) {
 
 const columns = [
   { title: "接收方", dataIndex: "recipient", key: "recipient", ellipsis: true, width: 200 },
+  { title: "来源", key: "requestOrigin", ellipsis: true, width: 180 },
   { title: "验证码", key: "plainCode", width: 100 },
   { title: "场景", key: "scene", width: 88 },
   { title: "发送时间", key: "createdAt", width: 170 },
@@ -92,12 +94,15 @@ onMounted(() => void refresh());
         showTotal: (t: number) => `共 ${t} 条`,
       }"
       size="middle"
-      :scroll="{ x: 1100 }"
+      :scroll="{ x: 1280 }"
       @change="onTableChange"
     >
       <template #bodyCell="{ column, record }">
         <template v-if="column.key === 'plainCode'">
           <span class="mono">{{ record.plainCode ?? "—" }}</span>
+        </template>
+        <template v-if="column.key === 'requestOrigin'">
+          <span :title="record.requestOrigin ?? undefined">{{ record.requestOrigin ?? "—" }}</span>
         </template>
         <template v-if="column.key === 'scene'">
           {{ sceneLabel(record.scene) }}

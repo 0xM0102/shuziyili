@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { primaryNav } from "@/lib/nav";
 import { siteConfig } from "@/lib/site";
 import { SiteWordmark } from "@/components/brand/site-wordmark";
@@ -14,11 +14,13 @@ import { AuthModal } from "../auth/auth-modal";
 import { getBrowserLang, navLabels, uiText, type LangCode } from "@/lib/i18n";
 import { fetchMe, getSession, type AuthSession } from "@/lib/auth-client";
 import { navItemIsActive } from "@/lib/nav-active";
+import { APP_HEADER_OFFSET_VAR } from "@/lib/layout-tokens";
 
-/** 全站顶栏：一级导航与账号区；与 `body`  flex 首行固定，勿再用 `sticky`（主滚动在 `main` 内）。 */
+/** 全站顶栏：`fixed` + CSS 变量占位，避免与 `main` 内滚动层叠导致内容被挡。 */
 export function TopNav() {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
 
   const [lang, setLang] = useState<LangCode>("zh");
   const [session, setSession] = useState<AuthSession | null>(null);
@@ -39,6 +41,23 @@ export function TopNav() {
     };
     window.addEventListener("shuziyili:open-auth", onOpenAuth);
     return () => window.removeEventListener("shuziyili:open-auth", onOpenAuth);
+  }, []);
+
+  useLayoutEffect(() => {
+    const el = headerRef.current;
+    const root = document.documentElement;
+    if (!el) return;
+
+    const sync = () => {
+      root.style.setProperty(APP_HEADER_OFFSET_VAR, `${el.offsetHeight}px`);
+    };
+    sync();
+    const ro = new ResizeObserver(sync);
+    ro.observe(el);
+    return () => {
+      ro.disconnect();
+      root.style.removeProperty(APP_HEADER_OFFSET_VAR);
+    };
   }, []);
 
   useEffect(() => {
@@ -79,7 +98,10 @@ export function TopNav() {
     "inline-flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-foreground/80 transition-colors hover:bg-sidebar-hover hover:text-primary";
 
   return (
-    <header className="relative z-50 shrink-0 border-b border-border bg-background pt-[env(safe-area-inset-top,0px)] text-foreground">
+    <header
+      ref={headerRef}
+      className="fixed inset-x-0 top-0 z-50 border-b border-border bg-background pt-[env(safe-area-inset-top,0px)] text-foreground"
+    >
       <div className="flex h-16 w-full items-center gap-3 px-4 md:gap-4 md:px-5">
         <Link
           href="/"

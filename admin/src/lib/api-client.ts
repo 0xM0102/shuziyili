@@ -29,6 +29,41 @@ export type PortalUserDto = {
   bio: string;
 };
 
+export type EventCategoryCode = "market" | "exhibition" | "show" | "family" | "sports";
+
+export type EventAdminDto = {
+  id: string;
+  title: string;
+  summary: string;
+  coverUrl: string;
+  location: string;
+  category: EventCategoryCode;
+  startsAt: number;
+  endsAt: number;
+  organizer: string;
+  registerUrl: string | null;
+  highlights: string[];
+  published: boolean;
+  sortOrder: number;
+  createdAt: number;
+  updatedAt: number;
+};
+
+export type EventUpsertPayload = {
+  title: string;
+  summary?: string;
+  coverUrl?: string;
+  location?: string;
+  category: EventCategoryCode;
+  startsAt: number;
+  endsAt: number;
+  organizer?: string;
+  registerUrl?: string;
+  highlightsText?: string;
+  published?: boolean;
+  sortOrder?: number;
+};
+
 /** 后台操作员 */
 export type StaffUserDto = {
   id: number;
@@ -252,6 +287,8 @@ export const api = {
             usedAt: number;
             /** 开启 API 的 store-plain-otp 时才有 */
             plainCode: string | null;
+            /** HTTP 来源（Origin / Referer / Host） */
+            requestOrigin: string | null;
           }[];
           total: number;
           page: number;
@@ -389,6 +426,28 @@ export const api = {
       },
       async remove(id: number) {
         return request<void>(`/api/v1/admin/flash-tags/${id}`, { method: "DELETE" });
+      },
+    },
+    events: {
+      async list() {
+        return request<{
+          items: EventAdminDto[];
+        }>("/api/v1/admin/events", { method: "GET" });
+      },
+      async create(payload: EventUpsertPayload & { id: string }) {
+        return request<EventAdminDto>("/api/v1/admin/events", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+      },
+      async update(id: string, payload: EventUpsertPayload) {
+        return request<EventAdminDto>(`/api/v1/admin/events/${encodeURIComponent(id)}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+      },
+      async remove(id: string) {
+        return request<void>(`/api/v1/admin/events/${encodeURIComponent(id)}`, { method: "DELETE" });
       },
     },
     async listArticles() {

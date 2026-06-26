@@ -2,6 +2,8 @@
 
 /* 品牌主色 #2174FF + 明暗变量 */
 :root {
+  /* 固定顶栏占位：首屏与 SSR；客户端由 TopNav ResizeObserver 改为像素值（含移动菜单展开高度）。 */
+  --app-header-offset: calc(4rem + env(safe-area-inset-top, 0px) + 1px);
   /* 白底 + 灰阶文本（#333/#666/#999）+ 蓝色点缀 */
   --background: #ffffff;
   --foreground: #333333;

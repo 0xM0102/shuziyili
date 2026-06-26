@@ -3,7 +3,7 @@
 import { Toaster } from "sonner";
 import { useTheme } from "@/components/theme-provider";
 
-/** 全局 Toast：顶栏为 flex 首行固定，`offset` 避免与顶栏/刘海区重叠。 */
+/** 全局 Toast：`offset` 与 `--app-header-offset` 对齐，避免压住固定顶栏。 */
 export function AppToaster() {
   const { resolvedTheme } = useTheme();
   return (
@@ -11,7 +11,7 @@ export function AppToaster() {
       theme={resolvedTheme}
       position="top-center"
       offset={{
-        top: "calc(4.25rem + env(safe-area-inset-top, 0px))",
+        top: "var(--app-header-offset, calc(4rem + env(safe-area-inset-top, 0px) + 1px))",
       }}
       richColors
       closeButton

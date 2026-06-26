@@ -4,16 +4,16 @@ import { notFound } from "next/navigation";
 import {
   eventCategoryLabel,
   eventStatusLabel,
-  eventsSeed,
   formatEventTimeRange,
   getEventStatus,
 } from "@/lib/events-data";
+import { fetchPortalEventById } from "@/lib/events-api";
 
 type Props = { params: Promise<{ id: string }> };
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
-  const event = eventsSeed.find((item) => item.id === id);
+  const event = await fetchPortalEventById(id);
   if (!event) {
     return {
       title: "活动详情",
@@ -28,7 +28,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     openGraph: {
       title: event.title,
       description: event.summary,
-      images: [{ url: event.coverUrl }],
+      images: event.coverUrl ? [{ url: event.coverUrl }] : undefined,
       url: `/events/${id}`,
     },
   };
@@ -36,7 +36,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function HuodongDetailPage({ params }: Props) {
   const { id } = await params;
-  const event = eventsSeed.find((item) => item.id === id);
+  const event = await fetchPortalEventById(id);
   if (!event) notFound();
   const nowMs = new Date().getTime();
   const status = getEventStatus(nowMs, event.startsAt, event.endsAt);
@@ -96,17 +96,19 @@ export default async function HuodongDetailPage({ params }: Props) {
             </p>
           </div>
 
-          <div className="space-y-2">
-            <h2 className="text-base font-semibold text-foreground">活动亮点</h2>
-            <ul className="space-y-1 text-sm text-foreground/90">
-              {event.highlights.map((item) => (
-                <li key={item} className="flex items-start gap-2">
-                  <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
-                  <span>{item}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
+          {event.highlights.length > 0 ? (
+            <div className="space-y-2">
+              <h2 className="text-base font-semibold text-foreground">活动亮点</h2>
+              <ul className="space-y-1 text-sm text-foreground/90">
+                {event.highlights.map((item) => (
+                  <li key={item} className="flex items-start gap-2">
+                    <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" aria-hidden />
+                    <span>{item}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
         </article>
 
         <aside className="border-t border-border px-4 py-5 md:px-5 lg:border-l lg:border-t-0">

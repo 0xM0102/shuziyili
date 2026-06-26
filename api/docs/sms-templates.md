@@ -81,6 +81,8 @@
 
 手机走 `SmsSender` 发短信；邮箱走 `EmailSender`（默认 `LogEmailSender` 打日志，生产请接 SMTP/邮件服务）。
 
+发码时会将 HTTP 来源写入 `sms_codes.request_origin`（`Origin` → `Referer` → 反代 `Host`），管理后台「验证发送记录」可查看。
+
 ---
 
 ## 六、接入第三方时的实现要点

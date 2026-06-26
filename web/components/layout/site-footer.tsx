@@ -46,6 +46,17 @@ export function SiteFooter() {
           <span className="mx-2" aria-hidden>
             ·
           </span>
+          <a
+            href={siteConfig.icp.href}
+            className="hover:text-primary hover:underline underline-offset-4"
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            {siteConfig.icp.number}
+          </a>
+          <span className="mx-2" aria-hidden>
+            ·
+          </span>
           Powered by{" "}
           <a
             href="https://gansa.top"
