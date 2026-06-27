@@ -12,38 +12,67 @@ export type SidebarGroup = { title: string; items: NavItem[] };
 export type SidebarConfig = {
   variant: NavActiveVariant;
   groups: SidebarGroup[];
-  showSidebar: boolean;
 };
 
-function hotspotNavItem(href: string): NavItem {
-  return { href, label: "热点", icon: "hot" };
+const CHANNEL_HOTSPOT = { label: "热点", icon: "hot" as const };
+
+const EMPTY_SIDEBAR: SidebarConfig = { variant: "primary", groups: [] };
+
+function matchesPathPrefix(pathname: string, prefix: string): boolean {
+  return pathname === prefix || pathname.startsWith(`${prefix}/`);
 }
 
-function channelGroup(rootHref: string, items: NavItem[]): SidebarGroup {
-  return { title: "热点", items: [hotspotNavItem(rootHref), ...items] };
+function buildChannelSidebarGroup(channelRoot: string, entries: NavItem[]): SidebarGroup {
+  return {
+    title: CHANNEL_HOTSPOT.label,
+    items: [{ href: channelRoot, label: CHANNEL_HOTSPOT.label, icon: CHANNEL_HOTSPOT.icon }, ...entries],
+  };
 }
 
-const GROUP_HOME = channelGroup("/", hotHomeNav);
-const GROUP_TRAVEL = channelGroup("/travel", hotTravelNav);
-const GROUP_CONVENIENCE = channelGroup("/convenience", hotConvenienceNav);
-const GROUP_NEWS = channelGroup("/news", hotNewsNav);
+function channelSidebar(
+  variant: NavActiveVariant,
+  channelRoot: string,
+  entries: NavItem[]
+): SidebarConfig {
+  return { variant, groups: [buildChannelSidebarGroup(channelRoot, entries)] };
+}
 
-/** 顺序即匹配优先级：先命中先返回。 */
-const SIDEBAR_RULES: {
+type SidebarRule = {
   match: (pathname: string) => boolean;
   variant: NavActiveVariant;
-  groups: SidebarGroup[];
-}[] = [
-  { match: (p) => p === "/" || p.startsWith("/a/"), variant: "primary", groups: [GROUP_HOME] },
-  { match: (p) => p.startsWith("/travel"), variant: "nested", groups: [GROUP_TRAVEL] },
-  { match: (p) => p.startsWith("/convenience"), variant: "nested", groups: [GROUP_CONVENIENCE] },
-  { match: (p) => p.startsWith("/news"), variant: "nested", groups: [GROUP_NEWS] },
+  root: string;
+  entries: NavItem[];
+};
+
+/** 顺序即匹配优先级：先命中先返回。 */
+const SIDEBAR_RULES: SidebarRule[] = [
+  {
+    match: (pathname) => pathname === "/" || pathname.startsWith("/a/"),
+    variant: "primary",
+    root: "/",
+    entries: hotHomeNav,
+  },
+  {
+    match: (pathname) => matchesPathPrefix(pathname, "/travel"),
+    variant: "nested",
+    root: "/travel",
+    entries: hotTravelNav,
+  },
+  {
+    match: (pathname) => matchesPathPrefix(pathname, "/convenience"),
+    variant: "nested",
+    root: "/convenience",
+    entries: hotConvenienceNav,
+  },
+  {
+    match: (pathname) => matchesPathPrefix(pathname, "/news"),
+    variant: "nested",
+    root: "/news",
+    entries: hotNewsNav,
+  },
 ];
 
 export function getSidebarConfig(pathname: string): SidebarConfig {
-  const hit = SIDEBAR_RULES.find((r) => r.match(pathname));
-  if (hit) {
-    return { variant: hit.variant, groups: hit.groups, showSidebar: true };
-  }
-  return { variant: "primary", groups: [], showSidebar: false };
+  const rule = SIDEBAR_RULES.find((entry) => entry.match(pathname));
+  return rule ? channelSidebar(rule.variant, rule.root, rule.entries) : EMPTY_SIDEBAR;
 }

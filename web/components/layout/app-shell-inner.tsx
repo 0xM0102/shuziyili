@@ -2,7 +2,8 @@
 
 import { useLayoutEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
-import { getSidebarConfig } from "@/lib/app-shell-config";
+import { getSidebarConfig, type SidebarGroup } from "@/lib/app-shell-config";
+import type { NavActiveVariant } from "@/lib/nav-active";
 import { ChannelSideNav } from "./channel-side-nav";
 import { SectionSubnavMobile } from "./section-subnav-mobile";
 import { SiteFooter } from "./site-footer";
@@ -13,9 +14,47 @@ type Props = {
   searchKey: string;
 };
 
+function SidebarGroups({
+  groups,
+  variant,
+  placement,
+}: {
+  groups: SidebarGroup[];
+  variant: NavActiveVariant;
+  placement: "desktop" | "mobile";
+}) {
+  return groups.map((group) => {
+    const groupKey = group.items[0]?.href ?? group.title;
+
+    if (placement === "desktop") {
+      return (
+        <ChannelSideNav
+          key={groupKey}
+          items={group.items}
+          title={group.title}
+          variant={variant}
+          embedded
+          showTitle={false}
+        />
+      );
+    }
+
+    return (
+      <SectionSubnavMobile
+        key={groupKey}
+        items={group.items}
+        title={group.title}
+        variant={variant}
+        showTitle={false}
+      />
+    );
+  });
+}
+
 export function AppShellInner({ children, searchKey }: Props) {
   const pathname = usePathname();
-  const cfg = getSidebarConfig(pathname);
+  const sidebar = getSidebarConfig(pathname);
+  const showSidebar = sidebar.groups.length > 0;
   const mainScrollRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
@@ -34,39 +73,22 @@ export function AppShellInner({ children, searchKey }: Props) {
 
   return (
     <div className="flex h-full min-h-0 w-full min-w-0 flex-1 items-stretch overflow-hidden">
-      {cfg.showSidebar ? (
+      {showSidebar ? (
         <aside
           className="hidden min-h-0 w-56 shrink-0 self-stretch overflow-y-auto overscroll-contain border-r border-border bg-sidebar md:block lg:w-60"
           aria-label="二级菜单"
         >
           <div className="min-h-0">
-            {cfg.groups.map((g) => (
-              <ChannelSideNav
-                key={g.title}
-                items={g.items}
-                title={g.title}
-                variant={cfg.variant}
-                embedded
-                showTitle={false}
-              />
-            ))}
+            <SidebarGroups groups={sidebar.groups} variant={sidebar.variant} placement="desktop" />
           </div>
         </aside>
       ) : null}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-canvas">
         <div ref={mainScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
-          {cfg.showSidebar ? (
+          {showSidebar ? (
             <div className="px-4 py-3 md:hidden">
-              {cfg.groups.map((g) => (
-                <SectionSubnavMobile
-                  key={g.title}
-                  items={g.items}
-                  title={g.title}
-                  variant={cfg.variant}
-                  showTitle={false}
-                />
-              ))}
+              <SidebarGroups groups={sidebar.groups} variant={sidebar.variant} placement="mobile" />
             </div>
           ) : null}
           {children}

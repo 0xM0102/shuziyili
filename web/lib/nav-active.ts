@@ -1,7 +1,15 @@
 import type { ReadonlyURLSearchParams } from "next/navigation";
 import { normalizeNewsType, parseNewsNavLinkHref } from "@/lib/news-channels";
 
+/**
+ * 导航高亮策略：
+ * - `primary`：顶栏一级菜单；`/` 仅精确匹配首页。
+ * - `nested`：频道侧栏；`/travel`、`/convenience` 根路径仅精确匹配「热点」，子路径走前缀匹配。
+ */
 export type NavActiveVariant = "primary" | "nested";
+
+/** nested 模式下频道根路径仅精确匹配「热点」，子路径走前缀匹配。 */
+const NESTED_EXACT_ROOT_PATHS = new Set(["/travel", "/convenience"]);
 
 function normalizePath(pathname: string) {
   if (pathname.length > 1 && pathname.endsWith("/")) {
@@ -20,10 +28,8 @@ export function navItemIsActive(
 ): boolean {
   const p = normalizePath(pathname);
 
-  if (variant === "nested") {
-    if (href === "/travel" || href === "/convenience") {
-      return p === href;
-    }
+  if (variant === "nested" && NESTED_EXACT_ROOT_PATHS.has(href)) {
+    return p === href;
   } else if (href === "/") {
     return p === "/" || p === "";
   }

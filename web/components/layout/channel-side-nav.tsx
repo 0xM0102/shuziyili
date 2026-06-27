@@ -2,9 +2,7 @@
 
 import Link from "next/link";
 import { Suspense } from "react";
-import { usePathname, useSearchParams } from "next/navigation";
-import type { NavItem } from "@/lib/nav";
-import { channelEntryIsActive, type NavActiveVariant } from "@/lib/nav-active";
+import { type ChannelNavListProps, useChannelEntryActive } from "@/lib/channel-nav";
 import { navIcons } from "@/components/icons/nav-icons";
 
 type NavShellProps = {
@@ -32,21 +30,14 @@ function ChannelSideNavInner({
   variant,
   embedded,
   showTitle = true,
-}: {
-  items: NavItem[];
-  title?: string;
-  variant: NavActiveVariant;
-  embedded?: boolean;
-  showTitle?: boolean;
-}) {
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
+}: ChannelNavListProps & { embedded?: boolean }) {
+  const isActive = useChannelEntryActive(variant);
 
   return (
     <NavShell embedded={embedded} title={title} showTitle={showTitle}>
       <ul className="space-y-1">
         {items.map((item) => {
-          const active = channelEntryIsActive(pathname, searchParams, item.href, variant);
+          const active = isActive(item.href);
           const Icon = item.icon ? navIcons[item.icon] : null;
           return (
             <li key={item.href}>
@@ -91,13 +82,7 @@ export function ChannelSideNav({
   variant,
   embedded,
   showTitle = true,
-}: {
-  items: NavItem[];
-  title?: string;
-  variant: NavActiveVariant;
-  embedded?: boolean;
-  showTitle?: boolean;
-}) {
+}: ChannelNavListProps & { embedded?: boolean }) {
   return (
     <Suspense
       fallback={

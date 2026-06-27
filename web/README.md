@@ -24,7 +24,9 @@ cp .env.example .env.local
 | `app/page.tsx` | 首页 |
 | `app/travel/` | 旅游各页（侧栏热点由 `AppShell` 按路径切换） |
 | `app/convenience/` | 便民各页 |
-| `components/layout/app-shell.tsx` | **左栏 + 右栏**：全站导航 / 旅游二级 / 便民二级 |
-| `lib/nav.ts` | `primaryNav`、`hotHomeNav`、`hotTravelNav`、`hotConvenienceNav` |
+| `components/layout/app-shell.tsx` | **左栏 + 主列**：按路径切换首页 / 旅游 / 便民 / 资讯侧栏 |
+| `lib/nav.ts` | `primaryNav`、`hotHomeNav`、`hotTravelNav`、`hotConvenienceNav`、`hotNewsNav` |
+| `lib/app-shell-config.ts` | `getSidebarConfig`：路径 → 侧栏分组与高亮策略 |
+| `lib/channel-nav.ts` | 频道侧栏共用 hook / props（`useChannelEntryActive`） |
 | `lib/site.ts` | 站名、域名 |
 | `components/layout/` | `TopNav`、`ThemeToggle` 等 |

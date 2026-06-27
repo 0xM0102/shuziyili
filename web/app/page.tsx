@@ -321,7 +321,6 @@ export default async function HomePage() {
             </div>
           </div>
 
-          {/* 今日热榜已移除：下方直接进入右侧快讯与其它内容 */}
         </div>
 
         <aside className="border-t border-border bg-background lg:border-t-0 lg:border-l">

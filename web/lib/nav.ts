@@ -23,7 +23,7 @@ export const primaryNav: NavItem[] = [
   { href: "/about", label: "关于" },
 ];
 
-/** 旅游热点（二级分类） */
+/** 旅游频道二级导航（AppShell 侧栏 / 窄屏横滑子导航） */
 export const hotTravelNav: NavItem[] = [
   { href: "/travel/attractions", label: "景点", icon: "attractions" },
   { href: "/travel/stay", label: "住宿", icon: "stay" },
@@ -31,14 +31,14 @@ export const hotTravelNav: NavItem[] = [
   { href: "/travel/guide", label: "攻略", icon: "guide" },
 ];
 
-/** 便民热点（二级分类） */
+/** 便民频道二级导航（分类来自静态 seed，运行时页面可读 API） */
 export const hotConvenienceNav: NavItem[] = convenienceCategories.map((item) => ({
   href: buildConvenienceCategoryHref(item.slug),
   label: item.title,
   icon: item.icon,
 }));
 
-/** 首页热点（二级分类） */
+/** 首页侧栏快捷入口（与顶栏一级菜单互补） */
 export const hotHomeNav: NavItem[] = [
   { href: "/events", label: "活动报名", icon: "event" },
   { href: "/news", label: "本地资讯", icon: "news" },
@@ -46,7 +46,7 @@ export const hotHomeNav: NavItem[] = [
   { href: "/convenience", label: "便民黄页", icon: "convenience" },
 ];
 
-/** 资讯频道（Juhe type），不含头条：与侧栏首项「热点」(`/news`) 组合使用。 */
+/** 资讯频道二级导航（Juhe type）；侧栏首项「热点」(`/news`) 由 app-shell-config 注入。 */
 export const hotNewsNav: NavItem[] = (NEWS_JUHE_TYPES.filter((t) => t !== "top") as NewsJuheType[]).map(
   (t) => ({
     href: buildNewsIndexHref(t),
