@@ -238,13 +238,16 @@ sudo systemctl enable --now shuziyili-api
 sudo systemctl status shuziyili-api
 ```
 
-本机探活（此时还未配 HTTPS，可先测端口）：
+本机探活（端口以 `api.env` 里 `SERVER_PORT` 为准；默认常为 **8080**，若被占用则多为 **8081**，须与 Nginx `proxy_pass` 一致）：
 
 ```bash
-curl -sS http://127.0.0.1:8080/actuator/health
+# 先确认监听端口，例如：ss -tlnp | grep java
+curl -fsS http://127.0.0.1:8080/api/v1/health
+# 若 SERVER_PORT=8081，则改为：
+# curl -fsS http://127.0.0.1:8081/api/v1/health
 ```
 
-应看到包含 `"status":"UP"` 的 JSON。
+应看到 JSON 且 `ok: true`（业务健康检查在 `/api/v1/health`，不是 `/actuator/health`）。
 
 ---
 

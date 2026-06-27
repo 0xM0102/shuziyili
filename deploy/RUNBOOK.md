@@ -108,7 +108,7 @@ scp target/shuziyili-api.jar user@your-server-ip:/opt/shuziyili/api/shuziyili-ap
 
 **`api.env` 必备**：除 `SPRING_DATASOURCE_USERNAME` / `PASSWORD` 外，须有 **`SPRING_DATASOURCE_URL`**（完整 JDBC），否则日志会出现 `jdbcUrl, ${SPRING_DATASOURCE_URL}` 且进程起不来、`8081` 短暂 `Connection refused`。示例见 [`deploy/env/api.env.example`](./env/api.env.example)。
 
-**验收**（端口以 `SERVER_PORT` 为准，示例 **8081**）：
+**验收**（端口以 `api.env` 中 **`SERVER_PORT`** 为准；先 `ss -tlnp | grep java` 确认，示例 **8081**）：
 
 ```bash
 curl -fsS http://127.0.0.1:8081/api/v1/health
@@ -125,7 +125,7 @@ curl -fsS "http://127.0.0.1:8081/api/v1/news/headlines?type=top"
 | `502 Bad Gateway` | `systemctl status shuziyili-web`；本机 `127.0.0.1:3000` 是否监听。 |
 | `--push` 报 `Permission denied` | 改用 §3.0 打包上传；或配置免密 SSH 后再 `--push`。 |
 | `Connection closed by 127.0.0.1 port 7890` | 本机代理劫持；脚本已 `unset` 常见变量，仍异常则检查 Shell 代理。 |
-| API `8081` 刚重启立刻 `Connection refused` | Spring 启动需十余秒；`sleep 8` 后再 `ss`/`curl`，或看 `journalctl -u shuziyili-api`。 |
+| API 刚重启立刻 `Connection refused` / `Empty reply` | 冷启动常 **9～12 秒**；勿只 `sleep 8`，用 §3.3 / §8.3 的 **health 轮询** 或 `journalctl -u shuziyili-api -f` 等到 `Started ShuziyiliApplication`。 |
 | `news/headlines` 404、`health` 正常 | 上传含资讯模块的 **新 `shuziyili-api.jar`** 并重启（见 §3.3）。 |
 | 日志 `jdbcUrl, ${SPRING_DATASOURCE_URL}` | 在 `api.env` 补全 **`SPRING_DATASOURCE_URL=`** 一行后重启。 |
 
@@ -232,14 +232,19 @@ cd /path/to/shuziyili/api
 scp target/shuziyili-api.jar user@your-server-ip:/opt/shuziyili/api/shuziyili-api.jar
 ```
 
-**服务器**（端口以 `SERVER_PORT` / `api.env` 为准，示例 **8081**）
+**服务器**（端口以 `api.env` 中 **`SERVER_PORT`** 为准；先 `ss -tlnp | grep java` 确认，示例 **8081**）：
 
 ```bash
 sudo systemctl restart shuziyili-api
-sleep 6
-curl -fsS http://127.0.0.1:8081/api/v1/health
+# 冷启动常需 9～12 秒；固定 sleep 8 可能仍 Connection refused，建议轮询健康检查：
+for i in $(seq 1 15); do
+  curl -fsS http://127.0.0.1:8081/api/v1/health && break
+  sleep 1
+done
 curl -fsS "http://127.0.0.1:8081/api/v1/news/headlines?type=top"
 ```
+
+（若 `SERVER_PORT` 不是 8081，把上面 URL 端口一并改掉。）
 
 `api.env` 须含 **`SPRING_DATASOURCE_URL`**（见 `deploy/env/api.env.example`）；资讯路由依赖 **含该模块的 jar**。
 
