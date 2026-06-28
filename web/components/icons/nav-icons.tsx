@@ -13,6 +13,7 @@ export type NavIconName =
   | "stay"
   | "food"
   | "guide"
+  | "weather"
   | "government"
   | "health"
   | "shipping"
@@ -180,6 +181,16 @@ export function GuideIcon(props: IconProps) {
   );
 }
 
+export function WeatherIcon(props: IconProps) {
+  return (
+    <IconBase {...props}>
+      <circle cx="12" cy="12" r="4" />
+      <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+      <path d="M4 15a4 4 0 0 1 6.5-3" />
+    </IconBase>
+  );
+}
+
 export function GovernmentIcon(props: IconProps) {
   return (
     <IconBase {...props}>
@@ -302,6 +313,7 @@ export const navIcons: Record<NavIconName, (p: IconProps) => ReactElement> = {
   stay: StayIcon,
   food: FoodIcon,
   guide: GuideIcon,
+  weather: WeatherIcon,
   government: GovernmentIcon,
   health: HealthIcon,
   shipping: ShippingIcon,

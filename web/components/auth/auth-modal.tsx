@@ -7,6 +7,7 @@ import { BrandPanelBackdrop } from "@/components/brand/brand-panel-backdrop";
 import { SiteWordmark } from "@/components/brand/site-wordmark";
 import { uiText } from "@/lib/i18n";
 import type { LangCode } from "@/lib/i18n";
+import { joinClassNames } from "@/lib/class-names";
 import { siteConfig } from "@/lib/site";
 import {
   login,
@@ -104,7 +105,7 @@ function FloatingField({
 }) {
   const baseInput =
     "peer w-full rounded-lg border border-border bg-background px-3 pb-2.5 pt-5 text-[15px] text-foreground outline-none transition-colors placeholder:text-transparent focus:border-primary focus:ring-2 focus:ring-primary/20 dark:bg-card";
-  const mergedClassName = [baseInput, children.props.className].filter(Boolean).join(" ");
+  const mergedClassName = joinClassNames(baseInput, children.props.className);
   const input = cloneElement(children, {
     id,
     placeholder: " ",

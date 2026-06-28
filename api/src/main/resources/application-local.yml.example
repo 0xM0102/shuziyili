@@ -31,10 +31,33 @@ shuziyili:
     # public-base-url: https://shuziyili-1322855353.cos.ap-chengdu.myqcloud.com
     # key-prefix: uploads/
 
-  # 聚合数据「新闻头条」资讯（https://www.juhe.cn/docs/api/id/235）；默认 3600 秒才请求一次上游，控制日配额
+  # ---------------------------------------------------------------------------
+  # 门户资讯（三选一：NEWS_PROVIDER=juhe | tianapi | tencent，未用方案保持 enabled=false）
+  # ---------------------------------------------------------------------------
+  # news:
+  #   provider: tencent
+
+  # 方案 C：腾讯新闻 Skills —— https://news.qq.com/exchange?scene=appkey
+  # tencent:
+  #   news:
+  #     enabled: true
+  #     key: "在此填写 TENCENT_NEWS_KEY"
+  #     refresh-seconds: 3600
+  #   weather:
+  #     enabled: true
+  #     # key 可省略，与 news 共用 TENCENT_NEWS_KEY
+
+  # 方案 A：聚合数据 Juhe —— https://www.juhe.cn/docs/api/id/235
   # juhe:
   #   news:
   #     enabled: true
   #     key: "在此填写 JUHE_NEWS_KEY"
-  #     # refresh-seconds: 3600
-  #     # content-url: https://v.juhe.cn/toutiao/content
+  #     refresh-seconds: 3600
+
+  # 方案 B：天聚数行地区新闻 —— https://www.tianapi.com/apiview/154
+  # tianapi:
+  #   news:
+  #     enabled: true
+  #     key: "在此填写 TIANAPI_NEWS_KEY"
+  #     areaname: 新疆
+  #     refresh-seconds: 3600

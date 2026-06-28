@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { ContentEmptyState } from "@/components/feedback";
 import {
   eventCategoryLabel,
   eventStatusLabel,
@@ -15,12 +16,7 @@ type Props = {
 
 export function EventCardList({ items, nowMs }: Props) {
   if (items.length === 0) {
-    return (
-      <section className="border border-dashed border-border py-10 text-center">
-        <p className="text-base font-medium text-foreground">暂无符合条件的活动</p>
-        <p className="mt-2 text-sm text-muted">请调整左侧筛选条件，或点击重置查看全部活动。</p>
-      </section>
-    );
+    return <ContentEmptyState />;
   }
 
   return (

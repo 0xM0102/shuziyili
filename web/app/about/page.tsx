@@ -4,7 +4,12 @@ import type { ReactNode } from "react";
 import {
   standaloneContentGridClassName,
   standaloneHeaderClassName,
+  standaloneSectionTitleClassName,
+  standaloneSideCardClassName,
+  standaloneSideDashedCardClassName,
   standaloneSideRailClassName,
+  standaloneWideContentOffsetClassName,
+  standaloneWideMainStackClassName,
   standaloneWidePageClassName,
 } from "@/lib/page-layout";
 import { siteConfig } from "@/lib/site";
@@ -58,10 +63,10 @@ export default function AboutPage() {
         </p>
       </header>
 
-      <div className={`mt-10 ${standaloneContentGridClassName}`}>
-        <div className="space-y-10">
+      <div className={`${standaloneWideContentOffsetClassName} ${standaloneContentGridClassName}`}>
+        <div className={standaloneWideMainStackClassName}>
           <section className="space-y-5">
-            <h2 className="flex items-center gap-2.5 text-lg font-semibold text-foreground">
+            <h2 className={standaloneSectionTitleClassName}>
               <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
               我们提供什么
             </h2>
@@ -102,7 +107,7 @@ export default function AboutPage() {
           </section>
 
           <section className="space-y-5">
-            <h2 className="flex items-center gap-2.5 text-lg font-semibold text-foreground">
+            <h2 className={standaloneSectionTitleClassName}>
               <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
               重要说明
             </h2>
@@ -122,8 +127,8 @@ export default function AboutPage() {
         </div>
 
         <aside className={standaloneSideRailClassName}>
-          <section className="rounded-2xl border border-border bg-card p-6 md:p-8">
-            <h2 className="flex items-center gap-2.5 text-lg font-semibold text-foreground">
+          <section className={standaloneSideCardClassName}>
+            <h2 className={standaloneSectionTitleClassName}>
               <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
               体验与账号
             </h2>
@@ -136,7 +141,7 @@ export default function AboutPage() {
             </p>
           </section>
 
-          <section className="rounded-2xl border border-dashed border-border bg-sidebar/50 p-6 md:p-8">
+          <section className={standaloneSideDashedCardClassName}>
             <h2 className="text-lg font-semibold text-foreground">联系我们</h2>
             <p className="mt-3 text-sm leading-relaxed text-muted">
               若您有关于内容纠错、合作意向或产品反馈，欢迎通过邮件与我们联系。我们会在能力范围内尽快回复。

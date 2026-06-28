@@ -51,7 +51,16 @@ shuziyili:
   auth:
     store-plain-otp: ${SHUZIYILI_STORE_PLAIN_OTP:true}
 
-  # 聚合数据「新闻头条」https://www.juhe.cn/docs/api/id/235 —— 密钥仅环境变量，列表进程内缓存，默认 3600s 才请求一次上游
+  # ---------------------------------------------------------------------------
+  # 门户资讯数据源（二选一，通过 provider 切换；两套配置可同时保留，未用方 enabled=false 即可）
+  # ---------------------------------------------------------------------------
+  news:
+    # juhe = 聚合数据「新闻头条」全国频道（默认）
+    # tianapi = 天聚数行「地区新闻」省级资讯 https://www.tianapi.com/apiview/154
+    # tencent = 腾讯新闻 Skills OpenAPI https://news.qq.com/exchange?scene=appkey
+    provider: ${NEWS_PROVIDER:juhe}
+
+  # 方案 A：聚合数据 Juhe —— https://www.juhe.cn/docs/api/id/235
   juhe:
     news:
       enabled: ${JUHE_NEWS_ENABLED:false}
@@ -61,6 +70,35 @@ shuziyili:
       type: ${JUHE_NEWS_TYPE:top}
       page-size: ${JUHE_NEWS_PAGE_SIZE:30}
       refresh-seconds: ${JUHE_NEWS_REFRESH_SECONDS:3600}
+
+  # 方案 B：天聚数行 TianAPI —— https://www.tianapi.com/apiview/154
+  # 使用 Tian 时：NEWS_PROVIDER=tianapi，并设 TIANAPI_NEWS_ENABLED=true 与 TIANAPI_NEWS_KEY
+  tianapi:
+    news:
+      enabled: ${TIANAPI_NEWS_ENABLED:false}
+      key: ${TIANAPI_NEWS_KEY:}
+      list-url: ${TIANAPI_NEWS_LIST_URL:https://apis.tianapi.com/areanews/index}
+      areaname: ${TIANAPI_NEWS_AREANAME:新疆}
+      page-size: ${TIANAPI_NEWS_PAGE_SIZE:20}
+      refresh-seconds: ${TIANAPI_NEWS_REFRESH_SECONDS:3600}
+
+  # 方案 C：腾讯新闻 Skills —— https://news.qq.com/exchange?scene=appkey
+  # 使用 Tencent 时：NEWS_PROVIDER=tencent，并设 TENCENT_NEWS_ENABLED=true 与 TENCENT_NEWS_KEY
+  tencent:
+    news:
+      enabled: ${TENCENT_NEWS_ENABLED:false}
+      key: ${TENCENT_NEWS_KEY:}
+      base-url: ${TENCENT_NEWS_BASE_URL:https://openapi.inews.qq.com}
+      caller-skill: ${TENCENT_NEWS_CALLER_SKILL:tencent-news}
+      page-size: ${TENCENT_NEWS_PAGE_SIZE:20}
+      refresh-seconds: ${TENCENT_NEWS_REFRESH_SECONDS:3600}
+    weather:
+      enabled: ${TENCENT_WEATHER_ENABLED:false}
+      key: ${TENCENT_WEATHER_KEY:}
+      base-url: ${TENCENT_WEATHER_BASE_URL:https://openapi.inews.qq.com}
+      caller-skill: ${TENCENT_WEATHER_CALLER_SKILL:tencent-weather}
+      default-adcode: ${TENCENT_WEATHER_DEFAULT_ADCODE:654002}
+      refresh-seconds: ${TENCENT_WEATHER_REFRESH_SECONDS:600}
 
   cos:
     enabled: ${SHUZIYILI_COS_ENABLED:true}

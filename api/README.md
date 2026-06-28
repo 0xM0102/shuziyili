@@ -78,3 +78,34 @@ mvn -N wrapper:wrapper   # 生成 mvnw（需本机 Maven）
 - `common` — 统一响应体等
 - `module.system` — 系统级接口（健康检查）
 - `module.auth` / `user` / `article` / `event` / `directory` / `tourism` / `nomad` — 业务预留包
+- `module.news` — 门户资讯（Juhe / TianAPI / 腾讯新闻，见下）
+
+## 门户资讯数据源（三选一）
+
+公开接口不变：`GET /api/v1/news/headlines`、`GET /api/v1/news/headlines/{id}`。
+
+| 方案 | `NEWS_PROVIDER` | 配置前缀 | 文档 |
+|------|-----------------|----------|------|
+| A 聚合数据 Juhe（默认） | `juhe` | `JUHE_NEWS_*` / `shuziyili.juhe.news` | [Juhe 235](https://www.juhe.cn/docs/api/id/235) |
+| B 天聚数行地区新闻 | `tianapi` | `TIANAPI_NEWS_*` / `shuziyili.tianapi.news` | [TianAPI 154](https://www.tianapi.com/apiview/154) |
+| C 腾讯新闻 Skills | `tencent` | `TENCENT_NEWS_*` / `shuziyili.tencent.news` | [获取 API Key](https://news.qq.com/exchange?scene=appkey) |
+
+切换腾讯新闻示例（`application-local.yml` 或 `api.env`）：
+
+```yaml
+shuziyili:
+  news:
+    provider: tencent
+  juhe:
+    news:
+      enabled: false
+  tianapi:
+    news:
+      enabled: false
+  tencent:
+    news:
+      enabled: true
+      key: "在 news.qq.com/exchange 登录后生成的 API Key"
+```
+
+实现类：`JuheNewsProvider`、`TianAreaNewsProvider`、`TencentNewsProvider`，由 `NewsService` 按 `shuziyili.news.provider` 择一调用。

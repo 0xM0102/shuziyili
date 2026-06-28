@@ -1,6 +1,6 @@
 import { cache } from "react";
 import { fetchNewsApiData } from "@/lib/api-base";
-import { normalizeNewsType, type NewsJuheType } from "@/lib/news-channels";
+import { normalizeNewsType, type NewsChannelType } from "@/lib/news-channels";
 
 export * from "@/lib/news-channels";
 
@@ -19,16 +19,8 @@ export type NewsHeadlinesPayload = {
   cachedAtEpochMs: number;
   refreshIntervalSeconds: number;
   upstreamConfigured: boolean;
-  juheType?: string;
+  channelType?: string;
 };
-
-function normalizedUniquekey(uniquekey: string): string {
-  return uniquekey.trim();
-}
-
-export function buildNewsArticleHref(uniquekey: string): string {
-  return `/news/${encodeURIComponent(normalizedUniquekey(uniquekey))}`;
-}
 
 export type NewsDetailPayload = {
   item: NewsItem;
@@ -44,23 +36,38 @@ const emptyHeadlines: NewsHeadlinesPayload = {
   upstreamConfigured: false,
 };
 
-function resolvedNewsType(type: NewsJuheType | string): string {
-  return typeof type === "string" ? normalizeNewsType(type) : type;
+function normalizedUniquekey(uniquekey: string): string {
+  return uniquekey.trim();
 }
 
-export async function getNewsHeadlines(type: NewsJuheType | string): Promise<NewsHeadlinesPayload> {
-  const t = resolvedNewsType(type);
+export function buildNewsArticleHref(uniquekey: string, channelType?: string): string {
+  const key = encodeURIComponent(normalizedUniquekey(uniquekey));
+  const type = typeof channelType === "string" ? normalizeNewsType(channelType) : undefined;
+  return type ? `/news/${key}?type=${encodeURIComponent(type)}` : `/news/${key}`;
+}
+
+export async function getNewsHeadlines(
+  channelType: NewsChannelType | string
+): Promise<NewsHeadlinesPayload> {
+  const type =
+    typeof channelType === "string" ? normalizeNewsType(channelType) : channelType;
   return fetchNewsApiData<NewsHeadlinesPayload>(
-    `/news/headlines?type=${encodeURIComponent(t)}`,
+    `/news/headlines?type=${encodeURIComponent(type)}`,
     emptyHeadlines
   );
 }
 
-async function fetchNewsDetailOnce(uniquekey: string): Promise<NewsDetailPayload | null> {
+async function fetchNewsDetailOnce(
+  uniquekey: string,
+  channelType?: NewsChannelType | string
+): Promise<NewsDetailPayload | null> {
   const key = normalizedUniquekey(uniquekey);
   if (!key) return null;
+  const type =
+    typeof channelType === "string" ? normalizeNewsType(channelType) : undefined;
+  const query = type ? `?type=${encodeURIComponent(type)}` : "";
   return fetchNewsApiData<NewsDetailPayload | null>(
-    `/news/headlines/${encodeURIComponent(key)}`,
+    `/news/headlines/${encodeURIComponent(key)}${query}`,
     null
   );
 }

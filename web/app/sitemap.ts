@@ -15,6 +15,7 @@ const baseStaticPaths = [
   "/nomad",
   "/events",
   "/news",
+  "/weather",
   "/flash",
   "/about",
   "/contact",

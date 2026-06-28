@@ -3,9 +3,8 @@ package com.shuziyili.module.news;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shuziyili.config.JuheNewsProperties;
-import java.time.Duration;
-import java.time.Instant;
 import java.net.URI;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -19,14 +18,16 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
 /**
- * 聚合「新闻头条」（文档 ID 235）：列表 {@code toutiao/index} 按 type 分槽缓存；详情在列表元数据基础上调用 {@code
- * toutiao/content} 拉正文 HTML，并按 {@link JuheNewsProperties#getRefreshSeconds()} 对<strong>每条
- * uniquekey</strong> 做详情结果缓存。列表与详情均会计入上游配额。
+ * 聚合数据「新闻头条」（文档 ID 235）：列表 {@code toutiao/index} 按 type 分槽缓存；详情调用 {@code
+ * toutiao/content} 拉正文 HTML。
+ *
+ * <p>启用条件：{@code shuziyili.news.provider=juhe}（默认）且 {@code shuziyili.juhe.news.enabled=true} 并配置
+ * {@code key}。
  */
 @Service
-public class JuheNewsCacheService {
+public class JuheNewsProvider implements NewsProvider {
 
-  private static final Logger log = LoggerFactory.getLogger(JuheNewsCacheService.class);
+  private static final Logger log = LoggerFactory.getLogger(JuheNewsProvider.class);
 
   private final RestTemplate restTemplate;
   private final ObjectMapper objectMapper;
@@ -49,39 +50,46 @@ public class JuheNewsCacheService {
   private Map<String, NewsItemDto> byUniquekey = Map.of();
   private final Map<String, DetailSlot> detailByKey = new LinkedHashMap<>();
 
-  public JuheNewsCacheService(
+  public JuheNewsProvider(
       RestTemplate restTemplate, ObjectMapper objectMapper, JuheNewsProperties properties) {
     this.restTemplate = restTemplate;
     this.objectMapper = objectMapper;
     this.properties = properties;
   }
 
+  @Override
+  public NewsProviderId id() {
+    return NewsProviderId.JUHE;
+  }
+
+  @Override
+  public String attribution() {
+    return NewsAttributions.JUHE;
+  }
+
+  @Override
   public NewsHeadlinesPayload headlines(String typeParam) {
-    String juheType = JuheNewsTypes.normalize(typeParam);
-    if (!juheConfigured()) {
-      return new NewsHeadlinesPayload(
-          List.of(), 0L, properties.getRefreshSeconds(), false, juheType);
+    String channel = NewsChannelTypes.normalize(typeParam);
+    if (!upstreamConfigured()) {
+      return NewsHeadlinesPayload.unconfigured(channel, properties.getRefreshSeconds());
     }
     synchronized (lock) {
-      refreshIfStale(juheType);
-      TypeSlot slot = slots.get(juheType);
+      refreshIfStale(channel);
+      TypeSlot slot = slots.get(channel);
       List<NewsItemDto> items = slot == null ? List.of() : slot.items;
-      long ms =
-          slot == null || slot.lastSuccessAt == null ? 0L : slot.lastSuccessAt.toEpochMilli();
-      return new NewsHeadlinesPayload(
-          items, ms, properties.getRefreshSeconds(), true, juheType);
+      Instant lastSuccess = slot == null ? null : slot.lastSuccessAt;
+      return NewsHeadlinesPayload.cached(
+          items, lastSuccess, properties.getRefreshSeconds(), channel);
     }
   }
 
-  /**
-   * 详情：优先读详情缓存；否则在列表索引预热后请求 {@code contentUrl}，与列表项字段合并；上游失败时仅返回列表项与空正文。
-   */
+  @Override
   public Optional<NewsDetailResult> headlineDetail(String uniquekey) {
     if (uniquekey == null || uniquekey.isBlank()) {
       return Optional.empty();
     }
     String key = uniquekey.trim();
-    if (!juheConfigured()) {
+    if (!upstreamConfigured()) {
       return Optional.empty();
     }
     synchronized (lock) {
@@ -90,7 +98,7 @@ public class JuheNewsCacheService {
         return Optional.of(slot.result);
       }
 
-      refreshIfStale(JuheNewsTypes.normalize(properties.getType()));
+      refreshIfStale(NewsChannelTypes.normalize(properties.getType()));
       NewsItemDto fromList = byUniquekey.get(key);
 
       try {
@@ -107,7 +115,10 @@ public class JuheNewsCacheService {
     }
   }
 
-  /** 详情上游失败时：有列表缓存则返回空正文并写入详情缓存，否则 not_found。 */
+  private boolean upstreamConfigured() {
+    return properties.isEnabled() && NewsJsonSupport.notBlank(properties.getKey());
+  }
+
   private Optional<NewsDetailResult> cacheListFallbackOrEmpty(String key, NewsItemDto fromList) {
     if (fromList == null) {
       return Optional.empty();
@@ -118,10 +129,6 @@ public class JuheNewsCacheService {
   private Optional<NewsDetailResult> cacheAndReturn(String key, NewsDetailResult result) {
     putDetailCache(key, result);
     return Optional.of(result);
-  }
-
-  private boolean juheConfigured() {
-    return properties.isEnabled() && notBlank(properties.getKey());
   }
 
   private void putDetailCache(String key, NewsDetailResult r) {
@@ -135,34 +142,33 @@ public class JuheNewsCacheService {
   }
 
   private boolean detailCacheExpired(Instant cachedAt) {
-    if (cachedAt == null) {
-      return true;
-    }
-    return Duration.between(cachedAt, Instant.now()).getSeconds() >= properties.getRefreshSeconds();
+    return NewsJsonSupport.refreshCooldownElapsed(
+        cachedAt, Instant.now(), properties.getRefreshSeconds());
   }
 
-  private void refreshIfStale(String juheType) {
-    if (!juheConfigured()) {
+  private void refreshIfStale(String channel) {
+    if (!upstreamConfigured()) {
       return;
     }
     Instant now = Instant.now();
-    TypeSlot slot = slots.computeIfAbsent(juheType, k -> new TypeSlot());
-    if (!listSlotCooldownElapsed(slot, now)) {
+    TypeSlot slot = slots.computeIfAbsent(channel, k -> new TypeSlot());
+    if (!NewsJsonSupport.refreshCooldownElapsed(
+        slot.lastRemoteAttempt, now, properties.getRefreshSeconds())) {
       return;
     }
     slot.lastRemoteAttempt = now;
     try {
-      List<NewsItemDto> parsed = fetchRemoteList(juheType);
+      List<NewsItemDto> parsed = fetchRemoteList(channel);
       slot.items = Collections.unmodifiableList(parsed);
       slot.lastSuccessAt = Instant.now();
     } catch (Exception e) {
-      log.warn("juhe news fetch failed type={}: {}", juheType, e.getMessage());
+      log.warn("juhe news fetch failed type={}: {}", channel, e.getMessage());
     }
     rebuildByUniquekeyIndex();
   }
 
-  private List<NewsItemDto> fetchRemoteList(String juheType) throws Exception {
-    String body = restTemplate.getForObject(juheListUri(juheType), String.class);
+  private List<NewsItemDto> fetchRemoteList(String channel) throws Exception {
+    String body = restTemplate.getForObject(juheListUri(channel), String.class);
     return parseListBody(body);
   }
 
@@ -171,10 +177,10 @@ public class JuheNewsCacheService {
     return parseContentBody(body, uniquekey);
   }
 
-  private URI juheListUri(String juheType) {
+  private URI juheListUri(String channel) {
     return UriComponentsBuilder.fromHttpUrl(properties.getListUrl())
         .queryParam("key", properties.getKey())
-        .queryParam("type", juheType)
+        .queryParam("type", channel)
         .queryParam("page", "1")
         .queryParam("page_size", String.valueOf(properties.getPageSize()))
         .build(true)
@@ -189,23 +195,12 @@ public class JuheNewsCacheService {
         .toUri();
   }
 
-  /** 距上次列表拉取未满 {@link JuheNewsProperties#getRefreshSeconds()} 则跳过，省配额。 */
-  private boolean listSlotCooldownElapsed(TypeSlot slot, Instant now) {
-    if (slot.lastRemoteAttempt == null) {
-      return true;
-    }
-    return Duration.between(slot.lastRemoteAttempt, now).getSeconds()
-        >= properties.getRefreshSeconds();
-  }
-
   private void rebuildByUniquekeyIndex() {
-    Map<String, NewsItemDto> m = new LinkedHashMap<>();
-    for (TypeSlot s : slots.values()) {
-      for (NewsItemDto it : s.items) {
-        m.put(it.getUniquekey(), it);
-      }
+    List<Iterable<NewsItemDto>> itemLists = new ArrayList<>();
+    for (TypeSlot slot : slots.values()) {
+      itemLists.add(slot.items);
     }
-    byUniquekey = Collections.unmodifiableMap(m);
+    byUniquekey = NewsJsonSupport.indexItemsFirstWins(itemLists);
   }
 
   private List<NewsItemDto> parseListBody(String body) throws Exception {
@@ -247,11 +242,11 @@ public class JuheNewsCacheService {
       return ContentFetch.fail();
     }
     String html =
-        firstNonBlank(
-            text(result, "content"),
-            text(result, "html"),
-            text(result, "news_content"),
-            text(result, "text"));
+        NewsJsonSupport.firstNonBlank(
+            NewsJsonSupport.text(result, "content"),
+            NewsJsonSupport.text(result, "html"),
+            NewsJsonSupport.text(result, "news_content"),
+            NewsJsonSupport.text(result, "text"));
     NewsItemDto item = mapJsonToItem(result);
     if (item == null) {
       item = mapContentResultFallback(result, requestUniquekey);
@@ -262,24 +257,28 @@ public class JuheNewsCacheService {
     return new ContentFetch(true, item, html);
   }
 
-  /** 详情接口有时仅返回正文等字段，用请求参数 uniquekey 与 result 内零散字段拼出 {@link NewsItemDto}。 */
   private NewsItemDto mapContentResultFallback(JsonNode result, String requestUniquekey) {
-    String uk = firstNonBlank(text(result, "uniquekey"), requestUniquekey);
+    String uk =
+        NewsJsonSupport.firstNonBlank(
+            NewsJsonSupport.text(result, "uniquekey"), requestUniquekey);
     if (uk.isEmpty()) {
       return null;
     }
     String title =
-        firstNonBlank(text(result, "title"), text(result, "title_detail"), text(result, "topic"));
+        NewsJsonSupport.firstNonBlank(
+            NewsJsonSupport.text(result, "title"),
+            NewsJsonSupport.text(result, "title_detail"),
+            NewsJsonSupport.text(result, "topic"));
     if (title.isEmpty()) {
       title = "资讯详情";
     }
     return new NewsItemDto(
         uk,
         title,
-        text(result, "date"),
-        text(result, "category"),
-        text(result, "author_name"),
-        text(result, "url"),
+        NewsJsonSupport.text(result, "date"),
+        NewsJsonSupport.text(result, "category"),
+        NewsJsonSupport.text(result, "author_name"),
+        NewsJsonSupport.text(result, "url"),
         thumbnailFromNode(result));
   }
 
@@ -298,52 +297,34 @@ public class JuheNewsCacheService {
   }
 
   private static String pick(String a, String b) {
-    return notBlank(a) ? a : (b == null ? "" : b);
+    return NewsJsonSupport.notBlank(a) ? a : (b == null ? "" : b);
   }
 
   private NewsItemDto mapJsonToItem(JsonNode n) {
-    String uniquekey = text(n, "uniquekey");
-    String title = text(n, "title");
+    String uniquekey = NewsJsonSupport.text(n, "uniquekey");
+    String title = NewsJsonSupport.text(n, "title");
     if (uniquekey.isEmpty() || title.isEmpty()) {
       return null;
     }
     return new NewsItemDto(
         uniquekey,
         title,
-        text(n, "date"),
-        text(n, "category"),
-        text(n, "author_name"),
-        text(n, "url"),
+        NewsJsonSupport.text(n, "date"),
+        NewsJsonSupport.text(n, "category"),
+        NewsJsonSupport.text(n, "author_name"),
+        NewsJsonSupport.text(n, "url"),
         thumbnailFromNode(n));
   }
 
   private static String thumbnailFromNode(JsonNode n) {
-    return firstNonBlank(
-        text(n, "thumbnail_pic_s"),
-        text(n, "thumbnail_pic_s02"),
-        text(n, "thumbnail_pic_s03"));
+    return NewsJsonSupport.firstNonBlank(
+        NewsJsonSupport.text(n, "thumbnail_pic_s"),
+        NewsJsonSupport.text(n, "thumbnail_pic_s02"),
+        NewsJsonSupport.text(n, "thumbnail_pic_s03"));
   }
 
   private static int juheErrorCode(JsonNode root) {
     return root.path("error_code").asInt(-1);
-  }
-
-  private static String text(JsonNode n, String field) {
-    JsonNode v = n.path(field);
-    return v.isMissingNode() || v.isNull() ? "" : v.asText("").trim();
-  }
-
-  private static String firstNonBlank(String... xs) {
-    for (String x : xs) {
-      if (x != null && !x.isBlank()) {
-        return x.trim();
-      }
-    }
-    return "";
-  }
-
-  private static boolean notBlank(String s) {
-    return s != null && !s.isBlank();
   }
 
   private static final class ContentFetch {

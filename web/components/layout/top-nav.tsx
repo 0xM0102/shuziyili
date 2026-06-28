@@ -2,10 +2,18 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useLayoutEffect, useRef, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+  type RefObject,
+} from "react";
 import { primaryNav } from "@/lib/nav";
 import { siteConfig } from "@/lib/site";
 import { SiteWordmark } from "@/components/brand/site-wordmark";
+import { NavWeatherLink } from "./nav-weather-link";
 import { SearchBox } from "./search-box";
 import { SettingsModal } from "./settings-modal";
 import { SettingsIcon } from "@/components/icons/settings-icon";
@@ -15,34 +23,30 @@ import { getBrowserLang, navLabels, uiText, type LangCode } from "@/lib/i18n";
 import { fetchMe, getSession, type AuthSession } from "@/lib/auth-client";
 import { navItemIsActive } from "@/lib/nav-active";
 import { APP_HEADER_OFFSET_VAR } from "@/lib/layout-tokens";
+import { appFrameClassName } from "@/lib/page-layout";
 
-/** 全站顶栏：`fixed` + CSS 变量占位，避免与 `main` 内滚动层叠导致内容被挡。 */
-export function TopNav() {
-  const pathname = usePathname();
-  const [open, setOpen] = useState(false);
-  const headerRef = useRef<HTMLElement>(null);
+type AuthMode = "login" | "register";
+type PrimaryNavPlacement = "desktop" | "mobile";
 
+const desktopSecondaryButtonClassName =
+  "hidden h-10 items-center rounded-lg bg-transparent px-3.5 text-[15px] font-semibold text-foreground/90 transition-colors hover:bg-sidebar-hover hover:text-primary md:inline-flex";
+const desktopPrimaryButtonClassName =
+  "hidden h-10 items-center rounded-lg bg-primary px-3.5 text-[15px] font-semibold text-primary-foreground transition-colors hover:opacity-95 md:inline-flex";
+const iconButtonClassName =
+  "inline-flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-foreground/80 transition-colors hover:bg-sidebar-hover hover:text-primary";
+
+function useBrowserLangState() {
   const [lang, setLang] = useState<LangCode>("zh");
-  const [session, setSession] = useState<AuthSession | null>(null);
-  const [authOpen, setAuthOpen] = useState(false);
-  const [authMode, setAuthMode] = useState<"login" | "register">("login");
-  const [settingsOpen, setSettingsOpen] = useState(false);
 
   useEffect(() => {
-    const t = window.setTimeout(() => setLang(getBrowserLang()), 0);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(() => setLang(getBrowserLang()), 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
-  useEffect(() => {
-    const onOpenAuth = (e: Event) => {
-      const ce = e as CustomEvent<{ mode?: "login" | "register" }>;
-      setAuthMode(ce.detail?.mode === "register" ? "register" : "login");
-      setAuthOpen(true);
-    };
-    window.addEventListener("shuziyili:open-auth", onOpenAuth);
-    return () => window.removeEventListener("shuziyili:open-auth", onOpenAuth);
-  }, []);
+  return [lang, setLang] as const;
+}
 
+function useSyncedHeaderOffset(headerRef: RefObject<HTMLElement | null>) {
   useLayoutEffect(() => {
     const el = headerRef.current;
     const root = document.documentElement;
@@ -63,18 +67,22 @@ export function TopNav() {
 
     sync();
 
-    const ro = new ResizeObserver(scheduleSync);
-    ro.observe(el);
+    const observer = new ResizeObserver(scheduleSync);
+    observer.observe(el);
     window.addEventListener("resize", scheduleSync);
     window.visualViewport?.addEventListener("resize", scheduleSync);
 
     return () => {
       if (frame) window.cancelAnimationFrame(frame);
-      ro.disconnect();
+      observer.disconnect();
       window.removeEventListener("resize", scheduleSync);
       window.visualViewport?.removeEventListener("resize", scheduleSync);
     };
-  }, []);
+  }, [headerRef]);
+}
+
+function useAuthSession() {
+  const [session, setSession] = useState<AuthSession | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -86,8 +94,12 @@ export function TopNav() {
         return;
       }
 
-      const me = await fetchMe();
-      if (!cancelled) setSession(me);
+      try {
+        const me = await fetchMe();
+        if (!cancelled) setSession(me);
+      } catch {
+        if (!cancelled) setSession(null);
+      }
     };
 
     void refresh();
@@ -103,20 +115,84 @@ export function TopNav() {
     };
   }, []);
 
+  return session;
+}
+
+function primaryNavLinkClassName(placement: PrimaryNavPlacement, active: boolean) {
+  if (placement === "desktop") {
+    return `shrink-0 rounded-lg px-3 py-2.5 text-[15px] font-medium transition-colors ${
+      active
+        ? "bg-primary/10 text-primary"
+        : "text-foreground/85 hover:bg-sidebar-hover hover:text-foreground"
+    }`;
+  }
+
+  return `block rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+    active ? "bg-primary/10 text-primary" : "text-foreground/90 hover:bg-sidebar-hover"
+  }`;
+}
+
+function PrimaryNavLink({
+  item,
+  labelMap,
+  pathname,
+  placement,
+  onNavigate,
+}: {
+  item: (typeof primaryNav)[number];
+  labelMap: Record<string, string>;
+  pathname: string;
+  placement: PrimaryNavPlacement;
+  onNavigate?: () => void;
+}) {
+  const active = navItemIsActive(pathname, item.href, "primary");
+
+  return (
+    <Link
+      href={item.href}
+      aria-current={active ? "page" : undefined}
+      className={primaryNavLinkClassName(placement, active)}
+      onClick={onNavigate}
+    >
+      {labelMap[item.href] ?? item.label}
+    </Link>
+  );
+}
+
+/** 全站顶栏：`fixed` + CSS 变量占位，避免与 `main` 内滚动层叠导致内容被挡。 */
+export function TopNav() {
+  const pathname = usePathname();
+  const [open, setOpen] = useState(false);
+  const headerRef = useRef<HTMLElement>(null);
+  useSyncedHeaderOffset(headerRef);
+
+  const [lang, setLang] = useBrowserLangState();
+  const session = useAuthSession();
+  const [authOpen, setAuthOpen] = useState(false);
+  const [authMode, setAuthMode] = useState<AuthMode>("login");
+  const [settingsOpen, setSettingsOpen] = useState(false);
+
+  const openAuth = useCallback((mode: AuthMode) => {
+    setAuthMode(mode);
+    setAuthOpen(true);
+  }, []);
+
+  useEffect(() => {
+    const onOpenAuth = (e: Event) => {
+      const ce = e as CustomEvent<{ mode?: AuthMode }>;
+      openAuth(ce.detail?.mode === "register" ? "register" : "login");
+    };
+    window.addEventListener("shuziyili:open-auth", onOpenAuth);
+    return () => window.removeEventListener("shuziyili:open-auth", onOpenAuth);
+  }, [openAuth]);
+
   const t = uiText[lang];
   const labelMap = navLabels[lang];
-
-  const btnGhost =
-    "hidden h-10 items-center rounded-lg bg-transparent px-3.5 text-[15px] font-semibold text-foreground/90 transition-colors hover:bg-sidebar-hover hover:text-primary md:inline-flex";
-  const btnPrimary =
-    "hidden h-10 items-center rounded-lg bg-primary px-3.5 text-[15px] font-semibold text-primary-foreground transition-colors hover:opacity-95 md:inline-flex";
-  const btnIcon =
-    "inline-flex h-10 w-10 items-center justify-center rounded-lg bg-transparent text-foreground/80 transition-colors hover:bg-sidebar-hover hover:text-primary";
 
   return (
     <header
       ref={headerRef}
-      className="fixed inset-x-0 top-0 z-50 border-b border-border bg-background pt-[env(safe-area-inset-top,0px)] text-foreground"
+      className={`${appFrameClassName} fixed inset-x-0 top-0 z-50 border-b border-border bg-background pt-[env(safe-area-inset-top,0px)] text-foreground`}
     >
       <div className="flex h-16 w-full items-center gap-3 px-4 md:gap-4 md:px-5">
         <Link
@@ -141,21 +217,18 @@ export function TopNav() {
           aria-label="一级菜单"
         >
           {primaryNav.map((item) => (
-            <Link
+            <PrimaryNavLink
               key={item.href}
-              href={item.href}
-              className={`shrink-0 rounded-lg px-3 py-2.5 text-[15px] font-medium transition-colors ${
-                navItemIsActive(pathname, item.href, "primary")
-                  ? "bg-primary/10 text-primary"
-                  : "text-foreground/85 hover:bg-sidebar-hover hover:text-foreground"
-              }`}
-            >
-              {labelMap[item.href] ?? item.label}
-            </Link>
+              item={item}
+              labelMap={labelMap}
+              pathname={pathname}
+              placement="desktop"
+            />
           ))}
         </nav>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-1.5 sm:gap-2">
+          <NavWeatherLink />
           <SearchBox placeholder={t.searchPlaceholder} />
           {session ? (
             <UserAccountMenu
@@ -167,21 +240,15 @@ export function TopNav() {
             <>
               <button
                 type="button"
-                className={btnPrimary}
-                onClick={() => {
-                  setAuthMode("login");
-                  setAuthOpen(true);
-                }}
+                className={desktopPrimaryButtonClassName}
+                onClick={() => openAuth("login")}
               >
                 {t.login}
               </button>
               <button
                 type="button"
-                className={btnGhost}
-                onClick={() => {
-                  setAuthMode("register");
-                  setAuthOpen(true);
-                }}
+                className={desktopSecondaryButtonClassName}
+                onClick={() => openAuth("register")}
               >
                 {t.register}
               </button>
@@ -191,7 +258,7 @@ export function TopNav() {
           {!session ? (
             <button
               type="button"
-              className={btnIcon}
+              className={iconButtonClassName}
               aria-label="设置"
               onClick={() => setSettingsOpen(true)}
             >
@@ -231,17 +298,13 @@ export function TopNav() {
           <ul className="flex flex-col gap-0.5">
             {primaryNav.map((item) => (
               <li key={item.href}>
-                <Link
-                  href={item.href}
-                  className={`block rounded-lg px-3 py-2.5 text-sm font-medium ${
-                    navItemIsActive(pathname, item.href, "primary")
-                      ? "bg-primary/10 text-primary"
-                      : "text-foreground/90"
-                  }`}
-                  onClick={() => setOpen(false)}
-                >
-                  {labelMap[item.href] ?? item.label}
-                </Link>
+                <PrimaryNavLink
+                  item={item}
+                  labelMap={labelMap}
+                  pathname={pathname}
+                  placement="mobile"
+                  onNavigate={() => setOpen(false)}
+                />
               </li>
             ))}
           </ul>
@@ -252,8 +315,7 @@ export function TopNav() {
                 type="button"
                 className="flex-1 rounded-lg bg-primary px-3 py-2.5 text-sm font-semibold text-primary-foreground"
                 onClick={() => {
-                  setAuthMode("login");
-                  setAuthOpen(true);
+                  openAuth("login");
                   setOpen(false);
                 }}
               >
@@ -263,8 +325,7 @@ export function TopNav() {
                 type="button"
                 className="flex-1 rounded-lg border border-border bg-background px-3 py-2.5 text-sm font-semibold text-foreground/90"
                 onClick={() => {
-                  setAuthMode("register");
-                  setAuthOpen(true);
+                  openAuth("register");
                   setOpen(false);
                 }}
               >
@@ -275,7 +336,12 @@ export function TopNav() {
         </nav>
       ) : null}
 
-      <SettingsModal open={settingsOpen} lang={lang} onLangChange={setLang} onClose={() => setSettingsOpen(false)} />
+      <SettingsModal
+        open={settingsOpen}
+        lang={lang}
+        onLangChange={setLang}
+        onClose={() => setSettingsOpen(false)}
+      />
 
       <AuthModal
         open={authOpen}

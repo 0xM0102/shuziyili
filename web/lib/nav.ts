@@ -5,9 +5,9 @@ import {
 } from "@/lib/convenience-data";
 import {
   NEWS_CHANNEL_LABELS,
-  NEWS_JUHE_TYPES,
+  NEWS_CHANNEL_TYPES,
   buildNewsIndexHref,
-  type NewsJuheType,
+  type NewsChannelType,
 } from "@/lib/news-channels";
 
 export type NavItem = { href: string; label: string; icon?: NavIconName };
@@ -46,10 +46,10 @@ export const hotHomeNav: NavItem[] = [
   { href: "/convenience", label: "便民黄页", icon: "convenience" },
 ];
 
-/** 资讯频道二级导航（Juhe type）；侧栏首项「热点」(`/news`) 由 app-shell-config 注入。 */
-export const hotNewsNav: NavItem[] = (NEWS_JUHE_TYPES.filter((t) => t !== "top") as NewsJuheType[]).map(
-  (t) => ({
-    href: buildNewsIndexHref(t),
-    label: NEWS_CHANNEL_LABELS[t],
-  })
-);
+/** 资讯频道二级导航；侧栏首项「热点」(`/news`) 由 app-shell-config 注入。 */
+export const hotNewsNav: NavItem[] = (
+  NEWS_CHANNEL_TYPES.filter((t) => t !== "top") as NewsChannelType[]
+).map((channelType) => ({
+  href: buildNewsIndexHref(channelType),
+  label: NEWS_CHANNEL_LABELS[channelType],
+}));

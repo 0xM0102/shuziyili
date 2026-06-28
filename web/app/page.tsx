@@ -1,10 +1,9 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { FlashQuickAside } from "@/components/flash/flash-quick-aside";
 import { SectionHead } from "@/components/layout/section-head";
 import { fetchPublicApiData } from "@/lib/api-base";
-import { FlashTitleLink } from "@/components/flash/flash-title-link";
-import { FlashTagBadge } from "@/components/flash/flash-tag-badge";
-import { formatFlashTime, getFlashLinks } from "@/lib/flash-links";
+import { getFlashLinks } from "@/lib/flash-links";
 import { siteConfig } from "@/lib/site";
 
 type HomeBanner = {
@@ -323,35 +322,7 @@ export default async function HomePage() {
 
         </div>
 
-        <aside className="border-t border-border bg-background lg:border-t-0 lg:border-l">
-          <div className="flex items-center justify-between px-4 py-4">
-            <SectionHead title="7×24 快讯" moreHref="/flash" dotTone="pink" />
-          </div>
-          {flashLinks.length === 0 ? (
-            <p className="px-4 py-6 text-sm text-muted">暂无快讯，可在管理后台「快讯」添加。</p>
-          ) : (
-            <ul>
-              {flashLinks.map((it) => (
-                <li key={it.id} className="border-b border-border px-4 py-4 last:border-b-0">
-                  <div className="flex gap-3">
-                    <span className="w-14 shrink-0 text-xs text-muted">
-                      {formatFlashTime(it.publishedAt)}
-                    </span>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <FlashTagBadge label={it.tagLabel} density="compact" />
-                        <FlashTitleLink item={it} mode="direct" />
-                      </div>
-                      {it.sourceLabel ? (
-                        <p className="mt-1 text-xs text-muted">来源：{it.sourceLabel}</p>
-                      ) : null}
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </aside>
+        <FlashQuickAside items={flashLinks} emptyLabel="暂无快讯" />
       </section>
     </div>
   );

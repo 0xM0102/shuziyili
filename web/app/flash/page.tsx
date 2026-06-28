@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { ContentEmptyState } from "@/components/feedback";
 import { FlashKindBadge } from "@/components/flash/flash-kind-badge";
 import { FlashTitleLink } from "@/components/flash/flash-title-link";
 import { FlashTagBadge } from "@/components/flash/flash-tag-badge";
@@ -22,7 +23,7 @@ export default async function FlashPage() {
       </header>
 
       {items.length === 0 ? (
-        <p className="text-sm text-muted">暂无快讯。</p>
+        <ContentEmptyState />
       ) : (
         <ul className="relative ml-4 space-y-0 border-l border-border bg-background">
           {items.map((it) => (

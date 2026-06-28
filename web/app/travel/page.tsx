@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { TravelWeatherCard } from "@/components/travel/travel-weather-card";
 import { fetchPublicApiData } from "@/lib/api-base";
 import { sidebarContentWidthClassName } from "@/lib/page-layout";
 import { siteConfig } from "@/lib/site";
@@ -101,58 +102,6 @@ function SectionHead({
   );
 }
 
-type Forecast = { day: string; icon: string; hi: number; lo: number; note: string };
-
-function WeatherCard() {
-  const now = new Date();
-  const stamp = now.toLocaleString("zh-CN", { hour12: false });
-  const forecast: Forecast[] = [
-    { day: "今天", icon: "☀️", hi: 18, lo: 6, note: "晴" },
-    { day: "明天", icon: "⛅️", hi: 16, lo: 5, note: "多云" },
-    { day: "后天", icon: "🌧️", hi: 12, lo: 3, note: "小雨" },
-  ];
-
-  return (
-    <aside className="border-t border-border bg-background lg:border-t-0 lg:border-l">
-      <div className="px-4 py-4 md:px-5">
-        <SectionHead title="伊宁天气" moreHref="/travel/guide" />
-        <p className="mt-1 text-xs text-muted">更新时间：{stamp}</p>
-
-        <div className="mt-4 rounded-xl border border-border bg-card p-4">
-          <div className="flex items-end justify-between gap-3">
-            <div>
-              <p className="text-xs text-muted">当前</p>
-              <p className="mt-1 text-3xl font-bold tracking-tight text-foreground">14°</p>
-              <p className="mt-1 text-xs text-muted">体感 12° · 风 3 级</p>
-            </div>
-            <div className="text-right">
-              <p className="text-sm font-semibold text-foreground">晴间多云</p>
-              <p className="mt-1 text-xs text-muted">建议：防晒 + 备外套</p>
-            </div>
-          </div>
-
-          <div className="mt-4 border-t border-border pt-3">
-            <ul className="space-y-2">
-              {forecast.map((f) => (
-                <li key={f.day} className="flex items-center justify-between text-sm">
-                  <span className="text-muted">{f.day}</span>
-                  <span className="flex items-center gap-2">
-                    <span aria-hidden>{f.icon}</span>
-                    <span className="text-muted">{f.note}</span>
-                  </span>
-                  <span className="font-medium text-foreground">
-                    {f.hi}° / {f.lo}°
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        </div>
-      </div>
-    </aside>
-  );
-}
-
 export default async function TravelPage() {
   const banners = await getTravelBanners();
   const hero = pickBanner(banners, "travel_main") ?? banners[0] ?? null;
@@ -167,7 +116,7 @@ export default async function TravelPage() {
   return (
     <div className="space-y-0">
       {/* 顶部：一个大 Banner + 右侧天气模块（对齐首页两列结构） */}
-      <section className="mx-0 grid gap-0 border-b border-border lg:grid-cols-[1fr_360px]">
+      <section className="mx-0 grid gap-0 border-b border-border lg:grid-cols-[1fr_360px] lg:items-start">
         <div className="relative overflow-hidden bg-background">
           <div
             className={`relative h-[240px] w-full md:h-[340px] ${
@@ -227,7 +176,7 @@ export default async function TravelPage() {
           </div>
         </div>
 
-        <WeatherCard />
+        <TravelWeatherCard />
       </section>
 
       {/* 下半区：按首页风格，用分区标题+卡片+边框 */}

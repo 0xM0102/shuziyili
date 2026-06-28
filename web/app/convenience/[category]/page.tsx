@@ -5,6 +5,7 @@ import {
   ConvenienceStatCard,
 } from "@/components/convenience/convenience-cards";
 import { ConvenienceServiceCard } from "@/components/convenience/convenience-service-card";
+import { ContentEmptyState } from "@/components/feedback";
 import { SectionHead } from "@/components/layout/section-head";
 import { fetchConveniencePayload } from "@/lib/convenience-api";
 import {
@@ -75,10 +76,7 @@ export default async function BianminCategoryPage({ params }: Props) {
             ))}
           </div>
         ) : (
-          <div className="mt-5 border border-dashed border-border bg-card p-8 text-center">
-            <p className="text-base font-medium text-foreground">暂无目录项</p>
-            <p className="mt-2 text-sm text-muted">可以先回到便民总览查看其他分类。</p>
-          </div>
+          <ContentEmptyState className="mt-5" />
         )}
       </section>
 

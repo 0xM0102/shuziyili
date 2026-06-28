@@ -7,7 +7,14 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
-@EnableConfigurationProperties({CorsProperties.class, JuheNewsProperties.class})
+@EnableConfigurationProperties({
+  CorsProperties.class,
+  NewsProperties.class,
+  JuheNewsProperties.class,
+  TianAreaNewsProperties.class,
+  TencentNewsProperties.class,
+  TencentWeatherProperties.class
+})
 public class WebMvcConfig implements WebMvcConfigurer {
 
   private final CorsProperties corsProperties;

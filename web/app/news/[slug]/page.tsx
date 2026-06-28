@@ -5,11 +5,15 @@ import { formatNewsByline } from "@/lib/news-display";
 import { getNewsDetail } from "@/lib/news-api";
 import { absoluteUrl, siteConfig } from "@/lib/site";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams?: Promise<{ type?: string }>;
+};
 
-export async function generateMetadata({ params }: Props): Promise<Metadata> {
+export async function generateMetadata({ params, searchParams }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const detail = await getNewsDetail(slug);
+  const sp = (await searchParams) ?? {};
+  const detail = await getNewsDetail(slug, sp.type);
   if (!detail) {
     return {
       title: "资讯",
@@ -33,9 +37,10 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
-export default async function NewsArticlePage({ params }: Props) {
+export default async function NewsArticlePage({ params, searchParams }: Props) {
   const { slug } = await params;
-  const detail = await getNewsDetail(slug);
+  const sp = (await searchParams) ?? {};
+  const detail = await getNewsDetail(slug, sp.type);
   if (!detail) notFound();
 
   const { item, attribution, contentHtml } = detail;

@@ -4,6 +4,7 @@ import { useLayoutEffect, useRef } from "react";
 import { usePathname } from "next/navigation";
 import { getSidebarConfig, type SidebarGroup } from "@/lib/app-shell-config";
 import type { NavActiveVariant } from "@/lib/nav-active";
+import { appFrameClassName } from "@/lib/page-layout";
 import { ChannelSideNav } from "./channel-side-nav";
 import { SectionSubnavMobile } from "./section-subnav-mobile";
 import { SiteFooter } from "./site-footer";
@@ -72,14 +73,20 @@ export function AppShellInner({ children, searchKey }: Props) {
   }, [pathname, searchKey]);
 
   return (
-    <div className="flex h-full min-h-0 w-full min-w-0 flex-1 items-stretch overflow-hidden">
+    <div
+      className={`${appFrameClassName} flex h-full min-h-0 min-w-0 flex-1 items-stretch overflow-hidden`}
+    >
       {showSidebar ? (
         <aside
           className="hidden min-h-0 w-56 shrink-0 self-stretch overflow-y-auto overscroll-contain border-r border-border bg-sidebar md:block lg:w-60"
           aria-label="二级菜单"
         >
           <div className="min-h-0">
-            <SidebarGroups groups={sidebar.groups} variant={sidebar.variant} placement="desktop" />
+            <SidebarGroups
+              groups={sidebar.groups}
+              variant={sidebar.variant}
+              placement="desktop"
+            />
           </div>
         </aside>
       ) : null}
@@ -88,7 +95,11 @@ export function AppShellInner({ children, searchKey }: Props) {
         <div ref={mainScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain">
           {showSidebar ? (
             <div className="px-4 py-3 md:hidden">
-              <SidebarGroups groups={sidebar.groups} variant={sidebar.variant} placement="mobile" />
+              <SidebarGroups
+                groups={sidebar.groups}
+                variant={sidebar.variant}
+                placement="mobile"
+              />
             </div>
           ) : null}
           {children}

@@ -1,12 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getPublicApiV1Base } from "@/lib/api-base";
-import { FlashTitleLink } from "@/components/flash/flash-title-link";
-import { FlashTagBadge } from "@/components/flash/flash-tag-badge";
-import { formatFlashTime, getFlashLinks, type FlashLinkItem } from "@/lib/flash-links";
-import { siteConfig } from "@/lib/site";
 import { ShareRow } from "@/components/article/share-row";
+import { FlashQuickAside } from "@/components/flash/flash-quick-aside";
+import { getPublicApiV1Base } from "@/lib/api-base";
+import { getFlashLinks } from "@/lib/flash-links";
+import { siteConfig } from "@/lib/site";
 
 type ApiResponse<T> = { ok: boolean; message?: string | null; data?: T | null };
 type Article = {
@@ -24,42 +22,6 @@ async function fetchArticle(id: string): Promise<Article | null> {
   const json = (await res.json()) as ApiResponse<Article>;
   if (!json.ok || !json.data) return null;
   return json.data;
-}
-
-function QuickAside({ items }: { items: FlashLinkItem[] }) {
-  return (
-    <aside className="border-t border-border bg-background lg:border-l lg:border-t-0">
-      <div className="flex items-center justify-between px-4 py-4">
-        <div className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-pink-500" aria-hidden />
-          <h2 className="text-base font-semibold text-foreground">7×24 快讯</h2>
-        </div>
-        <Link href="/flash" className="text-xs text-muted hover:text-primary">
-          更多 &gt;
-        </Link>
-      </div>
-      {items.length === 0 ? (
-        <p className="px-4 py-6 text-sm text-muted">暂无快讯。</p>
-      ) : (
-        <ul>
-          {items.map((it) => (
-            <li key={it.id} className="border-b border-border px-4 py-4 last:border-b-0">
-              <div className="flex gap-3">
-                <span className="w-14 shrink-0 text-xs text-muted">{formatFlashTime(it.publishedAt)}</span>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <FlashTagBadge label={it.tagLabel} density="compact" />
-                    <FlashTitleLink item={it} mode="direct" />
-                  </div>
-                  {it.sourceLabel ? <p className="mt-1 text-xs text-muted">来源：{it.sourceLabel}</p> : null}
-                </div>
-              </div>
-            </li>
-          ))}
-        </ul>
-      )}
-    </aside>
-  );
 }
 
 export async function generateMetadata({
@@ -131,9 +93,8 @@ export default async function ArticlePage({
           </div>
         </div>
 
-        <QuickAside items={flash} />
+        <FlashQuickAside items={flash} />
       </section>
     </div>
   );
 }
-

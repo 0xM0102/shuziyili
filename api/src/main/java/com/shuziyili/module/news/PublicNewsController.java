@@ -14,30 +14,28 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/news")
 public class PublicNewsController {
 
-  private static final String ATTRIBUTION =
-      "头条资讯数据来自聚合数据「新闻头条」列表与「新闻详情」接口（https://www.juhe.cn/docs/api/id/235），"
-          + "正文 HTML 由上游返回，本站已做基础过滤；完整内容亦可查看原文链接。数据按服务端缓存展示并计入上游配额。";
+  private final NewsService newsService;
 
-  private final JuheNewsCacheService juheNewsCacheService;
-
-  public PublicNewsController(JuheNewsCacheService juheNewsCacheService) {
-    this.juheNewsCacheService = juheNewsCacheService;
+  public PublicNewsController(NewsService newsService) {
+    this.newsService = newsService;
   }
 
   /**
-   * 新闻列表（进程内缓存）。{@code type} 与聚合「新闻头条」接口一致（如 top、guonei）；缺省或非法值按 {@code top}。
+   * 新闻列表（进程内缓存）。{@code type} 为侧栏频道 slug（如 top、guonei）；Juhe 作聚合 type，TianAPI 作地区
+   * {@code word}，腾讯新闻作热点榜或搜索关键词。
    */
   @GetMapping("/headlines")
   public ResponseEntity<ApiResponse<NewsHeadlinesPayload>> headlines(
       @RequestParam(value = "type", required = false) String type) {
-    return ResponseEntity.ok(ApiResponse.success(juheNewsCacheService.headlines(type)));
+    return ResponseEntity.ok(ApiResponse.success(newsService.headlines(type)));
   }
 
   @GetMapping("/headlines/{uniquekey:.+}")
   public ResponseEntity<ApiResponse<Map<String, Object>>> headlineDetail(
-      @PathVariable("uniquekey") String uniquekey) {
-    return juheNewsCacheService
-        .headlineDetail(uniquekey)
+      @PathVariable("uniquekey") String uniquekey,
+      @RequestParam(value = "type", required = false) String type) {
+    return newsService
+        .headlineDetail(uniquekey, type)
         .map((d) -> ResponseEntity.ok(ApiResponse.success(toDetailJson(d))))
         .orElseGet(() -> ResponseEntity.ok(ApiResponse.fail("not_found")));
   }
@@ -46,7 +44,7 @@ public class PublicNewsController {
     Map<String, Object> m = new LinkedHashMap<>(4);
     m.put("item", detail.getItem());
     m.put("contentHtml", detail.getContentHtml());
-    m.put("attribution", ATTRIBUTION);
+    m.put("attribution", newsService.attribution());
     return m;
   }
 }

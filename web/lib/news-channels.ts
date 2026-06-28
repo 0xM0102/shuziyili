@@ -1,8 +1,8 @@
 /**
- * 资讯 Juhe 频道：与后端 `JuheNewsTypes` 一致；供客户端 `nav`、`AppShell`、`nav-active` 使用。
+ * 资讯侧栏频道 slug（与后端 {@code NewsChannelTypes} 一致；Juhe / TianAPI / 腾讯新闻共用）。
  * 勿从 `news-api` 引用（含服务端 fetch / `react.cache`），以免打进客户端包。
  */
-export const NEWS_JUHE_TYPES = [
+export const NEWS_CHANNEL_TYPES = [
   "top",
   "shehui",
   "guonei",
@@ -15,9 +15,9 @@ export const NEWS_JUHE_TYPES = [
   "shishang",
 ] as const;
 
-export type NewsJuheType = (typeof NEWS_JUHE_TYPES)[number];
+export type NewsChannelType = (typeof NEWS_CHANNEL_TYPES)[number];
 
-export const NEWS_CHANNEL_LABELS: Record<NewsJuheType, string> = {
+export const NEWS_CHANNEL_LABELS: Record<NewsChannelType, string> = {
   top: "头条",
   shehui: "社会",
   guonei: "国内",
@@ -30,22 +30,22 @@ export const NEWS_CHANNEL_LABELS: Record<NewsJuheType, string> = {
   shishang: "时尚",
 };
 
-const JUHE_TYPE_SET = new Set<string>(NEWS_JUHE_TYPES);
+const CHANNEL_TYPE_SET = new Set<string>(NEWS_CHANNEL_TYPES);
 
-export function normalizeNewsType(raw: string | undefined): NewsJuheType {
+export function normalizeNewsType(raw: string | undefined): NewsChannelType {
   const t = (raw ?? "").trim().toLowerCase();
-  return (JUHE_TYPE_SET.has(t) ? t : "top") as NewsJuheType;
+  return (CHANNEL_TYPE_SET.has(t) ? t : "top") as NewsChannelType;
 }
 
-export function buildNewsIndexHref(juheType: NewsJuheType): string {
-  return juheType === "top" ? "/news" : `/news?type=${encodeURIComponent(juheType)}`;
+export function buildNewsIndexHref(channelType: NewsChannelType): string {
+  return channelType === "top" ? "/news" : `/news?type=${encodeURIComponent(channelType)}`;
 }
 
 /** 解析侧栏/移动条中的 `/news` 链接，供 `channelEntryIsActive` 与 query 组合判断。 */
 export type ParsedNewsNavLink =
   | { kind: "not-news" }
   | { kind: "news-hotspot" }
-  | { kind: "news-channel"; channel: NewsJuheType };
+  | { kind: "news-channel"; channel: NewsChannelType };
 
 export function parseNewsNavLinkHref(href: string): ParsedNewsNavLink {
   let u: URL;

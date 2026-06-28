@@ -6,9 +6,6 @@ const mainColumnXPad = "px-4 md:px-5";
  */
 export const newsIndexMainClassName = `w-full min-w-0 ${mainColumnXPad} pb-8 pt-2 md:pb-10 md:pt-3`;
 
-export const newsEmptyHeadlinesClassName =
-  "border border-dashed border-border py-14 text-center text-sm text-muted";
-
 /** 详情标题区下方的正文、外链与版权说明。 */
 export const newsArticleSectionClassName = `w-full min-w-0 ${mainColumnXPad} space-y-6 py-6`;
 

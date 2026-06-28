@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { getBrowserLang, uiText, type LangCode } from "@/lib/i18n";
 import { UserAvatarLink } from "@/components/layout/user-avatar-link";
+import { PageLoading } from "@/components/feedback";
 import { fetchMe, getSession, logout, navDisplayName, type AuthSession } from "@/lib/auth-client";
 import { UserProfileForm } from "./user-profile-form";
 
@@ -57,9 +58,11 @@ export function AccountPageClient() {
 
   if (loading) {
     return (
-      <div className="mx-auto max-w-xl">
-        <p className="text-sm text-muted">{lang === "zh" ? "加载中…" : "Loading…"}</p>
-      </div>
+      <PageLoading
+        variant="section"
+        label={lang === "zh" ? "账号加载中" : "Loading account"}
+        size={56}
+      />
     );
   }
 

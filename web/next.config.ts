@@ -10,6 +10,7 @@ const nextConfig: NextConfig = {
       { source: "/lvyou/meishi", destination: "/travel/food", permanent: true },
       { source: "/lvyou/jiaotong", destination: "/travel/transport", permanent: true },
       { source: "/lvyou/gonglue", destination: "/travel/guide", permanent: true },
+      { source: "/travel/weather", destination: "/weather", permanent: true },
 
       // convenience
       { source: "/bianmin", destination: "/convenience", permanent: true },

@@ -2,6 +2,12 @@ package com.shuziyili.config;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+/**
+ * 聚合数据「新闻头条」配置（方案 A）。
+ *
+ * @see <a href="https://www.juhe.cn/docs/api/id/235">Juhe 新闻头条 API</a>
+ * @see com.shuziyili.module.news.JuheNewsProvider
+ */
 @ConfigurationProperties(prefix = "shuziyili.juhe.news")
 public class JuheNewsProperties {
 

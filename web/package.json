@@ -8,7 +8,8 @@
     "dev:clean": "rm -rf .next && next dev --webpack",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "illustrations:empty": "python3 scripts/refresh-empty-illustration.py"
   },
   "dependencies": {
     "next": "16.2.9",
