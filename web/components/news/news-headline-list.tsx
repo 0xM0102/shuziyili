@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { SiteLogoPlaceholder } from "@/components/brand/site-logo-placeholder";
+import { NewsThumbnail } from "@/components/news/news-thumbnail";
 import { buildNewsArticleHref, type NewsChannelType, type NewsItem } from "@/lib/news-api";
-import { formatNewsByline, hasNewsThumbnail, newsThumbnailStyle } from "@/lib/news-display";
+import { formatNewsByline } from "@/lib/news-display";
 
 const rowLinkClassName =
   "group grid grid-cols-1 gap-0 transition-colors hover:bg-sidebar-hover md:grid-cols-[minmax(0,140px)_1fr]";
@@ -15,20 +15,11 @@ const titleClassName =
 function HeadlineRow({ channelType, item }: { channelType?: NewsChannelType; item: NewsItem }) {
   const href = buildNewsArticleHref(item.uniquekey, channelType);
   const byline = formatNewsByline(item, { includeCategory: true });
-  const hasThumb = hasNewsThumbnail(item.thumbnailUrl);
 
   return (
     <Link href={href} className={rowLinkClassName}>
       <div className={thumbShellClassName}>
-        {hasThumb ? (
-          <div
-            className="absolute inset-0 bg-cover bg-center transition-transform duration-300 group-hover:scale-[1.02]"
-            style={newsThumbnailStyle(item.thumbnailUrl)}
-            aria-hidden
-          />
-        ) : (
-          <SiteLogoPlaceholder variant="list" />
-        )}
+        <NewsThumbnail thumbnailUrl={item.thumbnailUrl} variant="list" />
       </div>
       <div className={textCellClassName}>
         <h2 className={titleClassName}>{item.title}</h2>

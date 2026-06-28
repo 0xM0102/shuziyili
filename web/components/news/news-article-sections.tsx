@@ -1,9 +1,8 @@
 import Link from "next/link";
-import { SiteLogoPlaceholder } from "@/components/brand/site-logo-placeholder";
+import { NewsThumbnail } from "@/components/news/news-thumbnail";
 import type { NewsItem } from "@/lib/news-api";
 import { sanitizeNewsContentHtml } from "@/lib/news-html";
 import { newsArticleBodyClassName, newsArticleSectionClassName } from "@/lib/news-layout";
-import { hasNewsThumbnail, newsThumbnailStyle } from "@/lib/news-display";
 
 const backLinkClassName =
   "inline-flex items-center gap-1.5 rounded-lg border border-white/25 bg-black/35 px-3 py-2 text-sm font-medium text-white backdrop-blur-sm transition-colors hover:border-white/40 hover:bg-black/50";
@@ -12,14 +11,10 @@ type HeroProps = { item: NewsItem; byline: string };
 
 /** 详情顶区：封面/占位、返回列表、标题与元信息。 */
 export function NewsArticleHero({ item, byline }: HeroProps) {
-  const hasCover = hasNewsThumbnail(item.thumbnailUrl);
   return (
-    <section
-      className="relative min-h-[200px] bg-muted bg-cover bg-center md:min-h-[260px]"
-      style={newsThumbnailStyle(item.thumbnailUrl)}
-    >
-      {!hasCover ? <SiteLogoPlaceholder variant="hero" /> : null}
-      {hasCover ? <div className="absolute inset-0 bg-black/40" aria-hidden /> : null}
+    <section className="relative min-h-[200px] bg-muted md:min-h-[260px]">
+      <NewsThumbnail thumbnailUrl={item.thumbnailUrl} variant="hero" />
+      <div className="absolute inset-0 bg-black/40" aria-hidden />
       <div className="absolute left-4 top-4 z-10 md:left-6 md:top-6">
         <Link href="/news" className={backLinkClassName}>
           <span aria-hidden>←</span>

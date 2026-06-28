@@ -1,4 +1,3 @@
-import type { CSSProperties } from "react";
 import type { NewsItem } from "@/lib/news-api";
 
 /** 资讯条目的元信息行（日期、可选分类、可选作者）。 */
@@ -13,17 +12,7 @@ export function formatNewsByline(
   return parts.join(" · ");
 }
 
+/** 列表是否展示缩略图区域（有 URL 时尝试加载，失败由 NewsThumbnail 回退占位）。 */
 export function hasNewsThumbnail(thumbnailUrl: string | undefined): boolean {
   return Boolean(thumbnailUrl?.trim());
-}
-
-/** 列表缩略图 / 详情头图共用的 `background-image` 样式；无图时返回 `undefined`。 */
-export function newsThumbnailStyle(thumbnailUrl: string | undefined): CSSProperties | undefined {
-  const url = thumbnailUrl?.trim();
-  if (!url) return undefined;
-  return {
-    backgroundImage: `url(${url})`,
-    backgroundSize: "cover",
-    backgroundPosition: "center",
-  };
 }
