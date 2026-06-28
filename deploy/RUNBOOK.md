@@ -128,6 +128,7 @@ curl -fsS "http://127.0.0.1:8081/api/v1/news/headlines?type=top"
 | API 刚重启立刻 `Connection refused` / `Empty reply` | 冷启动常 **9～12 秒**；勿只 `sleep 8`，用 §3.3 / §8.3 的 **health 轮询** 或 `journalctl -u shuziyili-api -f` 等到 `Started ShuziyiliApplication`。 |
 | `news/headlines` 404、`health` 正常 | 上传含资讯模块的 **新 `shuziyili-api.jar`** 并重启（见 §3.3）。 |
 | 日志 `jdbcUrl, ${SPRING_DATASOURCE_URL}` | 在 `api.env` 补全 **`SPRING_DATASOURCE_URL=`** 一行后重启。 |
+| `/api/v1/weather` **504**、`health` 正常 | ① `api.env` 设 `TENCENT_WEATHER_ENABLED=true` 且 Key 有效；② 服务器 `curl -m 8 -I https://openapi.inews.qq.com` 是否超时（海外机常见）；③ `journalctl -u shuziyili-api | grep weather`；④ 升级含并行拉取优化的 API jar。 |
 
 ---
 

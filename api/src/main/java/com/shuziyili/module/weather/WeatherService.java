@@ -16,10 +16,17 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import java.util.stream.Collectors;
+import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -38,6 +45,16 @@ public class WeatherService {
   private static final int WEATHER_CACHE_MAX_SIZE = 256;
   private static final int HOURLY_MAX_ITEMS = 24;
   private static final int TRAVEL_TIP_FORECAST_DAYS = 2;
+  private static final int WEATHER_FETCH_DEADLINE_SECONDS = 9;
+
+  private static final ExecutorService WEATHER_FETCH_EXECUTOR =
+      Executors.newFixedThreadPool(
+          4,
+          runnable -> {
+            Thread thread = new Thread(runnable, "weather-fetch");
+            thread.setDaemon(true);
+            return thread;
+          });
 
   /**
    * 生活指数展示顺序（对齐腾讯天气常见 12+ 项）；未列出的上游字段仍会追加在末尾。
@@ -74,12 +91,12 @@ public class WeatherService {
   private final TencentWeatherProperties weatherProperties;
   private final TencentNewsProperties newsProperties;
 
-  private final Object lock = new Object();
   private final Map<String, CachedWeather> cacheByAdcode = new LinkedHashMap<>();
   private final Map<String, String> adcodeAliasNames = new ConcurrentHashMap<>();
+  private final ConcurrentHashMap<String, Object> adcodeLocks = new ConcurrentHashMap<>();
 
   public WeatherService(
-      RestTemplate restTemplate,
+      @Qualifier("tencentSkillsRestTemplate") RestTemplate restTemplate,
       ObjectMapper objectMapper,
       TencentWeatherProperties weatherProperties,
       TencentNewsProperties newsProperties) {
@@ -87,6 +104,20 @@ public class WeatherService {
     this.objectMapper = objectMapper;
     this.weatherProperties = weatherProperties;
     this.newsProperties = newsProperties;
+  }
+
+  @PostConstruct
+  void logUpstreamConfig() {
+    if (!weatherProperties.isEnabled()) {
+      log.info("Tencent weather disabled (set TENCENT_WEATHER_ENABLED=true to enable)");
+      return;
+    }
+    if (!NewsJsonSupport.notBlank(resolveApiKey())) {
+      log.warn(
+          "TENCENT_WEATHER_ENABLED=true but no key: set TENCENT_WEATHER_KEY or TENCENT_NEWS_KEY in api.env");
+      return;
+    }
+    log.info("Tencent weather upstream enabled, baseUrl={}", weatherProperties.getBaseUrl());
   }
 
   public String attribution() {
@@ -104,9 +135,7 @@ public class WeatherService {
     if (!upstreamConfigured()) {
       return defaultUnconfigured();
     }
-    synchronized (lock) {
-      return fetchCached(resolved);
-    }
+    return fetchCached(resolved);
   }
 
   public WeatherPayload weatherByClientIp(String clientIp) {
@@ -144,16 +173,27 @@ public class WeatherService {
             cached.fetchedAt, now, weatherProperties.getRefreshSeconds())) {
       return cached.payload;
     }
-    try {
-      WeatherPayload payload = fetchRemote(adcode);
-      putCachedWeather(adcode, new CachedWeather(payload, now));
-      return payload;
-    } catch (Exception e) {
-      log.warn("tencent weather fetch failed adcode={}: {}", adcode, e.getMessage());
-      if (cached != null) {
+
+    Object adcodeLock = adcodeLocks.computeIfAbsent(adcode, ignored -> new Object());
+    synchronized (adcodeLock) {
+      cached = cacheByAdcode.get(adcode);
+      if (cached != null
+          && !NewsJsonSupport.refreshCooldownElapsed(
+              cached.fetchedAt, now, weatherProperties.getRefreshSeconds())) {
         return cached.payload;
       }
-      return emptyPayload(adcode);
+      try {
+        WeatherPayload payload = fetchRemote(adcode);
+        putCachedWeather(adcode, new CachedWeather(payload, now));
+        return payload;
+      } catch (Exception e) {
+        log.warn("tencent weather fetch failed adcode={}: {}", adcode, e.getMessage());
+        cached = cacheByAdcode.get(adcode);
+        if (cached != null) {
+          return cached.payload;
+        }
+        return emptyPayload(adcode);
+      }
     }
   }
 
@@ -166,12 +206,29 @@ public class WeatherService {
   }
 
   private WeatherPayload fetchRemote(String adcode) throws Exception {
-    JsonNode observeRoot =
-        postWeather(adcode, "observe").path("data").path("observe");
-    JsonNode forecastRoot =
-        postWeather(adcode, "forecast_24h").path("data").path("forecast_24h");
-    JsonNode hourlyRoot = safeWeatherData(adcode, "forecast_1h", "forecast_1h");
-    JsonNode indexRoot = safeWeatherData(adcode, "index", "index");
+    CompletableFuture<JsonNode> observeFuture =
+        supplyRequiredWeather(adcode, "observe");
+    CompletableFuture<JsonNode> forecastFuture =
+        supplyRequiredWeather(adcode, "forecast_24h");
+    CompletableFuture<JsonNode> hourlyFuture =
+        CompletableFuture.supplyAsync(
+            () -> postWeatherOrEmpty(adcode, "forecast_1h"), WEATHER_FETCH_EXECUTOR);
+    CompletableFuture<JsonNode> indexFuture =
+        CompletableFuture.supplyAsync(
+            () -> postWeatherOrEmpty(adcode, "index"), WEATHER_FETCH_EXECUTOR);
+
+    try {
+      CompletableFuture.allOf(observeFuture, forecastFuture, hourlyFuture, indexFuture)
+          .get(WEATHER_FETCH_DEADLINE_SECONDS, TimeUnit.SECONDS);
+    } catch (TimeoutException e) {
+      throw new IllegalStateException(
+          "tencent weather upstream deadline exceeded (" + WEATHER_FETCH_DEADLINE_SECONDS + "s)");
+    }
+
+    JsonNode observeRoot = observeFuture.get().path("data").path("observe");
+    JsonNode forecastRoot = forecastFuture.get().path("data").path("forecast_24h");
+    JsonNode hourlyFull = hourlyFuture.get();
+    JsonNode indexRoot = indexFuture.get().path("data").path("index");
 
     String cityName = resolveCityName(adcode);
 
@@ -184,7 +241,7 @@ public class WeatherService {
             NewsJsonSupport.text(observeRoot, "wind_power"));
     String updatedAt = formatUpdateTime(NewsJsonSupport.text(observeRoot, "update_time"));
     List<WeatherForecastDayDto> forecast = parseForecast(forecastRoot);
-    List<WeatherHourlyDto> hourly = loadHourly(adcode, hourlyRoot);
+    List<WeatherHourlyDto> hourly = loadHourly(hourlyFull);
     List<WeatherLifeIndexDto> lifeIndices = parseLifeIndices(indexRoot);
 
     return new WeatherPayload(
@@ -215,9 +272,21 @@ public class WeatherService {
     return root;
   }
 
-  private JsonNode safeWeatherData(String adcode, String weatherType, String dataKey) {
+  private CompletableFuture<JsonNode> supplyRequiredWeather(String adcode, String weatherType) {
+    return CompletableFuture.supplyAsync(
+        () -> {
+          try {
+            return postWeather(adcode, weatherType);
+          } catch (Exception e) {
+            throw new RuntimeException(e);
+          }
+        },
+        WEATHER_FETCH_EXECUTOR);
+  }
+
+  private JsonNode postWeatherOrEmpty(String adcode, String weatherType) {
     try {
-      return postWeather(adcode, weatherType).path("data").path(dataKey);
+      return postWeather(adcode, weatherType);
     } catch (Exception e) {
       log.warn("tencent weather optional type={} adcode={}: {}", weatherType, adcode, e.getMessage());
       return objectMapper.createObjectNode();
@@ -374,25 +443,20 @@ public class WeatherService {
     return List.copyOf(byDate.values());
   }
 
-  private List<WeatherHourlyDto> loadHourly(String adcode, JsonNode hourlyRoot) {
-    List<WeatherHourlyDto> hourly = parseHourly(hourlyRoot);
+  private List<WeatherHourlyDto> loadHourly(JsonNode hourlyFull) {
+    JsonNode data = hourlyFull.path("data");
+    List<WeatherHourlyDto> hourly = parseHourly(data.path("forecast_1h"));
     if (!hourly.isEmpty()) {
       return hourly;
     }
-    try {
-      JsonNode root = postWeather(adcode, "forecast_1h");
-      JsonNode data = root.path("data");
-      for (String key : List.of("forecast_1h", "forecast_1h_data")) {
-        if (!data.has(key)) {
-          continue;
-        }
-        hourly = parseHourly(data.path(key));
-        if (!hourly.isEmpty()) {
-          return hourly;
-        }
+    for (String key : List.of("forecast_1h", "forecast_1h_data")) {
+      if (!data.has(key)) {
+        continue;
       }
-    } catch (Exception e) {
-      log.debug("hourly extended parse failed adcode={}: {}", adcode, e.getMessage());
+      hourly = parseHourly(data.path(key));
+      if (!hourly.isEmpty()) {
+        return hourly;
+      }
     }
     return List.of();
   }
