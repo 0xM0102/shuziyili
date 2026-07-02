@@ -106,13 +106,15 @@ scp target/shuziyili-api.jar user@your-server-ip:/opt/shuziyili/api/shuziyili-ap
 
 **服务器**：`sudo systemctl restart shuziyili-api`。
 
-**`api.env` 必备**：除 `SPRING_DATASOURCE_USERNAME` / `PASSWORD` 外，须有 **`SPRING_DATASOURCE_URL`**（完整 JDBC），否则日志会出现 `jdbcUrl, ${SPRING_DATASOURCE_URL}` 且进程起不来、`8081` 短暂 `Connection refused`。示例见 [`deploy/env/api.env.example`](./env/api.env.example)。
+**`api.env` 必备**：除 `SPRING_DATASOURCE_USERNAME` / `PASSWORD` 外，须有 **`SPRING_DATASOURCE_URL`**（完整 JDBC），否则日志会出现 `jdbcUrl, ${SPRING_DATASOURCE_URL}` 且进程起不来、`8081` 短暂 `Connection refused`。示例见 [`deploy/env/api.env.example`](./env/api.env.example)（默认 **Juhe 头条 + Juhe 天气 + Tian 首页地区块**）。
 
 **验收**（端口以 `api.env` 中 **`SERVER_PORT`** 为准；先 `ss -tlnp | grep java` 确认，示例 **8081**）：
 
 ```bash
 curl -fsS http://127.0.0.1:8081/api/v1/health
 curl -fsS "http://127.0.0.1:8081/api/v1/news/headlines?type=top"
+curl -fsS "http://127.0.0.1:8081/api/v1/weather?adcode=654002"
+curl -fsS "http://127.0.0.1:8081/api/v1/home/area-news"
 ```
 
 若 **`/api/v1/news/headlines` 返回 404** 而 `health` 正常，多半是线上 **`shuziyili-api.jar` 仍为旧包**（不含资讯模块）；上传新 jar 并重启即可。仅改 `JUHE_NEWS_*` 不会自动出现路由。
@@ -128,7 +130,10 @@ curl -fsS "http://127.0.0.1:8081/api/v1/news/headlines?type=top"
 | API 刚重启立刻 `Connection refused` / `Empty reply` | 冷启动常 **9～12 秒**；勿只 `sleep 8`，用 §3.3 / §8.3 的 **health 轮询** 或 `journalctl -u shuziyili-api -f` 等到 `Started ShuziyiliApplication`。 |
 | `news/headlines` 404、`health` 正常 | 上传含资讯模块的 **新 `shuziyili-api.jar`** 并重启（见 §3.3）。 |
 | 日志 `jdbcUrl, ${SPRING_DATASOURCE_URL}` | 在 `api.env` 补全 **`SPRING_DATASOURCE_URL=`** 一行后重启。 |
-| `/api/v1/weather` **504**、`health` 正常 | ① `api.env` 设 `TENCENT_WEATHER_ENABLED=true` 且 Key 有效；② 服务器 `curl -m 8 -I https://openapi.inews.qq.com` 是否超时（海外机常见）；③ `journalctl -u shuziyili-api | grep weather`；④ 升级含并行拉取优化的 API jar。 |
+| `/api/v1/weather` 空数据 / `upstreamConfigured: false` | `api.env` 设 `WEATHER_PROVIDER=juhe`、`JUHE_WEATHER_ENABLED=true`，且 `JUHE_WEATHER_KEY` 或 `JUHE_NEWS_KEY` 有效（须在 Juhe 控制台开通 [天气预报 73](https://www.juhe.cn/docs/api/id/73)）；`journalctl -u shuziyili-api \| grep -i juhe`。 |
+| 资讯列表空、`error_code=10001` | Juhe Key 无效或未开通对应 API（主资讯须开通 [新闻头条 235](https://www.juhe.cn/docs/api/id/235)）。 |
+| 资讯缩略图 `inews.gtimg.com` **403** | 腾讯图床防盗链，**不要**用 Nginx 反代或 `no-referrer` 绕过。门户 `NewsThumbnail` 对 `gtimg.com` 不发起外链请求，403/404 等均回退站内占位图；服务器若曾加 `location /news-img/` 可删除并 `nginx -t && systemctl reload nginx`。 |
+| 服务器 `sudo npm: command not found` | 用完整路径：`/usr/local/bin/npm install --omit=dev`（或 `which npm` 查路径）。 |
 
 ---
 
@@ -151,6 +156,7 @@ curl -fsS "http://127.0.0.1:8081/api/v1/news/headlines?type=top"
 ```bash
 curl -sS https://shuziyili.com/api/v1/health
 curl -sS "https://shuziyili.com/api/v1/news/headlines?type=top"
+curl -sS "https://shuziyili.com/api/v1/weather?adcode=654002"
 curl -sS https://shuziyili.com/api/v1/travel/banners
 curl -sS -I https://shuziyili.com/travel
 curl -sS -I https://admin.shuziyili.com

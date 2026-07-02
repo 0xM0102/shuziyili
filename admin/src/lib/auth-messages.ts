@@ -49,7 +49,7 @@ export function mapApiMessage(code: string | null | undefined): string {
     invalid_tag_id: "无效的标签",
     invalid_target_kind: "无效的标签分类",
     empty_label: "请填写标签名称",
-    duplicate_label: "该标签已存在（同分类下不可重复）",
+    source_not_configured: "该数据源未在 api.env 配置 Key，无法启用",
     invalid_permission_code: "包含无效的权限编码",
   };
   return m[code ?? ""] ?? (code ? `错误：${code}` : "请求失败");

@@ -11,6 +11,8 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
   CorsProperties.class,
   NewsProperties.class,
   JuheNewsProperties.class,
+  JuheWeatherProperties.class,
+  WeatherProperties.class,
   TianAreaNewsProperties.class,
   TencentNewsProperties.class,
   TencentWeatherProperties.class

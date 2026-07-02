@@ -5,36 +5,45 @@ import { SiteLogoPlaceholder } from "@/components/brand/site-logo-placeholder";
 
 type NewsThumbnailProps = {
   thumbnailUrl: string | undefined;
-  variant: "list" | "article";
+  variant: "list" | "hero";
   className?: string;
 };
 
+const coverBaseClass = "absolute inset-0 h-full w-full object-cover";
+const coverByVariant = {
+  hero: coverBaseClass,
+  list: `${coverBaseClass} transition-transform duration-300 group-hover:scale-[1.02]`,
+} as const;
+
 /**
- * 外链缩略图（腾讯等）常因 Referer 防盗链返回 403；
- * 使用 img + no-referrer，失败时回退占位。
+ * 外链缩略图：先尝试加载；加载中仅衬底，失败后再回退品牌占位。
  */
 export function NewsThumbnail({ thumbnailUrl, variant, className }: NewsThumbnailProps) {
-  const url = thumbnailUrl?.trim();
-  const [failed, setFailed] = useState(false);
+  const url = thumbnailUrl?.trim() || "";
+  const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
+  const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
-  if (!url || failed) {
+  if (!url || failedUrl === url) {
     return <SiteLogoPlaceholder variant={variant} />;
   }
 
-  const imgClass =
-    className ??
-    (variant === "article"
-      ? "absolute inset-0 h-full w-full object-cover"
-      : "absolute inset-0 h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]");
+  const isLoaded = loadedUrl === url;
 
   return (
-    // eslint-disable-next-line @next/next/no-img-element -- 外链缩略图需 referrerPolicy，失败时 onError 回退
-    <img
-      src={url}
-      alt=""
-      referrerPolicy="no-referrer"
-      className={imgClass}
-      onError={() => setFailed(true)}
-    />
+    <div className="absolute inset-0 overflow-hidden">
+      {!isLoaded ? <div className="absolute inset-0 bg-muted" aria-hidden /> : null}
+      {/* eslint-disable-next-line @next/next/no-img-element -- 外链缩略图，失败时 onError 回退占位 */}
+      <img
+        src={url}
+        alt=""
+        className={`${className ?? coverByVariant[variant]} transition-opacity duration-200 ${
+          isLoaded ? "opacity-100" : "opacity-0"
+        }`}
+        referrerPolicy="no-referrer"
+        decoding="async"
+        onLoad={() => setLoadedUrl(url)}
+        onError={() => setFailedUrl(url)}
+      />
+    </div>
   );
 }

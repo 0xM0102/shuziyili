@@ -16,5 +16,6 @@ public final class StaffPermissionCodes {
   public static final String EVENTS_MANAGE = "events.manage";
   public static final String CONVENIENCE_MANAGE = "convenience.manage";
   public static final String MEDIA_MANAGE = "media.manage";
+  public static final String PORTAL_SETTINGS_MANAGE = "portal_settings.manage";
   public static final String PERMISSIONS_MANAGE = "permissions.manage";
 }

@@ -145,6 +145,41 @@ export type StaffRoleDto = {
   sortOrder: number;
 };
 
+export type PortalUpstreamStatus = {
+  enabled: boolean;
+  configured: boolean;
+};
+
+export type PortalDataSource = {
+  id: string;
+  label: string;
+  scope: string;
+  group: "news" | "weather" | "home";
+  enabled: boolean;
+  upstream: PortalUpstreamStatus;
+};
+
+export type PortalSettingsAdminDto = {
+  newsProvider: string;
+  weatherProvider: string;
+  homeAreaNewsEnabled: boolean;
+  tianapiAreaname: string;
+  sources: PortalDataSource[];
+  envDefaults: {
+    newsProvider: string;
+    weatherProvider: string;
+    tianapiAreaname: string;
+  };
+  upstream: {
+    juheNews: PortalUpstreamStatus;
+    juheWeather: PortalUpstreamStatus;
+    tianapiNews: PortalUpstreamStatus;
+    tencentNews: PortalUpstreamStatus;
+    tencentWeather: PortalUpstreamStatus;
+  };
+  dbOverrides: Record<string, string>;
+};
+
 export type StaffPermissionDto = {
   permissionCode: string;
   displayName: string;
@@ -749,6 +784,15 @@ export const api = {
     },
     async deleteMedia(key: string) {
       return request<void>(`/api/v1/admin/media?key=${encodeURIComponent(key)}`, { method: "DELETE" });
+    },
+    async getPortalSettings() {
+      return request<PortalSettingsAdminDto>("/api/v1/admin/portal-settings", { method: "GET" });
+    },
+    async updatePortalSettingItem(settingKey: string, value: string) {
+      return request<void>("/api/v1/admin/portal-settings/item", {
+        method: "PUT",
+        body: JSON.stringify({ settingKey, value }),
+      });
     },
     rbac: {
       async listRoles() {

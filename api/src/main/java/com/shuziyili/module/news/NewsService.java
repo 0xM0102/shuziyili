@@ -1,23 +1,23 @@
 package com.shuziyili.module.news;
 
-import com.shuziyili.config.NewsProperties;
+import com.shuziyili.module.settings.PortalSettingsService;
 import java.util.Map;
 import java.util.Optional;
 import org.springframework.stereotype.Service;
 
-/** 门户资讯门面：根据 {@link NewsProperties#resolveProviderId()} 委托具体上游 Provider。 */
+/** 门户资讯门面：Provider 由 {@link PortalSettingsService}（DB）或 env 决定。 */
 @Service
 public class NewsService {
 
   private final Map<NewsProviderId, NewsProvider> providers;
-  private final NewsProperties newsProperties;
+  private final PortalSettingsService portalSettingsService;
 
   public NewsService(
-      NewsProperties newsProperties,
+      PortalSettingsService portalSettingsService,
       JuheNewsProvider juheNewsProvider,
       TianAreaNewsProvider tianAreaNewsProvider,
       TencentNewsProvider tencentNewsProvider) {
-    this.newsProperties = newsProperties;
+    this.portalSettingsService = portalSettingsService;
     this.providers =
         Map.of(
             NewsProviderId.JUHE, juheNewsProvider,
@@ -29,10 +29,6 @@ public class NewsService {
     return activeProvider().headlines(channelType);
   }
 
-  public Optional<NewsDetailResult> headlineDetail(String uniquekey) {
-    return activeProvider().headlineDetail(uniquekey);
-  }
-
   public Optional<NewsDetailResult> headlineDetail(String uniquekey, String channelType) {
     return activeProvider().headlineDetail(uniquekey, channelType);
   }
@@ -41,12 +37,8 @@ public class NewsService {
     return activeProvider().attribution();
   }
 
-  public NewsProviderId activeProviderId() {
-    return activeProvider().id();
-  }
-
   private NewsProvider activeProvider() {
-    NewsProviderId id = newsProperties.resolveProviderId();
+    NewsProviderId id = portalSettingsService.resolveNewsProviderId();
     return providers.getOrDefault(id, providers.get(NewsProviderId.JUHE));
   }
 }

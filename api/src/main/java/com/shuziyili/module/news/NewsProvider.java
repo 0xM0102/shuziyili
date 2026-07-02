@@ -9,10 +9,10 @@ public interface NewsProvider {
 
   NewsHeadlinesPayload headlines(String channelType);
 
-  Optional<NewsDetailResult> headlineDetail(String uniquekey);
+  Optional<NewsDetailResult> headlineDetail(String uniquekey, String channelType);
 
-  default Optional<NewsDetailResult> headlineDetail(String uniquekey, String channelType) {
-    return headlineDetail(uniquekey);
+  default Optional<NewsDetailResult> headlineDetail(String uniquekey) {
+    return headlineDetail(uniquekey, null);
   }
 
   /** 详情页「数据来源」说明文案。 */

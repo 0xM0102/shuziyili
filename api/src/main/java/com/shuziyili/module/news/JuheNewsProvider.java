@@ -21,11 +21,10 @@ import org.springframework.web.util.UriComponentsBuilder;
  * 聚合数据「新闻头条」（文档 ID 235）：列表 {@code toutiao/index} 按 type 分槽缓存；详情调用 {@code
  * toutiao/content} 拉正文 HTML。
  *
- * <p>启用条件：{@code shuziyili.news.provider=juhe}（默认）且 {@code shuziyili.juhe.news.enabled=true} 并配置
- * {@code key}。
+ * @see <a href="https://www.juhe.cn/docs/api/id/235">Juhe 新闻头条 API</a>
  */
 @Service
-public class JuheNewsProvider implements NewsProvider {
+public class JuheNewsProvider implements NewsProvider, NewsChannelDetailLookup.Refresher {
 
   private static final Logger log = LoggerFactory.getLogger(JuheNewsProvider.class);
 
@@ -84,8 +83,8 @@ public class JuheNewsProvider implements NewsProvider {
   }
 
   @Override
-  public Optional<NewsDetailResult> headlineDetail(String uniquekey) {
-    if (uniquekey == null || uniquekey.isBlank()) {
+  public Optional<NewsDetailResult> headlineDetail(String uniquekey, String channelType) {
+    if (!NewsJsonSupport.notBlank(uniquekey)) {
       return Optional.empty();
     }
     String key = uniquekey.trim();
@@ -98,8 +97,8 @@ public class JuheNewsProvider implements NewsProvider {
         return Optional.of(slot.result);
       }
 
-      refreshIfStale(NewsChannelTypes.normalize(properties.getType()));
-      NewsItemDto fromList = byUniquekey.get(key);
+      NewsItemDto fromList =
+          NewsChannelDetailLookup.findIndexedItem(key, byUniquekey, this, channelType);
 
       try {
         ContentFetch fetched = fetchRemoteContent(key);
@@ -146,7 +145,8 @@ public class JuheNewsProvider implements NewsProvider {
         cachedAt, Instant.now(), properties.getRefreshSeconds());
   }
 
-  private void refreshIfStale(String channel) {
+  @Override
+  public void refreshIfStale(String channel) {
     if (!upstreamConfigured()) {
       return;
     }
@@ -247,14 +247,31 @@ public class JuheNewsProvider implements NewsProvider {
             NewsJsonSupport.text(result, "html"),
             NewsJsonSupport.text(result, "news_content"),
             NewsJsonSupport.text(result, "text"));
-    NewsItemDto item = mapJsonToItem(result);
-    if (item == null) {
-      item = mapContentResultFallback(result, requestUniquekey);
-    }
+    NewsItemDto item = resolveContentItem(result, requestUniquekey);
     if (item == null) {
       return ContentFetch.fail();
     }
     return new ContentFetch(true, item, html);
+  }
+
+  /** 兼容根级字段与 {@code result.detail} 嵌套（Juhe content 常见形态）。 */
+  private NewsItemDto resolveContentItem(JsonNode result, String requestUniquekey) {
+    NewsItemDto direct = mapJsonToItem(result);
+    if (direct != null) {
+      return direct;
+    }
+    JsonNode detail = result.path("detail");
+    if (!detail.isObject()) {
+      return mapContentResultFallback(result, requestUniquekey);
+    }
+    String uniquekey =
+        NewsJsonSupport.firstNonBlank(
+            NewsJsonSupport.text(result, "uniquekey"), requestUniquekey);
+    NewsItemDto fromDetail = mapJsonToItem(detail, uniquekey);
+    if (fromDetail != null) {
+      return fromDetail;
+    }
+    return mapContentResultFallback(detail, uniquekey);
   }
 
   private NewsItemDto mapContentResultFallback(JsonNode result, String requestUniquekey) {
@@ -270,7 +287,7 @@ public class JuheNewsProvider implements NewsProvider {
             NewsJsonSupport.text(result, "title_detail"),
             NewsJsonSupport.text(result, "topic"));
     if (title.isEmpty()) {
-      title = "资讯详情";
+      return null;
     }
     return new NewsItemDto(
         uk,
@@ -286,9 +303,12 @@ public class JuheNewsProvider implements NewsProvider {
     if (list == null) {
       return api;
     }
+    if (api == null) {
+      return list;
+    }
     return new NewsItemDto(
         list.getUniquekey(),
-        pick(api.getTitle(), list.getTitle()),
+        pick(list.getTitle(), api.getTitle()),
         pick(api.getDate(), list.getDate()),
         pick(api.getCategory(), list.getCategory()),
         pick(api.getAuthorName(), list.getAuthorName()),
@@ -301,7 +321,12 @@ public class JuheNewsProvider implements NewsProvider {
   }
 
   private NewsItemDto mapJsonToItem(JsonNode n) {
-    String uniquekey = NewsJsonSupport.text(n, "uniquekey");
+    return mapJsonToItem(n, "");
+  }
+
+  private NewsItemDto mapJsonToItem(JsonNode n, String uniquekeyFallback) {
+    String uniquekey =
+        NewsJsonSupport.firstNonBlank(NewsJsonSupport.text(n, "uniquekey"), uniquekeyFallback);
     String title = NewsJsonSupport.text(n, "title");
     if (uniquekey.isEmpty() || title.isEmpty()) {
       return null;

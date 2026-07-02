@@ -2,6 +2,7 @@ package com.shuziyili.module.news;
 
 import java.util.LinkedHashSet;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
 /** 在分频道缓存中查找详情条目：优先刷新来源频道，再兜底刷新头条与侧栏频道。 */
@@ -9,11 +10,6 @@ final class NewsChannelDetailLookup {
 
   interface Refresher {
     void refreshIfStale(String channel);
-  }
-
-  static NewsItemDto findIndexedItem(
-      String uniquekey, Map<String, NewsItemDto> index, Refresher refresher) {
-    return findIndexedItem(uniquekey, index, refresher, null);
   }
 
   static NewsItemDto findIndexedItem(
@@ -43,6 +39,24 @@ final class NewsChannelDetailLookup {
     return null;
   }
 
+  /** 列表缓存 + 副文本 Map 的详情（天聚 / 腾讯：无独立正文接口）。 */
+  static Optional<NewsDetailResult> detailFromListCache(
+      String uniquekey,
+      String channelType,
+      Map<String, NewsItemDto> index,
+      Map<String, String> htmlByKey,
+      Refresher refresher) {
+    if (!NewsJsonSupport.notBlank(uniquekey)) {
+      return Optional.empty();
+    }
+    String key = uniquekey.trim();
+    NewsItemDto item = findIndexedItem(key, index, refresher, channelType);
+    if (item == null) {
+      return Optional.empty();
+    }
+    return Optional.of(new NewsDetailResult(item, htmlByKey.getOrDefault(key, "")));
+  }
+
   private static NewsItemDto refreshAndFind(
       String uniquekey,
       Map<String, NewsItemDto> index,
@@ -53,11 +67,7 @@ final class NewsChannelDetailLookup {
       return null;
     }
     refresher.refreshIfStale(channel);
-    NewsItemDto item = index.get(uniquekey);
-    if (item != null) {
-      return item;
-    }
-    return null;
+    return index.get(uniquekey);
   }
 
   private NewsChannelDetailLookup() {}

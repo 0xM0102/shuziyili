@@ -69,6 +69,11 @@ const routes: RouteRecordRaw[] = [
         component: () => import("@/views/verification-records/VerificationRecordsPage.vue"),
       },
       {
+        path: "config-management",
+        name: "config-management",
+        component: () => import("@/views/config-management/ConfigManagementPage.vue"),
+      },
+      {
         path: "permissions",
         name: "permissions",
         component: () => import("@/views/permissions/PermissionsPage.vue"),

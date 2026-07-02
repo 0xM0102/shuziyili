@@ -1,5 +1,5 @@
 /**
- * 资讯侧栏频道 slug（与后端 {@code NewsChannelTypes} 一致；Juhe / TianAPI / 腾讯新闻共用）。
+ * 资讯侧栏频道 slug（与后端 {@code NewsChannelTypes} 一致；Juhe / TianAPI 地区新闻、腾讯搜索共用）。
  * 勿从 `news-api` 引用（含服务端 fetch / `react.cache`），以免打进客户端包。
  */
 export const NEWS_CHANNEL_TYPES = [

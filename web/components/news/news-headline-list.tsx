@@ -15,7 +15,6 @@ const titleClassName =
 function HeadlineRow({ channelType, item }: { channelType?: NewsChannelType; item: NewsItem }) {
   const href = buildNewsArticleHref(item.uniquekey, channelType);
   const byline = formatNewsByline(item, { includeCategory: true });
-
   return (
     <Link href={href} className={rowLinkClassName}>
       <div className={thumbShellClassName}>

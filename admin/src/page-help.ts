@@ -16,6 +16,8 @@ export const PAGE_HELP: Record<string, string> = {
     "管理门户「便民」频道：分类决定前台入口，服务条目决定电话、地址、外链、状态与应急专区。禁用后不会在门户展示；删除分类前需先删除或迁移该分类下的服务。",
   "/permissions":
     "权限管理：选择角色后，对应勾选其可访问的权限码（系统预置 roles 与 permissions）。仅管理员默认拥有 `permissions.manage`；若无权限将提示「权限不足」。\n\n为当前角色勾选可访问的后台能力；保存后生效。仅管理员可修改本页。",
+  "/config-management":
+    "列出各上游数据源，用开关启用。主资讯与天气各自只能开一个；首页天聚地区块独立。Key 在 api.env 配置。",
   "/articles":
     "「复制链接」为站内路径，可粘贴到门户首页 Banner 的跳转。\n前台域名：开发默认 localhost:3000，生产请在 .env 配置 VITE_SITE_BASE_URL。\n封面上传走 COS（默认 cms/ 目录）后，文件会出现在「媒体库」。",
   "/home-curation":

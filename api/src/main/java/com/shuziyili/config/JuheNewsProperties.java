@@ -22,7 +22,7 @@ public class JuheNewsProperties {
   /** 聚合「新闻详情」地址（同文档「新闻详情查询」）。 */
   private String contentUrl = "https://v.juhe.cn/toutiao/content";
 
-  /** 列表 type 参数，如 top、guonei、yule 等。 */
+  /** 默认列表 type（详情兜底刷新用），侧栏频道以请求参数为准。 */
   private String type = "top";
 
   private int pageSize = 30;

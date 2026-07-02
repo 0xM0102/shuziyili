@@ -52,15 +52,21 @@ shuziyili:
     store-plain-otp: ${SHUZIYILI_STORE_PLAIN_OTP:true}
 
   # ---------------------------------------------------------------------------
-  # 门户资讯数据源（二选一，通过 provider 切换；两套配置可同时保留，未用方 enabled=false 即可）
+  # 门户资讯 + 天气（默认聚合 Juhe；备选 tianapi / tencent 见下方注释）
+  # 本地 application-local.yml、生产 api.env 与下列默认值保持一致。
   # ---------------------------------------------------------------------------
   news:
-    # juhe = 聚合数据「新闻头条」全国频道（默认）
-    # tianapi = 天聚数行「地区新闻」省级资讯 https://www.tianapi.com/apiview/154
-    # tencent = 腾讯新闻 Skills OpenAPI https://news.qq.com/exchange?scene=appkey
+    # juhe = 聚合「新闻头条」https://www.juhe.cn/docs/api/id/235
+    # tianapi = 天聚「地区新闻」（作主资讯时）https://www.tianapi.com/apiview/154
+    # tencent = 腾讯新闻 Skills https://news.qq.com/exchange?scene=appkey
     provider: ${NEWS_PROVIDER:juhe}
 
-  # 方案 A：聚合数据 Juhe —— https://www.juhe.cn/docs/api/id/235
+  weather:
+    # juhe = 聚合「天气预报」https://www.juhe.cn/docs/api/id/73
+    # tencent = 腾讯天气 Skills
+    provider: ${WEATHER_PROVIDER:juhe}
+
+  # 方案 A：聚合数据 Juhe —— 新闻头条 235 / 天气预报 73
   juhe:
     news:
       enabled: ${JUHE_NEWS_ENABLED:false}
@@ -70,9 +76,16 @@ shuziyili:
       type: ${JUHE_NEWS_TYPE:top}
       page-size: ${JUHE_NEWS_PAGE_SIZE:30}
       refresh-seconds: ${JUHE_NEWS_REFRESH_SECONDS:3600}
+    # 天气预报 https://www.juhe.cn/docs/api/id/73
+    weather:
+      enabled: ${JUHE_WEATHER_ENABLED:false}
+      key: ${JUHE_WEATHER_KEY:}
+      query-url: ${JUHE_WEATHER_QUERY_URL:https://apis.juhe.cn/simpleWeather/query}
+      life-url: ${JUHE_WEATHER_LIFE_URL:https://apis.juhe.cn/simpleWeather/life}
+      default-adcode: ${JUHE_WEATHER_DEFAULT_ADCODE:654002}
+      refresh-seconds: ${JUHE_WEATHER_REFRESH_SECONDS:600}
 
-  # 方案 B：天聚数行 TianAPI —— https://www.tianapi.com/apiview/154
-  # 使用 Tian 时：NEWS_PROVIDER=tianapi，并设 TIANAPI_NEWS_ENABLED=true 与 TIANAPI_NEWS_KEY
+  # 方案 B：天聚数行 —— 首页「新疆资讯」块固定走此接口；作主资讯时设 NEWS_PROVIDER=tianapi
   tianapi:
     news:
       enabled: ${TIANAPI_NEWS_ENABLED:false}

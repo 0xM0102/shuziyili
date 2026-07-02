@@ -20,6 +20,8 @@ function isPhone(v: string) {
 }
 
 const submit = async () => {
+  if (loading.value) return;
+
   const id = username.value.trim();
   const pw = password.value;
   if (!id) {
@@ -69,7 +71,6 @@ const submit = async () => {
             v-model:value="username"
             size="large"
             placeholder="请输入邮箱或手机号"
-            @press-enter="submit"
           />
         </a-form-item>
         <a-form-item label="密码">
@@ -77,7 +78,6 @@ const submit = async () => {
             v-model:value="password"
             size="large"
             placeholder="请输入密码"
-            @press-enter="submit"
           />
         </a-form-item>
         <a-button type="primary" html-type="submit" size="large" block :loading="loading">

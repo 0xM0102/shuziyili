@@ -4,5 +4,19 @@ package com.shuziyili.module.news;
 public enum NewsProviderId {
   JUHE,
   TIANAPI,
-  TENCENT
+  TENCENT;
+
+  public static NewsProviderId from(String raw) {
+    if (raw == null || raw.isBlank()) {
+      return JUHE;
+    }
+    String p = raw.trim().toLowerCase();
+    if ("tianapi".equals(p)) {
+      return TIANAPI;
+    }
+    if ("tencent".equals(p) || "qqnews".equals(p)) {
+      return TENCENT;
+    }
+    return JUHE;
+  }
 }

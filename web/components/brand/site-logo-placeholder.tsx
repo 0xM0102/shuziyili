@@ -4,13 +4,13 @@ import { siteConfig } from "@/lib/site";
 type Variant = "list" | "hero";
 
 const logoTileClass: Record<Variant, string> = {
-  list: "rounded-md bg-white/90 p-1 shadow-sm shadow-black/30 transition-shadow group-hover:shadow-md group-hover:shadow-black/35",
-  hero: "rounded-xl bg-white/90 p-2 shadow-md shadow-black/35 md:p-2.5",
+  list: "flex items-center justify-center rounded-md bg-white/90 p-1 shadow-sm shadow-black/30 transition-shadow group-hover:shadow-md group-hover:shadow-black/35",
+  hero: "flex items-center justify-center rounded-xl bg-white/90 p-2 shadow-md shadow-black/35 md:p-2.5",
 };
 
 const imgClass: Record<Variant, string> = {
-  list: "h-7 w-auto max-w-[5.5rem] object-contain opacity-90",
-  hero: "h-14 w-auto max-w-[min(40%,9rem)] object-contain opacity-95 md:h-[4.5rem] md:max-w-[38%]",
+  list: "block h-7 w-auto max-w-[5.5rem] object-contain opacity-90",
+  hero: "block h-14 w-auto max-w-[9rem] object-contain opacity-95 md:h-[4.5rem] md:max-w-[10rem]",
 };
 
 type Props = { variant?: Variant };

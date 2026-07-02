@@ -80,32 +80,51 @@ mvn -N wrapper:wrapper   # 生成 mvnw（需本机 Maven）
 - `module.auth` / `user` / `article` / `event` / `directory` / `tourism` / `nomad` — 业务预留包
 - `module.news` — 门户资讯（Juhe / TianAPI / 腾讯新闻，见下）
 
-## 门户资讯数据源（三选一）
+## 门户资讯与天气（默认聚合 Juhe）
 
-公开接口不变：`GET /api/v1/news/headlines`、`GET /api/v1/news/headlines/{id}`。
+与 `deploy/env/api.env.example`、`application-local.yml.example` 一致：
 
-| 方案 | `NEWS_PROVIDER` | 配置前缀 | 文档 |
-|------|-----------------|----------|------|
-| A 聚合数据 Juhe（默认） | `juhe` | `JUHE_NEWS_*` / `shuziyili.juhe.news` | [Juhe 235](https://www.juhe.cn/docs/api/id/235) |
-| B 天聚数行地区新闻 | `tianapi` | `TIANAPI_NEWS_*` / `shuziyili.tianapi.news` | [TianAPI 154](https://www.tianapi.com/apiview/154) |
-| C 腾讯新闻 Skills | `tencent` | `TENCENT_NEWS_*` / `shuziyili.tencent.news` | [获取 API Key](https://news.qq.com/exchange?scene=appkey) |
+| 能力 | Provider | 配置 | 文档 |
+|------|----------|------|------|
+| 主资讯 `/news` | `juhe`（默认） | `JUHE_NEWS_*` | [新闻头条 235](https://www.juhe.cn/docs/api/id/235) |
+| 天气 `/weather` | `juhe`（默认） | `JUHE_WEATHER_*`（Key 可省略，共用 `JUHE_NEWS_KEY`） | [天气预报 73](https://www.juhe.cn/docs/api/id/73) |
+| 首页新疆资讯 | 固定 TianAPI | `TIANAPI_NEWS_*` | [地区新闻 154](https://www.tianapi.com/apiview/154) |
 
-切换腾讯新闻示例（`application-local.yml` 或 `api.env`）：
+公开接口：`GET /api/v1/news/headlines`、`GET /api/v1/news/headlines/{id}`、`GET /api/v1/weather`、`GET /api/v1/home/area-news`。
+
+备选作主资讯或天气：
+
+| 方案 | `NEWS_PROVIDER` / `WEATHER_PROVIDER` | 配置前缀 |
+|------|----------------------------------------|----------|
+| 天聚地区新闻 | `tianapi` | `TIANAPI_NEWS_*` |
+| 腾讯 Skills | `tencent` | `TENCENT_NEWS_*` / `TENCENT_WEATHER_*` |
+
+本地示例（`application-local.yml`）：
 
 ```yaml
 shuziyili:
   news:
-    provider: tencent
+    provider: juhe
+  weather:
+    provider: juhe
   juhe:
     news:
-      enabled: false
+      enabled: true
+      key: "Juhe AppKey（须开通 235）"
+      type: top
+    weather:
+      enabled: true
+      # key 可省略，共用 news.key
   tianapi:
     news:
-      enabled: false
+      enabled: true
+      key: "天聚 Key"
+      areaname: 新疆
   tencent:
     news:
-      enabled: true
-      key: "在 news.qq.com/exchange 登录后生成的 API Key"
+      enabled: false
+    weather:
+      enabled: false
 ```
 
-实现类：`JuheNewsProvider`、`TianAreaNewsProvider`、`TencentNewsProvider`，由 `NewsService` 按 `shuziyili.news.provider` 择一调用。
+实现类：`JuheNewsProvider`、`JuheWeatherService`、`TianAreaNewsProvider`、`TencentNewsProvider`；资讯由 `NewsService`、天气由 `WeatherService` 按 `provider` 择一调用。

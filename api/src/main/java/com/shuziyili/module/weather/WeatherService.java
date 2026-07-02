@@ -2,11 +2,14 @@ package com.shuziyili.module.weather;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.shuziyili.config.TencentConfigSupport;
 import com.shuziyili.config.TencentNewsProperties;
+import com.shuziyili.config.TencentSkillsHttp;
 import com.shuziyili.config.TencentWeatherProperties;
+import com.shuziyili.config.WeatherProviderId;
+import com.shuziyili.module.settings.PortalSettingsService;
 import com.shuziyili.module.news.NewsJsonSupport;
 import java.time.Instant;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
@@ -27,9 +30,6 @@ import javax.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Qualifier;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -44,7 +44,6 @@ public class WeatherService {
       "天气数据来自腾讯天气（https://tianqi.qq.com），数据来源于中国天气网。";
   private static final int WEATHER_CACHE_MAX_SIZE = 256;
   private static final int HOURLY_MAX_ITEMS = 24;
-  private static final int TRAVEL_TIP_FORECAST_DAYS = 2;
   private static final int WEATHER_FETCH_DEADLINE_SECONDS = 9;
 
   private static final ExecutorService WEATHER_FETCH_EXECUTOR =
@@ -88,39 +87,51 @@ public class WeatherService {
 
   private final RestTemplate restTemplate;
   private final ObjectMapper objectMapper;
-  private final TencentWeatherProperties weatherProperties;
+  private final PortalSettingsService portalSettingsService;
+  private final JuheWeatherService juheWeatherService;
+  private final TencentWeatherProperties weatherPropertiesTencent;
   private final TencentNewsProperties newsProperties;
 
-  private final Map<String, CachedWeather> cacheByAdcode = new LinkedHashMap<>();
+  private final Map<String, WeatherCacheSupport.Entry> cacheByAdcode = new LinkedHashMap<>();
   private final Map<String, String> adcodeAliasNames = new ConcurrentHashMap<>();
   private final ConcurrentHashMap<String, Object> adcodeLocks = new ConcurrentHashMap<>();
 
   public WeatherService(
       @Qualifier("tencentSkillsRestTemplate") RestTemplate restTemplate,
       ObjectMapper objectMapper,
-      TencentWeatherProperties weatherProperties,
+      PortalSettingsService portalSettingsService,
+      JuheWeatherService juheWeatherService,
+      TencentWeatherProperties weatherPropertiesTencent,
       TencentNewsProperties newsProperties) {
     this.restTemplate = restTemplate;
     this.objectMapper = objectMapper;
-    this.weatherProperties = weatherProperties;
+    this.portalSettingsService = portalSettingsService;
+    this.juheWeatherService = juheWeatherService;
+    this.weatherPropertiesTencent = weatherPropertiesTencent;
     this.newsProperties = newsProperties;
   }
 
   @PostConstruct
   void logUpstreamConfig() {
-    if (!weatherProperties.isEnabled()) {
+    if (usesJuhe()) {
+      return;
+    }
+    if (!weatherPropertiesTencent.isEnabled()) {
       log.info("Tencent weather disabled (set TENCENT_WEATHER_ENABLED=true to enable)");
       return;
     }
-    if (!NewsJsonSupport.notBlank(resolveApiKey())) {
+    if (!NewsJsonSupport.notBlank(resolveTencentApiKey())) {
       log.warn(
           "TENCENT_WEATHER_ENABLED=true but no key: set TENCENT_WEATHER_KEY or TENCENT_NEWS_KEY in api.env");
       return;
     }
-    log.info("Tencent weather upstream enabled, baseUrl={}", weatherProperties.getBaseUrl());
+    log.info("Tencent weather upstream enabled, baseUrl={}", weatherPropertiesTencent.getBaseUrl());
   }
 
   public String attribution() {
+    if (usesJuhe()) {
+      return juheWeatherService.attribution();
+    }
     return ATTRIBUTION;
   }
 
@@ -131,7 +142,11 @@ public class WeatherService {
   }
 
   public WeatherPayload weatherForAdcode(String adcode) {
-    String resolved = normalizeAdcode(adcode).orElse(weatherProperties.getDefaultAdcode());
+    if (usesJuhe()) {
+      return juheWeatherService.weatherForAdcode(adcode);
+    }
+    String resolved =
+        WeatherSupport.normalizeAdcode(adcode).orElse(weatherPropertiesTencent.getDefaultAdcode());
     if (!upstreamConfigured()) {
       return defaultUnconfigured();
     }
@@ -139,12 +154,15 @@ public class WeatherService {
   }
 
   public WeatherPayload weatherByClientIp(String clientIp) {
+    if (usesJuhe()) {
+      return juheWeatherService.weatherByClientIp(clientIp);
+    }
     if (!upstreamConfigured()) {
       return defaultUnconfigured();
     }
     Optional<IpLocation> location = resolveLocationFromIp(clientIp);
     if (location.isEmpty()) {
-      return weatherForAdcode(weatherProperties.getDefaultAdcode());
+      return weatherForAdcode(weatherPropertiesTencent.getDefaultAdcode());
     }
     rememberAdcodeName(location.get());
     return weatherForAdcode(location.get().adcode());
@@ -152,6 +170,9 @@ public class WeatherService {
 
   public WeatherPayload weatherNearCoordinates(
       double latitude, double longitude, String clientIp) {
+    if (usesJuhe()) {
+      return juheWeatherService.weatherNearCoordinates(latitude, longitude, clientIp);
+    }
     Optional<WeatherRegion> nearest = WeatherRegionCatalog.nearest(latitude, longitude);
     if (nearest.isPresent()) {
       return weatherForAdcode(nearest.get().getAdcode());
@@ -160,49 +181,21 @@ public class WeatherService {
   }
 
   private WeatherPayload defaultUnconfigured() {
-    String adcode = weatherProperties.getDefaultAdcode();
+    String adcode = weatherPropertiesTencent.getDefaultAdcode();
     String name = resolveCityName(adcode);
     return WeatherPayload.unconfigured(adcode, name);
   }
 
   private WeatherPayload fetchCached(String adcode) {
-    Instant now = Instant.now();
-    CachedWeather cached = cacheByAdcode.get(adcode);
-    if (cached != null
-        && !NewsJsonSupport.refreshCooldownElapsed(
-            cached.fetchedAt, now, weatherProperties.getRefreshSeconds())) {
-      return cached.payload;
-    }
-
-    Object adcodeLock = adcodeLocks.computeIfAbsent(adcode, ignored -> new Object());
-    synchronized (adcodeLock) {
-      cached = cacheByAdcode.get(adcode);
-      if (cached != null
-          && !NewsJsonSupport.refreshCooldownElapsed(
-              cached.fetchedAt, now, weatherProperties.getRefreshSeconds())) {
-        return cached.payload;
-      }
-      try {
-        WeatherPayload payload = fetchRemote(adcode);
-        putCachedWeather(adcode, new CachedWeather(payload, now));
-        return payload;
-      } catch (Exception e) {
-        log.warn("tencent weather fetch failed adcode={}: {}", adcode, e.getMessage());
-        cached = cacheByAdcode.get(adcode);
-        if (cached != null) {
-          return cached.payload;
-        }
-        return emptyPayload(adcode);
-      }
-    }
-  }
-
-  private void putCachedWeather(String adcode, CachedWeather cached) {
-    cacheByAdcode.put(adcode, cached);
-    while (cacheByAdcode.size() > WEATHER_CACHE_MAX_SIZE) {
-      String eldest = cacheByAdcode.keySet().iterator().next();
-      cacheByAdcode.remove(eldest);
-    }
+    return WeatherCacheSupport.load(
+        adcode,
+        weatherPropertiesTencent.getRefreshSeconds(),
+        WEATHER_CACHE_MAX_SIZE,
+        cacheByAdcode,
+        adcodeLocks,
+        () -> fetchRemote(adcode),
+        this::emptyPayload,
+        "tencent");
   }
 
   private WeatherPayload fetchRemote(String adcode) throws Exception {
@@ -232,11 +225,11 @@ public class WeatherService {
 
     String cityName = resolveCityName(adcode);
 
-    int currentTemp = parseIntSafe(NewsJsonSupport.text(observeRoot, "degree"));
+    int currentTemp = WeatherSupport.parseIntSafe(NewsJsonSupport.text(observeRoot, "degree"));
     String weatherText = readWeatherText(observeRoot, "weather_short", "weather");
     String humidity = NewsJsonSupport.text(observeRoot, "humidity");
     String windText =
-        buildWindText(
+        WeatherSupport.buildWindText(
             NewsJsonSupport.text(observeRoot, "wind_direction_name"),
             NewsJsonSupport.text(observeRoot, "wind_power"));
     String updatedAt = formatUpdateTime(NewsJsonSupport.text(observeRoot, "update_time"));
@@ -252,7 +245,7 @@ public class WeatherService {
         weatherText,
         humidity,
         windText,
-        buildTravelTip(weatherText, forecast),
+        WeatherSupport.buildTravelTip(weatherText, forecast),
         forecast,
         hourly,
         lifeIndices,
@@ -366,44 +359,26 @@ public class WeatherService {
   }
 
   private String postJson(String path, Map<String, Object> body) throws Exception {
-    String base = weatherProperties.getBaseUrl().trim();
-    if (base.endsWith("/")) {
-      base = base.substring(0, base.length() - 1);
-    }
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-    headers.setBearerAuth(resolveApiKey());
-    if (NewsJsonSupport.notBlank(weatherProperties.getCallerSkill())) {
-      headers.set("Caller-Skill", weatherProperties.getCallerSkill().trim());
-    }
-    String json = objectMapper.writeValueAsString(body);
-    HttpEntity<String> entity = new HttpEntity<>(json, headers);
-    return restTemplate.postForObject(base + path, entity, String.class);
+    return TencentSkillsHttp.postJson(
+        restTemplate,
+        objectMapper,
+        weatherPropertiesTencent.getBaseUrl(),
+        resolveTencentApiKey(),
+        weatherPropertiesTencent.getCallerSkill(),
+        path,
+        body);
   }
 
   private boolean upstreamConfigured() {
-    return weatherProperties.isEnabled() && NewsJsonSupport.notBlank(resolveApiKey());
+    return weatherPropertiesTencent.isEnabled() && NewsJsonSupport.notBlank(resolveTencentApiKey());
   }
 
-  private String resolveApiKey() {
-    if (NewsJsonSupport.notBlank(weatherProperties.getKey())) {
-      return weatherProperties.getKey().trim();
-    }
-    if (newsProperties.isEnabled() && NewsJsonSupport.notBlank(newsProperties.getKey())) {
-      return newsProperties.getKey().trim();
-    }
-    return "";
+  private boolean usesJuhe() {
+    return portalSettingsService.resolveWeatherProviderId() == WeatherProviderId.JUHE;
   }
 
-  private static Optional<String> normalizeAdcode(String adcode) {
-    if (!NewsJsonSupport.notBlank(adcode)) {
-      return Optional.empty();
-    }
-    String trimmed = adcode.trim();
-    if (!trimmed.matches("\\d{6}")) {
-      return Optional.empty();
-    }
-    return Optional.of(trimmed);
+  private String resolveTencentApiKey() {
+    return TencentConfigSupport.resolveSkillsApiKey(weatherPropertiesTencent, newsProperties);
   }
 
   private static List<WeatherForecastDayDto> parseForecast(JsonNode forecastArray) {
@@ -422,17 +397,17 @@ public class WeatherService {
       String weatherText = readWeatherText(node, "day_weather_short", "day_weather");
       String nightWeatherText = readWeatherText(node, "night_weather_short", "night_weather");
       String dayWind =
-          buildWindText(
+          WeatherSupport.buildWindText(
               NewsJsonSupport.text(node, "day_wind_direction"),
               NewsJsonSupport.text(node, "day_wind_power"));
       String nightWind =
-          buildWindText(
+          WeatherSupport.buildWindText(
               NewsJsonSupport.text(node, "night_wind_direction"),
               NewsJsonSupport.text(node, "night_wind_power"));
       String windLabel =
           NewsJsonSupport.firstNonBlank(dayWind, nightWind);
-      int hi = parseIntSafe(NewsJsonSupport.text(node, "max_degree"));
-      int lo = parseIntSafe(NewsJsonSupport.text(node, "min_degree"));
+      int hi = WeatherSupport.parseIntSafe(NewsJsonSupport.text(node, "max_degree"));
+      int lo = WeatherSupport.parseIntSafe(NewsJsonSupport.text(node, "min_degree"));
       byDate.put(
           date,
           new WeatherForecastDayDto(date, weatherText, nightWeatherText, windLabel, hi, lo));
@@ -449,16 +424,10 @@ public class WeatherService {
     if (!hourly.isEmpty()) {
       return hourly;
     }
-    for (String key : List.of("forecast_1h", "forecast_1h_data")) {
-      if (!data.has(key)) {
-        continue;
-      }
-      hourly = parseHourly(data.path(key));
-      if (!hourly.isEmpty()) {
-        return hourly;
-      }
+    if (data.has("forecast_1h_data")) {
+      hourly = parseHourly(data.path("forecast_1h_data"));
     }
-    return List.of();
+    return hourly.isEmpty() ? List.of() : hourly;
   }
 
   private static List<WeatherHourlyDto> parseHourly(JsonNode hourlyNode) {
@@ -485,7 +454,7 @@ public class WeatherService {
     String rawTime = NewsJsonSupport.text(node, "update_time");
     String timeLabel = formatHourLabel(rawTime);
     String weatherText = readWeatherText(node, "weather_short", "weather");
-    int temp = parseIntSafe(NewsJsonSupport.text(node, "degree"));
+    int temp = WeatherSupport.parseIntSafe(NewsJsonSupport.text(node, "degree"));
     if (!timeLabel.isEmpty() || NewsJsonSupport.notBlank(weatherText) || temp != 0) {
       out.add(new WeatherHourlyDto(timeLabel, weatherText, temp));
     }
@@ -565,32 +534,7 @@ public class WeatherService {
               byKey.put(key, new WeatherLifeIndexDto(key, name, info, detail));
             });
 
-    List<WeatherLifeIndexDto> out = new ArrayList<>();
-    for (String key : LIFE_INDEX_ORDER) {
-      WeatherLifeIndexDto item = byKey.get(key);
-      if (item != null) {
-        out.add(item);
-      }
-    }
-    for (Map.Entry<String, WeatherLifeIndexDto> entry : byKey.entrySet()) {
-      if (!LIFE_INDEX_ORDER.contains(entry.getKey())) {
-        out.add(entry.getValue());
-      }
-    }
-    return List.copyOf(out);
-  }
-
-  private static String buildWindText(String direction, String power) {
-    if (!NewsJsonSupport.notBlank(direction) && !NewsJsonSupport.notBlank(power)) {
-      return "";
-    }
-    if (!NewsJsonSupport.notBlank(power)) {
-      return direction;
-    }
-    if (!NewsJsonSupport.notBlank(direction)) {
-      return power + " 级";
-    }
-    return direction + " " + power + " 级";
+    return WeatherSupport.orderLifeIndices(byKey, LIFE_INDEX_ORDER);
   }
 
   private static String formatUpdateTime(String raw) {
@@ -614,59 +558,6 @@ public class WeatherService {
         NewsJsonSupport.text(node, fullKey));
   }
 
-  private static int parseIntSafe(String value) {
-    if (!NewsJsonSupport.notBlank(value)) {
-      return 0;
-    }
-    try {
-      return Integer.parseInt(value.trim());
-    } catch (NumberFormatException e) {
-      return 0;
-    }
-  }
-
-  private static String buildTravelTip(String currentWeather, List<WeatherForecastDayDto> forecast) {
-    String combined = currentWeather;
-    List<WeatherForecastDayDto> nearForecast = nearForecastDays(forecast);
-    for (WeatherForecastDayDto day : nearForecast) {
-      combined += day.getWeatherText();
-      combined += day.getNightWeatherText();
-    }
-    if (combined.contains("雨") || combined.contains("雪")) {
-      return "可能有降水，备雨具与防滑鞋";
-    }
-    if (nearForecast.stream().anyMatch(d -> d.getHi() - d.getLo() >= 12)) {
-      return "早晚温差大，备外套";
-    }
-    if (combined.contains("晴")) {
-      return "紫外线较强，注意防晒";
-    }
-    return "关注天气变化，适时增减衣物";
-  }
-
-  private static List<WeatherForecastDayDto> nearForecastDays(List<WeatherForecastDayDto> forecast) {
-    LocalDate today = LocalDate.now(ZoneId.of("Asia/Shanghai"));
-    LocalDate latest = today.plusDays(TRAVEL_TIP_FORECAST_DAYS - 1L);
-    List<WeatherForecastDayDto> near = new ArrayList<>();
-    for (WeatherForecastDayDto day : forecast) {
-      try {
-        LocalDate date = LocalDate.parse(day.getDate());
-        if ((date.isEqual(today) || date.isAfter(today))
-            && (date.isEqual(latest) || date.isBefore(latest))) {
-          near.add(day);
-        }
-      } catch (Exception ignored) {
-        // 上游日期异常时不让提示逻辑失败，后面会回退到原列表前两项。
-      }
-    }
-    if (!near.isEmpty()) {
-      return near;
-    }
-    return forecast.size() > TRAVEL_TIP_FORECAST_DAYS
-        ? forecast.subList(0, TRAVEL_TIP_FORECAST_DAYS)
-        : forecast;
-  }
-
   private WeatherPayload emptyPayload(String adcode) {
     return new WeatherPayload(
         adcode,
@@ -681,15 +572,5 @@ public class WeatherService {
         List.of(),
         List.of(),
         upstreamConfigured());
-  }
-
-  private static final class CachedWeather {
-    final WeatherPayload payload;
-    final Instant fetchedAt;
-
-    CachedWeather(WeatherPayload payload, Instant fetchedAt) {
-      this.payload = payload;
-      this.fetchedAt = fetchedAt;
-    }
   }
 }

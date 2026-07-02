@@ -2,62 +2,51 @@
 # 本地覆盖配置（密钥、数据库密码等只放本机，勿提交）
 #
 # 用法：
-#   1) 复制本文件为同目录下的 application-local.yml
-#      cp application-local.yml.example application-local.yml
-#   2) 编辑 application-local.yml（该文件已在仓库 .gitignore 中）
-#   3) 默认 profile 已是 dev + local（见 application.yml 的 profile group），直接：
-#      ./mvnw spring-boot:run
+#   1) cp application-local.yml.example application-local.yml
+#   2) 编辑 application-local.yml（已在 .gitignore）
+#   3) ./mvnw spring-boot:run   # 默认 profile：dev + local
 #
-# 数据库：开发与生产均为 MySQL。默认连 127.0.0.1:3306 / 库 shuziyili / root:root，
-# 可用 docker compose（api/docker-compose.yml）或本机 MySQL。若密码不同，在下面覆盖：
-#
-# spring:
-#   datasource:
-#     password: your_password
-#
-#   或使用：api/scripts/run-dev-with-cos.example.sh 复制为 run-dev-with-cos.sh
+# 与 deploy/env/api.env.example 同一套默认栈：
+#   主资讯 Juhe 235 | 天气 Juhe 73 | 首页新疆资讯 TianAPI 154
 # -----------------------------------------------------------------------------
-#
-# ⚠️ 不要在本文件（.example）里填写真实密钥；只填在 application-local.yml。
 
 shuziyili:
   cos:
     enabled: true
     secret-id: "在此填写 SecretId"
     secret-key: "在此填写 SecretKey"
-    # 以下为默认值，一般无需改
-    # region: ap-chengdu
-    # bucket: shuziyili-1322855353
-    # public-base-url: https://shuziyili-1322855353.cos.ap-chengdu.myqcloud.com
-    # key-prefix: uploads/
 
-  # ---------------------------------------------------------------------------
-  # 门户资讯（三选一：NEWS_PROVIDER=juhe | tianapi | tencent，未用方案保持 enabled=false）
-  # ---------------------------------------------------------------------------
-  # news:
-  #   provider: tencent
+  news:
+    provider: juhe
 
-  # 方案 C：腾讯新闻 Skills —— https://news.qq.com/exchange?scene=appkey
-  # tencent:
-  #   news:
-  #     enabled: true
-  #     key: "在此填写 TENCENT_NEWS_KEY"
-  #     refresh-seconds: 3600
-  #   weather:
-  #     enabled: true
-  #     # key 可省略，与 news 共用 TENCENT_NEWS_KEY
+  weather:
+    provider: juhe
 
-  # 方案 A：聚合数据 Juhe —— https://www.juhe.cn/docs/api/id/235
-  # juhe:
-  #   news:
-  #     enabled: true
-  #     key: "在此填写 JUHE_NEWS_KEY"
-  #     refresh-seconds: 3600
+  juhe:
+    news:
+      enabled: true
+      key: "在此填写 JUHE_NEWS_KEY"
+      type: top
+      refresh-seconds: 3600
+    weather:
+      enabled: true
+      # key 可省略，与 news 共用 JUHE_NEWS_KEY
+      default-adcode: 654002
+      refresh-seconds: 600
 
-  # 方案 B：天聚数行地区新闻 —— https://www.tianapi.com/apiview/154
-  # tianapi:
-  #   news:
-  #     enabled: true
-  #     key: "在此填写 TIANAPI_NEWS_KEY"
-  #     areaname: 新疆
-  #     refresh-seconds: 3600
+  tianapi:
+    news:
+      enabled: true
+      key: "在此填写 TIANAPI_NEWS_KEY"
+      areaname: 新疆
+      refresh-seconds: 3600
+
+  tencent:
+    news:
+      enabled: false
+    weather:
+      enabled: false
+
+# spring:
+#   datasource:
+#     password: your_password

@@ -21,8 +21,7 @@ public class PublicNewsController {
   }
 
   /**
-   * 新闻列表（进程内缓存）。{@code type} 为侧栏频道 slug（如 top、guonei）；Juhe 作聚合 type，TianAPI 作地区
-   * {@code word}，腾讯新闻作热点榜或搜索关键词。
+   * 新闻列表（进程内缓存）。{@code type} 为侧栏频道 slug（如 top、guonei）；Juhe 作头条 type，TianAPI 作地区 word，腾讯作热点榜或搜索。
    */
   @GetMapping("/headlines")
   public ResponseEntity<ApiResponse<NewsHeadlinesPayload>> headlines(

@@ -45,6 +45,7 @@ const menuItems = [
   { key: "portal-users", path: "/portal-users" },
   { key: "staff-users", path: "/staff-users" },
   { key: "verification-records", path: "/verification-records" },
+  { key: "config-management", path: "/config-management" },
   { key: "permissions", path: "/permissions" },
   { key: "articles", path: "/articles" },
   { key: "banners", path: "/banners" },
@@ -68,7 +69,7 @@ const CONTENT_PATH_PREFIXES = [
   "/convenience",
 ] as const;
 /** 归入「后台管理」子菜单的路由前缀 */
-const ADMIN_PATH_PREFIXES = ["/staff-users", "/permissions", "/verification-records"] as const;
+const ADMIN_PATH_PREFIXES = ["/staff-users", "/permissions", "/verification-records", "/config-management"] as const;
 const PAGE_TITLES = [
   { prefix: "/articles", title: "文章管理" },
   { prefix: "/home-curation", title: "首页运营" },
@@ -82,6 +83,7 @@ const PAGE_TITLES = [
   { prefix: "/staff-users", title: "后台账号" },
   { prefix: "/verification-records", title: "验证发送记录" },
   { prefix: "/permissions", title: "权限管理" },
+  { prefix: "/config-management", title: "配置管理" },
   { prefix: "/profile", title: "个人设置" },
 ] as const;
 
@@ -180,6 +182,10 @@ const logout = async () => {
             <a-menu-item key="verification-records">
               <template #icon><SendOutlined /></template>
               <span>验证发送记录</span>
+            </a-menu-item>
+            <a-menu-item key="config-management">
+              <template #icon><SettingOutlined /></template>
+              <span>配置管理</span>
             </a-menu-item>
           </a-sub-menu>
 

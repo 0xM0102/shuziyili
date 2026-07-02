@@ -1,9 +1,11 @@
 import Link from "next/link";
 import type { Metadata } from "next";
 import { FlashQuickAside } from "@/components/flash/flash-quick-aside";
+import { HomeAreaNewsBlock } from "@/components/home/home-area-news-block";
 import { SectionHead } from "@/components/layout/section-head";
 import { fetchPublicApiData } from "@/lib/api-base";
 import { getFlashLinks } from "@/lib/flash-links";
+import { getHomeAreaNews } from "@/lib/home-area-news";
 import { siteConfig } from "@/lib/site";
 
 type HomeBanner = {
@@ -173,10 +175,11 @@ function RailCard({
 }
 
 export default async function HomePage() {
-  const [banners, flashLinks, featuredCurated] = await Promise.all([
+  const [banners, flashLinks, featuredCurated, areaNews] = await Promise.all([
     getHomeBanners(),
     getFlashLinks(),
     getHomeFeatured(),
+    getHomeAreaNews(),
   ]);
   const mains = banners.filter((b) => b.slot === "home_main");
   const hero = mains[0];
@@ -320,6 +323,9 @@ export default async function HomePage() {
             </div>
           </div>
 
+          {areaNews.enabled ? (
+            <HomeAreaNewsBlock regionName={areaNews.regionName} items={areaNews.items} />
+          ) : null}
         </div>
 
         <FlashQuickAside items={flashLinks} emptyLabel="暂无快讯" />

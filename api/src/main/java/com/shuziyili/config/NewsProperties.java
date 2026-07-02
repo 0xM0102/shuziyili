@@ -15,8 +15,8 @@ public class NewsProperties {
    * 当前生效的数据源：
    *
    * <ul>
-   *   <li>{@code juhe} — 聚合数据「新闻头条」全国频道
-   *   <li>{@code tianapi} — 天聚数行「地区新闻」省级资讯
+   *   <li>{@code juhe} — 聚合「新闻头条」（侧栏 {@code type} 频道）
+   *   <li>{@code tianapi} — 天聚「地区新闻」（作主资讯时）
    *   <li>{@code tencent} — 腾讯新闻 Skills OpenAPI（热点榜 / 搜索）
    * </ul>
    */
@@ -31,16 +31,6 @@ public class NewsProperties {
   }
 
   public NewsProviderId resolveProviderId() {
-    if (provider == null || provider.isBlank()) {
-      return NewsProviderId.JUHE;
-    }
-    String p = provider.trim().toLowerCase();
-    if ("tianapi".equals(p)) {
-      return NewsProviderId.TIANAPI;
-    }
-    if ("tencent".equals(p) || "qqnews".equals(p)) {
-      return NewsProviderId.TENCENT;
-    }
-    return NewsProviderId.JUHE;
+    return NewsProviderId.from(provider);
   }
 }

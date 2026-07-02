@@ -3,6 +3,7 @@ package com.shuziyili.module.news;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shuziyili.config.TianAreaNewsProperties;
+import com.shuziyili.module.settings.PortalSettingsService;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -33,6 +34,7 @@ public class TianAreaNewsProvider implements NewsProvider, NewsChannelDetailLook
   private final RestTemplate restTemplate;
   private final ObjectMapper objectMapper;
   private final TianAreaNewsProperties properties;
+  private final PortalSettingsService portalSettingsService;
 
   private final Object lock = new Object();
 
@@ -48,10 +50,14 @@ public class TianAreaNewsProvider implements NewsProvider, NewsChannelDetailLook
   private Map<String, String> descriptionByKey = Map.of();
 
   public TianAreaNewsProvider(
-      RestTemplate restTemplate, ObjectMapper objectMapper, TianAreaNewsProperties properties) {
+      RestTemplate restTemplate,
+      ObjectMapper objectMapper,
+      TianAreaNewsProperties properties,
+      PortalSettingsService portalSettingsService) {
     this.restTemplate = restTemplate;
     this.objectMapper = objectMapper;
     this.properties = properties;
+    this.portalSettingsService = portalSettingsService;
   }
 
   @Override
@@ -81,26 +87,13 @@ public class TianAreaNewsProvider implements NewsProvider, NewsChannelDetailLook
   }
 
   @Override
-  public Optional<NewsDetailResult> headlineDetail(String uniquekey) {
-    return headlineDetail(uniquekey, null);
-  }
-
-  @Override
   public Optional<NewsDetailResult> headlineDetail(String uniquekey, String channelType) {
-    if (!NewsJsonSupport.notBlank(uniquekey)) {
-      return Optional.empty();
-    }
-    String key = uniquekey.trim();
     if (!upstreamConfigured()) {
       return Optional.empty();
     }
     synchronized (lock) {
-      NewsItemDto item =
-          NewsChannelDetailLookup.findIndexedItem(key, byUniquekey, this, channelType);
-      if (item == null) {
-        return Optional.empty();
-      }
-      return Optional.of(new NewsDetailResult(item, descriptionByKey.getOrDefault(key, "")));
+      return NewsChannelDetailLookup.detailFromListCache(
+          uniquekey, channelType, byUniquekey, descriptionByKey, this);
     }
   }
 
@@ -127,10 +120,28 @@ public class TianAreaNewsProvider implements NewsProvider, NewsChannelDetailLook
     rebuildIndexes();
   }
 
+  public String summaryFor(String uniquekey) {
+    if (!NewsJsonSupport.notBlank(uniquekey)) {
+      return "";
+    }
+    synchronized (lock) {
+      return descriptionByKey.getOrDefault(uniquekey.trim(), "");
+    }
+  }
+
+  /** 管理端修改地区名或 Provider 后清空进程内缓存。 */
+  public void resetCache() {
+    synchronized (lock) {
+      slots.clear();
+      byUniquekey = Map.of();
+      descriptionByKey = Map.of();
+    }
+  }
+
   private boolean upstreamConfigured() {
     return properties.isEnabled()
         && NewsJsonSupport.notBlank(properties.getKey())
-        && NewsJsonSupport.notBlank(properties.getAreaname());
+        && NewsJsonSupport.notBlank(portalSettingsService.effectiveTianapiAreaname());
   }
 
   private NewsListBatch fetchRemoteList(String channel) throws Exception {
@@ -142,9 +153,9 @@ public class TianAreaNewsProvider implements NewsProvider, NewsChannelDetailLook
     UriComponentsBuilder builder =
         UriComponentsBuilder.fromHttpUrl(properties.getListUrl())
             .queryParam("key", properties.getKey())
-            .queryParam("areaname", properties.getAreaname())
+            .queryParam("areaname", portalSettingsService.effectiveTianapiAreaname())
             .queryParam("page", "1");
-    String word = NewsChannelTypes.tianKeywordForChannel(channel);
+    String word = NewsChannelTypes.tianAreaNewsKeywordForChannel(channel);
     if (NewsJsonSupport.notBlank(word)) {
       builder.queryParam("word", word);
     }
@@ -226,7 +237,7 @@ public class TianAreaNewsProvider implements NewsProvider, NewsChannelDetailLook
         id,
         title,
         NewsJsonSupport.text(node, "ctime"),
-        properties.getAreaname(),
+        portalSettingsService.effectiveTianapiAreaname(),
         NewsJsonSupport.text(node, "source"),
         NewsJsonSupport.text(node, "url"),
         NewsJsonSupport.text(node, "picUrl"));

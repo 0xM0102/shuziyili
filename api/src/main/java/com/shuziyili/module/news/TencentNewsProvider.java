@@ -2,6 +2,7 @@ package com.shuziyili.module.news;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.shuziyili.config.TencentNewsProperties;
+import com.shuziyili.config.TencentSkillsHttp;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -11,9 +12,6 @@ import java.util.Map;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
@@ -88,26 +86,13 @@ public class TencentNewsProvider implements NewsProvider, NewsChannelDetailLooku
   }
 
   @Override
-  public Optional<NewsDetailResult> headlineDetail(String uniquekey) {
-    return headlineDetail(uniquekey, null);
-  }
-
-  @Override
   public Optional<NewsDetailResult> headlineDetail(String uniquekey, String channelType) {
-    if (!NewsJsonSupport.notBlank(uniquekey)) {
-      return Optional.empty();
-    }
-    String key = uniquekey.trim();
     if (!upstreamConfigured()) {
       return Optional.empty();
     }
     synchronized (lock) {
-      NewsItemDto item =
-          NewsChannelDetailLookup.findIndexedItem(key, byUniquekey, this, channelType);
-      if (item == null) {
-        return Optional.empty();
-      }
-      return Optional.of(new NewsDetailResult(item, bodyByKey.getOrDefault(key, "")));
+      return NewsChannelDetailLookup.detailFromListCache(
+          uniquekey, channelType, byUniquekey, bodyByKey, this);
     }
   }
 
@@ -147,7 +132,7 @@ public class TencentNewsProvider implements NewsProvider, NewsChannelDetailLooku
     if (!searched.items.isEmpty()) {
       return searched;
     }
-  // 搜索无结果时，从热点榜按关键词兜底（条数通常很少）
+    // 搜索无结果时，从热点榜按关键词兜底（条数通常很少）
     if (NewsJsonSupport.notBlank(keyword)) {
       return filterHotRankByKeyword(keyword, channel);
     }
@@ -199,19 +184,14 @@ public class TencentNewsProvider implements NewsProvider, NewsChannelDetailLooku
   }
 
   private String postJson(String path, Map<String, Object> body) throws Exception {
-    String base = properties.getBaseUrl().trim();
-    if (base.endsWith("/")) {
-      base = base.substring(0, base.length() - 1);
-    }
-    HttpHeaders headers = new HttpHeaders();
-    headers.setContentType(MediaType.APPLICATION_JSON);
-    headers.setBearerAuth(properties.getKey().trim());
-    if (NewsJsonSupport.notBlank(properties.getCallerSkill())) {
-      headers.set("Caller-Skill", properties.getCallerSkill().trim());
-    }
-    String json = objectMapper.writeValueAsString(body);
-    HttpEntity<String> entity = new HttpEntity<>(json, headers);
-    return restTemplate.postForObject(base + path, entity, String.class);
+    return TencentSkillsHttp.postJson(
+        restTemplate,
+        objectMapper,
+        properties.getBaseUrl(),
+        properties.getKey(),
+        properties.getCallerSkill(),
+        path,
+        body);
   }
 
   private void rebuildIndexes() {
