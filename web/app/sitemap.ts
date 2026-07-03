@@ -6,6 +6,7 @@ import { siteConfig } from "@/lib/site";
 const baseStaticPaths = [
   "/",
   "/travel",
+  "/travel/sayram-lake",
   "/travel/attractions",
   "/travel/stay",
   "/travel/food",
