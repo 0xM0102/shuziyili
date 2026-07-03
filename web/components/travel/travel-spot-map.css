@@ -20,43 +20,46 @@
   box-shadow: 0 2px 8px rgb(0 0 0 / 25%);
 }
 
-/* Leaflet 默认 tooltip 为 nowrap，此处允许换行并限制宽度。 */
+/* Leaflet 外层 tooltip：须显式宽度，否则内层 max-width:100% 会塌成单字竖排。 */
 .travel-spot-map .travel-spot-tooltip-pane.leaflet-tooltip {
-  max-width: min(240px, calc(100vw - 2rem));
-  padding: 0;
-  border: none;
-  background: transparent;
-  box-shadow: none;
+  --travel-spot-tooltip-max: min(260px, calc(100vw - 2rem));
+
+  width: max-content;
+  min-width: 10rem;
+  max-width: var(--travel-spot-tooltip-max);
+  padding: 8px 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
+  color: #111;
   white-space: normal;
+  line-height: 1.5;
   pointer-events: auto;
 }
 
 .travel-spot-map .travel-spot-tooltip-pane.leaflet-tooltip::before {
-  display: none;
+  border-top-color: #fff;
 }
 
 .travel-spot-tooltip {
-  box-sizing: border-box;
-  max-width: 100%;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #fff;
-  box-shadow: 0 4px 12px rgb(0 0 0 / 15%);
-  overflow-wrap: anywhere;
-  word-break: break-word;
+  display: block;
+  max-width: var(--travel-spot-tooltip-max, 260px);
+  overflow-wrap: break-word;
+  word-break: normal;
 }
 
 .travel-spot-tooltip strong {
   display: block;
   font-size: 14px;
-  line-height: 1.35;
+  font-weight: 600;
+  line-height: 1.4;
   color: #111;
 }
 
 .travel-spot-tooltip p {
   margin: 6px 0 0;
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 1.55;
   color: #555;
 }
