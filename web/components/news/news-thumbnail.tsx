@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { SiteLogoPlaceholder } from "@/components/brand/site-logo-placeholder";
+import { isBlockedNewsThumbnailHost } from "@/lib/news-display";
 
 type NewsThumbnailProps = {
   thumbnailUrl: string | undefined;
@@ -23,7 +24,7 @@ export function NewsThumbnail({ thumbnailUrl, variant, className }: NewsThumbnai
   const [loadedUrl, setLoadedUrl] = useState<string | null>(null);
   const [failedUrl, setFailedUrl] = useState<string | null>(null);
 
-  if (!url || failedUrl === url) {
+  if (!url || isBlockedNewsThumbnailHost(url) || failedUrl === url) {
     return <SiteLogoPlaceholder variant={variant} />;
   }
 

@@ -5,6 +5,7 @@
 }
 
 .travel-spot-pin {
+  /* 尺寸与 leaflet-map.ts 中 PIN_SIZE_PX 一致 */
   display: flex;
   align-items: center;
   justify-content: center;

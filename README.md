@@ -3,7 +3,7 @@
 民间便民门户：**前端**与**后端 API** 分目录存放、**可分开部署**；域名生产环境为 **https://shuziyili.com**。
 
 生产发版与服务器目录约定见 **[`deploy/RUNBOOK.md`](./deploy/RUNBOOK.md)**；首次装机步骤见 **[`deploy/README.md`](./deploy/README.md)**。  
-**发版与 Git 无关**：Git 只做源码维护；上线为 **本机构建 → 上传产物 → 服务器解压、`npm install --omit=dev`、`systemctl restart`**（详见 **[`deploy/RUNBOOK.md`](./deploy/RUNBOOK.md) §3.0**，§8 速查）。门户打包：**[`deploy/sync-web.sh`](./deploy/sync-web.sh)**；可选 `--push`。
+**发版方式（当前唯一）**：本机构建 → `scp` 上传产物 → 服务器解压、`npm install --omit=dev`、`systemctl restart`（详见 **[`deploy/RUNBOOK.md`](./deploy/RUNBOOK.md) §3**）。门户打包：**[`deploy/sync-web.sh`](./deploy/sync-web.sh)**（仅打 tgz，上传见 RUNBOOK）。
 
 ## 目录结构
 

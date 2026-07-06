@@ -9,6 +9,7 @@ import {
   buildNewsIndexHref,
   type NewsChannelType,
 } from "@/lib/news-channels";
+import { buildTravelSpotHref } from "@/lib/travel-spots";
 
 export type NavItem = { href: string; label: string; icon?: NavIconName };
 
@@ -25,7 +26,7 @@ export const primaryNav: NavItem[] = [
 
 /** 旅游频道二级导航（AppShell 侧栏 / 窄屏横滑子导航） */
 export const hotTravelNav: NavItem[] = [
-  { href: "/travel/sayram-lake", label: "赛里木湖", icon: "attractions" },
+  { href: buildTravelSpotHref("sayram-lake"), label: "赛里木湖", icon: "attractions" },
   { href: "/travel/attractions", label: "景点", icon: "attractions" },
   { href: "/travel/stay", label: "住宿", icon: "stay" },
   { href: "/travel/food", label: "美食", icon: "food" },

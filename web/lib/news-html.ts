@@ -1,10 +1,4 @@
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;");
-}
+import { escapeHtml } from "@/lib/escape-html";
 
 /**
  * 上游资讯正文为 HTML 或纯文本摘要，渲染前做最小清理以降低脚本注入风险（非完整 XSS 防护）。

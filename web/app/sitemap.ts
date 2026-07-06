@@ -2,11 +2,12 @@ import type { MetadataRoute } from "next";
 import { fetchConveniencePayload } from "@/lib/convenience-api";
 import { buildConvenienceCategoryHref } from "@/lib/convenience-data";
 import { siteConfig } from "@/lib/site";
+import { buildTravelSpotHref, listTravelSpotSlugs } from "@/lib/travel-spots";
 
 const baseStaticPaths = [
   "/",
   "/travel",
-  "/travel/sayram-lake",
+  ...listTravelSpotSlugs().map((slug) => buildTravelSpotHref(slug)),
   "/travel/attractions",
   "/travel/stay",
   "/travel/food",

@@ -4,6 +4,7 @@ import { TravelWeatherCard } from "@/components/travel/travel-weather-card";
 import { fetchPublicApiData } from "@/lib/api-base";
 import { sidebarContentWidthClassName } from "@/lib/page-layout";
 import { siteConfig } from "@/lib/site";
+import { buildTravelSpotHref } from "@/lib/travel-spots";
 
 export const metadata: Metadata = {
   title: "旅游",
@@ -49,7 +50,7 @@ const FEATURED_ROUTES = [
   {
     title: "赛里木湖2日游",
     meta: "环湖 · 自驾友好",
-    href: "/travel/sayram-lake",
+    href: buildTravelSpotHref("sayram-lake"),
     tone: "from-sky-200/45 via-white to-white" as const,
   },
   {

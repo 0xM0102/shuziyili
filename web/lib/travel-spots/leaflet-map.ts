@@ -6,8 +6,10 @@ export const OSM_TILE_URL = "https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
 export const OSM_ATTRIBUTION =
   '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
-const PIN_SIZE = 28;
-const PIN_ANCHOR = PIN_SIZE / 2;
+/** 与 travel-spot-map.css 中 .travel-spot-pin 尺寸保持一致。 */
+export const PIN_SIZE_PX = 28;
+
+const PIN_ANCHOR = PIN_SIZE_PX / 2;
 const MAP_FIT_PADDING: [number, number] = [40, 40];
 
 type LeafletModule = typeof import("leaflet");
@@ -16,29 +18,36 @@ function createPinIcon(L: LeafletModule, order: number) {
   return L.divIcon({
     html: `<div class="travel-spot-pin">${order}</div>`,
     className: "",
-    iconSize: [PIN_SIZE, PIN_SIZE],
+    iconSize: [PIN_SIZE_PX, PIN_SIZE_PX],
     iconAnchor: [PIN_ANCHOR, PIN_ANCHOR],
   });
 }
 
-function createCheckpointMarker(L: LeafletModule, checkpoint: TravelCheckpoint): Marker {
-  const marker = L.marker(checkpoint.position, {
-    icon: createPinIcon(L, checkpoint.order),
-    title: checkpoint.name,
-  });
+function addCheckpointMarkers(
+  L: LeafletModule,
+  map: LeafletMap,
+  checkpoints: TravelCheckpoint[],
+): Marker[] {
+  return checkpoints.map((checkpoint) => {
+    const marker = L.marker(checkpoint.position, {
+      icon: createPinIcon(L, checkpoint.order),
+      title: checkpoint.name,
+    });
 
-  marker.bindTooltip(buildCheckpointTooltipHtml(checkpoint), {
-    direction: "top",
-    offset: [0, -12],
-    opacity: 1,
-    sticky: true,
-    className: "travel-spot-tooltip-pane",
-  });
+    marker.bindTooltip(buildCheckpointTooltipHtml(checkpoint), {
+      direction: "top",
+      offset: [0, -12],
+      opacity: 1,
+      sticky: true,
+      className: "travel-spot-tooltip-pane",
+    });
 
-  return marker;
+    marker.addTo(map);
+    return marker;
+  });
 }
 
-/** 在容器内挂载 Leaflet 地图并渲染打卡点，调用方负责 destroy。 */
+/** 在容器内挂载 Leaflet 地图并渲染打卡点；调用方须在卸载时调用 map.remove()。 */
 export function mountTravelSpotMap(
   L: LeafletModule,
   container: HTMLElement,
@@ -55,16 +64,10 @@ export function mountTravelSpotMap(
     maxZoom: 19,
   }).addTo(map);
 
-  const markers = config.checkpoints.map((checkpoint) => {
-    const marker = createCheckpointMarker(L, checkpoint);
-    marker.addTo(map);
-    return marker;
-  });
+  const markers = addCheckpointMarkers(L, map, config.checkpoints);
+  if (markers.length === 0) return map;
 
-  if (markers.length > 0) {
-    const bounds = L.latLngBounds(markers.map((marker) => marker.getLatLng()));
-    map.fitBounds(bounds, { padding: MAP_FIT_PADDING });
-  }
-
+  const bounds = L.latLngBounds(markers.map((marker) => marker.getLatLng()));
+  map.fitBounds(bounds, { padding: MAP_FIT_PADDING });
   return map;
 }

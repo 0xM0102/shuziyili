@@ -15,4 +15,4 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 ## 生产门户发版（约定）
 
-**Git 不参与默认发版。** 本机 `./deploy/sync-web.sh` → 上传 tgz → 服务器 **§3.0**：解压、`npm install --omit=dev`、`systemctl restart`。§8 速查。可选 `./deploy/sync-web.sh --push`。
+**Git 不参与发版。** 本机 `./deploy/sync-web.sh` 打 tgz → `scp` 上传到 `45.40.243.131:/tmp/` → 服务器按 **[`deploy/RUNBOOK.md`](deploy/RUNBOOK.md) §3.0** 解压、`env PATH=… npm install --omit=dev`、`systemctl restart`。

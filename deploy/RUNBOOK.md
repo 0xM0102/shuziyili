@@ -1,270 +1,229 @@
 # 数字伊犁 · 生产运维总表（Runbook）
 
-本文与 [`deploy/README.md`](./README.md) 配套：**README 偏首次装机**，**本文件偏日常发版、排障、目录约定**。服务器上的具体操作须由你在 SSH/OrcaTerm 中执行。
+本文与 [`deploy/README.md`](./README.md) 配套：**README 偏首次装机**，**本文件偏日常发版、排障、目录约定**。服务器上的具体操作须在 **OrcaTerm / SSH** 中执行。
+
+**当前团队采用的唯一发版方式：本机构建 → `scp` 上传产物 → 服务器解压/安装依赖/重启。** 不靠服务器 `git pull`，暂不使用 `./deploy/sync-web.sh --push`（见文末注释块）。
 
 ---
 
 ## 1. 服务器目录约定（权威）
 
+**生产 CVM**
+
+| 项 | 值 |
+|----|-----|
+| 公网 IP | `45.40.243.131` |
+| 上传（scp） | `root@45.40.243.131` |
+| OrcaTerm | 腾讯云控制台 → CVM → 选中该实例 → 登录 |
+
 | 路径 | 用途 | systemd / Nginx |
 |------|------|-----------------|
-| `/opt/shuziyili/web` | **门户 Next.js 运行目录**（含 `.next`、`package.json`、`.env.production.local`、`node_modules` 生产依赖） | `shuziyili-web` 的 `WorkingDirectory` **必须指向这里** |
+| `/opt/shuziyili/web` | **门户 Next.js 运行目录**（含 `.next`、`package.json`、`.env.production.local`、`node_modules`） | `shuziyili-web` 的 `WorkingDirectory` **必须指向这里** |
 | `/opt/shuziyili/admin/dist` | 管理后台静态文件 | `admin.shuziyili.com` 的 `root` |
 | `/opt/shuziyili/api/shuziyili-api.jar` | API 可执行包 | `shuziyili-api` |
 | `/opt/shuziyili/config/api.env` | API 环境变量（`chmod 600`） | `EnvironmentFile=` |
-| `/opt/shuziyili/repo` | **可选**：服务器上留一份源码副本（与发版无必然关系）；勿与运行目录混用 | **不要**把 `WorkingDirectory` 长期设为 `repo/web`，否则易与 `/opt/shuziyili/web` 形成两套 `.next` |
 
 **反模式（已踩坑）：**
 
-- `WorkingDirectory=/opt/shuziyili/repo/web` 与实际上传/解压到的 `/opt/shuziyili/web` 混用 → 线上跑的不是你以为的那份构建。
-- 只上传 `.next` 的一部分、缺少 `package.json` / 生产 `node_modules` → `next start` 异常。
+- `WorkingDirectory=/opt/shuziyili/repo/web` 与 `/opt/shuziyili/web` 混用 → 线上跑的不是上传的那份构建。
+- 只上传 `.next`、缺少 `package.json` / `node_modules` → `next start` 异常。
+- macOS 打的 tgz 解压时出现 `LIBARCHIVE.xattr.com.apple.provenance` 警告 → **可忽略**，不影响文件内容。
 
 ---
 
-## 2. 域名与 API 暴露方式（当前推荐）
+## 2. 域名与 API
 
-- **门户**：`https://shuziyili.com`（及按需 `www`）。
-- **管理后台**：`https://admin.shuziyili.com`。
-- **API（推荐）**：浏览器请求 **`https://shuziyili.com/api/v1/...`**（主站 Nginx `location /api/` 反代到本机 `127.0.0.1:8081` 或你实际端口）。  
-  - 这样 **主站证书**即可覆盖 API 路径，无需单独为 `api.` 子域签证书。  
-  - 若仍使用 `https://api.shuziyili.com`，须 **DNS + 证书 + Nginx** 全套独立配置。
+- **门户**：`https://shuziyili.com`
+- **管理后台**：`https://admin.shuziyili.com`
+- **API**：`https://shuziyili.com/api/v1/...`（Nginx `location /api/` 反代本机 API 端口，常见 **8081**）
 
-前端构建期变量须与上一致，见 [`deploy/env/web.env.example`](./env/web.env.example)、[`deploy/env/admin.build.env.example`](./env/admin.build.env.example)。
+构建期变量见 [`deploy/env/web.env.example`](./env/web.env.example)、[`deploy/env/admin.build.env.example`](./env/admin.build.env.example)。
 
 ---
 
-## 3. 发版与 Git（解耦）
+## 3. 日常发版（本机构建 → 上传 → 服务器）
 
-- **Git** 只做本地/协作的**源码历史**，**不参与**默认发版；上线不靠服务器 `git pull`。  
-- **发版** = **本机构建** → **上传产物** → **服务器端更新**（解压覆盖、`npm install` 同步依赖、**`systemctl restart`**，见 §3.0）。  
-- **主流程命令写在 §3.0～3.2**；**§8** 为同一套命令的**速查副本**（方便复制），内容不替代 §3。
+> **Git 只做源码管理，不参与发版。**
 
-### 3.0 门户 Web（主流程：本机构建 → 上传 tgz → 服务器）
+### 3.0 门户 Web
 
-**本机**（在仓库根目录；生成 `deploy/shuziyili-web-dist-时间戳.tgz`，路径已 `.gitignore`）：
+**① 本机构建**（仓库根目录）：
 
 ```bash
 cd /path/to/shuziyili
 ./deploy/sync-web.sh
 ```
 
-脚本会校验 `web/.env.production.local` 里的 `NEXT_PUBLIC_SITE_URL` / `NEXT_PUBLIC_API_BASE_URL`，并 `unset` 常见本机代理变量。
+生成 `deploy/shuziyili-web-dist-时间戳.tgz`（已 `.gitignore`）。  
+构建前确认 `web/.env.production.local` 含：
 
-**服务器端更新**（把 tgz 传到如 `/tmp/`，文件名换成你实际上传的；在 **OrcaTerm / SSH** 里执行）：
+```env
+NEXT_PUBLIC_SITE_URL=https://shuziyili.com
+NEXT_PUBLIC_API_BASE_URL=https://shuziyili.com
+```
 
-发版包**不含** `node_modules`，服务器上必须用 **`npm install --omit=dev`** 按本次 `package-lock.json` 同步生产依赖，再重启进程，否则可能缺包或版本不一致。
+**② 本机上传到服务器 `/tmp/`**：
+
+```bash
+latest="$(ls -t deploy/shuziyili-web-dist-*.tgz | head -n 1)"
+scp "$latest" root@45.40.243.131:/tmp/
+```
+
+也可用 OrcaTerm **文件上传** 把 tgz 传到 `/tmp/`。
+
+**③ 服务器解压、装依赖、重启**（`/tmp/` 下文件名换成实际上传的）：
 
 ```bash
 sudo mkdir -p /opt/shuziyili/web
 sudo tar xzf /tmp/shuziyili-web-dist-XXXXXXXX.tgz -C /opt/shuziyili/web
-cd /opt/shuziyili/web && sudo npm install --omit=dev
+cd /opt/shuziyili/web && sudo env PATH="/usr/local/bin:$PATH" /usr/local/bin/npm install --omit=dev
 sudo systemctl restart shuziyili-web
 ```
 
-**（可选）发版后立刻验收**（仍在服务器上）：
+> **说明：** 发版包不含 `node_modules`；改了 `package.json`（如新增 `leaflet`）时必须跑 `npm install --omit=dev`。  
+> **说明：** 本机 `sudo npm` 常因 PATH 找不到 node，故用 `env PATH="/usr/local/bin:$PATH"`（见 §3.4 排障）。
+
+**④ 验收**（服务器）：
 
 ```bash
 sudo systemctl is-active shuziyili-web
 curl -fsSI http://127.0.0.1:3000 | head -n 5
-```
-
-**说明：** 若你**非常确定**本次未改 `package.json` / `package-lock.json`、且线上 `node_modules` 已与 lock 一致，可临时省略 `npm install` 仅「解压 + `restart`」；拿不准时**建议保留**上面四步，与 `--push` 脚本在远端行为一致。
-
-**本机上传 tgz（可选，`user@host` 以你服务器为准，仓库默认见 `deploy/ssh-target.env`）：**
-
-```bash
-latest="$(ls -t deploy/shuziyili-web-dist-*.tgz | head -n 1)"
-scp "$latest" user@your-server-ip:/tmp/
-```
-
-### 3.1 门户 `--push`（可选，与主流程二选一）
-
-本机已对生产机 **`ssh-copy-id`**，且 [`deploy/ssh-target.env`](./ssh-target.env)（或 `deploy/deploy.local.env`）里 **`DEPLOY=user@IP`** 正确时：
-
-```bash
-cd /path/to/shuziyili
-./deploy/sync-web.sh --push
-```
-
-（等价于本机构建 + rsync + 远端 `npm install` + 重启 + 健康检查；仍与 Git 无关。）
-
-### 3.2 Admin（静态）
-
-**本机**：`cd admin && npm ci && npm run build`。将 **`dist/`** 内全部文件上传到 **`/opt/shuziyili/admin/dist/`**。
-
-**服务器**：`sudo nginx -t && sudo systemctl reload nginx`（仅静态资源时一般**只需 reload**；若改过 Nginx 配置再按需调整）。
-
-### 3.3 API（jar）
-
-**本机**：`cd api && ./mvnw -DskipTests package`。
-
-**本机上传 jar**（示例；`user@host` 以实机为准）：
-
-```bash
-scp target/shuziyili-api.jar user@your-server-ip:/opt/shuziyili/api/shuziyili-api.jar
-```
-
-**服务器**：`sudo systemctl restart shuziyili-api`。
-
-**`api.env` 必备**：除 `SPRING_DATASOURCE_USERNAME` / `PASSWORD` 外，须有 **`SPRING_DATASOURCE_URL`**（完整 JDBC），否则日志会出现 `jdbcUrl, ${SPRING_DATASOURCE_URL}` 且进程起不来、`8081` 短暂 `Connection refused`。示例见 [`deploy/env/api.env.example`](./env/api.env.example)（默认 **Juhe 头条 + Juhe 天气 + Tian 首页地区块**）。
-
-**验收**（端口以 `api.env` 中 **`SERVER_PORT`** 为准；先 `ss -tlnp | grep java` 确认，示例 **8081**）：
-
-```bash
-curl -fsS http://127.0.0.1:8081/api/v1/health
-curl -fsS "http://127.0.0.1:8081/api/v1/news/headlines?type=top"
-curl -fsS "http://127.0.0.1:8081/api/v1/weather?adcode=654002"
-curl -fsS "http://127.0.0.1:8081/api/v1/home/area-news"
-```
-
-若 **`/api/v1/news/headlines` 返回 404** 而 `health` 正常，多半是线上 **`shuziyili-api.jar` 仍为旧包**（不含资讯模块）；上传新 jar 并重启即可。仅改 `JUHE_NEWS_*` 不会自动出现路由。
-
-### 3.4 发版排障（门户 / API / 上传）
-
-| 现象 | 处理 |
-|------|------|
-| 发布后页面无数据 / 白屏 | 检查 `web/.env.production.local`；改后须重新 `./deploy/sync-web.sh` 再打 tgz 上传。 |
-| `502 Bad Gateway` | `systemctl status shuziyili-web`；本机 `127.0.0.1:3000` 是否监听。 |
-| `--push` 报 `Permission denied` | 改用 §3.0 打包上传；或配置免密 SSH 后再 `--push`。 |
-| `Connection closed by 127.0.0.1 port 7890` | 本机代理劫持；脚本已 `unset` 常见变量，仍异常则检查 Shell 代理。 |
-| API 刚重启立刻 `Connection refused` / `Empty reply` | 冷启动常 **9～12 秒**；勿只 `sleep 8`，用 §3.3 / §8.3 的 **health 轮询** 或 `journalctl -u shuziyili-api -f` 等到 `Started ShuziyiliApplication`。 |
-| `news/headlines` 404、`health` 正常 | 上传含资讯模块的 **新 `shuziyili-api.jar`** 并重启（见 §3.3）。 |
-| 日志 `jdbcUrl, ${SPRING_DATASOURCE_URL}` | 在 `api.env` 补全 **`SPRING_DATASOURCE_URL=`** 一行后重启。 |
-| `/api/v1/weather` 空数据 / `upstreamConfigured: false` | `api.env` 设 `WEATHER_PROVIDER=juhe`、`JUHE_WEATHER_ENABLED=true`，且 `JUHE_WEATHER_KEY` 或 `JUHE_NEWS_KEY` 有效（须在 Juhe 控制台开通 [天气预报 73](https://www.juhe.cn/docs/api/id/73)）；`journalctl -u shuziyili-api \| grep -i juhe`。 |
-| 资讯列表空、`error_code=10001` | Juhe Key 无效或未开通对应 API（主资讯须开通 [新闻头条 235](https://www.juhe.cn/docs/api/id/235)）。 |
-| 资讯缩略图 `inews.gtimg.com` **403** | 腾讯图床防盗链，**不要**用 Nginx 反代或 `no-referrer` 绕过。门户 `NewsThumbnail` 对 `gtimg.com` 不发起外链请求，403/404 等均回退站内占位图；服务器若曾加 `location /news-img/` 可删除并 `nginx -t && systemctl reload nginx`。 |
-| 服务器 `sudo npm: command not found` | 用完整路径：`/usr/local/bin/npm install --omit=dev`（或 `which npm` 查路径）。 |
-
----
-
-## 4. 从 `repo/web` 迁到官方 `/opt/shuziyili/web`（一次性）
-
-若当前 `systemd` 仍指向 `repo/web`，按顺序做：
-
-1. `sudo systemctl stop shuziyili-web`
-2. `sudo mkdir -p /opt/shuziyili/web`
-3. `sudo rsync -a /opt/shuziyili/repo/web/ /opt/shuziyili/web/`（或按 §3.0 上传产物覆盖）
-4. `cd /opt/shuziyili/web && sudo npm install --omit=dev`
-5. 编辑 `/etc/systemd/system/shuziyili-web.service`：`WorkingDirectory=/opt/shuziyili/web`
-6. `sudo systemctl daemon-reload && sudo systemctl start shuziyili-web`
-7. 验收通过后：`sudo rm -rf /opt/shuziyili/repo/web`（**勿**误删整个 `repo`，除非确认不再需要其中 api 源码等）
-
----
-
-## 5. 验收清单（每次发版勾一遍）
-
-```bash
-curl -sS https://shuziyili.com/api/v1/health
-curl -sS "https://shuziyili.com/api/v1/news/headlines?type=top"
-curl -sS "https://shuziyili.com/api/v1/weather?adcode=654002"
-curl -sS https://shuziyili.com/api/v1/travel/banners
-curl -sS -I https://shuziyili.com/travel
-curl -sS -I https://admin.shuziyili.com
-systemctl is-active shuziyili-web shuziyili-api nginx
 cat /opt/shuziyili/web/.next/BUILD_ID
 ```
 
----
-
-## 6. 常见问题
-
-| 现象 | 处理 |
-|------|------|
-| 门户像「没更新」 | 强刷；检查是否传错目录；静态页 `Cache-Control` 过长时收紧 HTML 缓存或刷 CDN |
-| 接口 404 | 确认 Nginx `/api/` 反代端口与 API 监听一致；`NEXT_PUBLIC_API_BASE_URL` 为主域时路径为 `/api/v1`；若为 **`/news/headlines`** 且 health 正常，多为 **jar 未含该接口**，需换包（§3.3）。 |
-| admin 登录全红 | `api.env` 里 `CORS_ALLOWED_ORIGINS` 含 `https://admin.shuziyili.com` |
-| 两套 `.next` BUILD_ID 不一致 | 统一 `WorkingDirectory` 与上传目标为 `/opt/shuziyili/web` |
-| 后台接口返回 `forbidden` 以前显示成 `unauthorized` | 升级 API 后已统一为 `requireStaffPermission` 的真实 message；前端若写死判断需改为同时认 `unauthorized` 与 `forbidden` |
-| API 起不来、日志 `jdbcUrl, ${SPRING_DATASOURCE_URL}` | 在 `api.env` 设置 **`SPRING_DATASOURCE_URL`**（完整 JDBC），见 `deploy/env/api.env.example` |
+浏览器强刷：`https://shuziyili.com/…`
 
 ---
 
-## 7. 安全提醒（与发版无关但必须做）
+### 3.1 API（jar）
 
-- `api.env`、各类 Secret：**chmod 600**，密钥泄露后在云平台轮换。
-- SSH 失败登录增多：检查 `authorized_keys`、考虑 `fail2ban`、关闭密码登录（仅 key）。
-
----
-
-## 8. 部署命令速查（与 §3 相同，便于复制）
-
-路径 `/path/to/shuziyili` 换成本机仓库；服务器在 **OrcaTerm / 已登录会话** 执行。
-
-### 8.1 门户 Web（本机构建 → 上传 tgz → 服务器）
-
-**本机**
-
-```bash
-cd /path/to/shuziyili
-./deploy/sync-web.sh
-```
-
-**服务器**（与 §3.0 相同：解压 → **`npm install`** 服务端依赖 → **`restart`**）
-
-```bash
-sudo mkdir -p /opt/shuziyili/web
-sudo tar xzf /tmp/shuziyili-web-dist-XXXXXXXX.tgz -C /opt/shuziyili/web
-cd /opt/shuziyili/web && sudo npm install --omit=dev
-sudo systemctl restart shuziyili-web
-```
-
-**（可选）** `sudo systemctl is-active shuziyili-web`；`curl -fsSI http://127.0.0.1:3000 | head -n 5`。
-
-**本机上传（与 §3.0 一致）：**
-
-```bash
-latest="$(ls -t deploy/shuziyili-web-dist-*.tgz | head -n 1)"
-scp "$latest" user@your-server-ip:/tmp/
-```
-
-### 8.2 门户 Web（可选：`--push`）
-
-```bash
-cd /path/to/shuziyili
-./deploy/sync-web.sh --push
-```
-
-### 8.3 API（jar）
-
-**本机**
+**① 本机构建：**
 
 ```bash
 cd /path/to/shuziyili/api
 ./mvnw -DskipTests package
 ```
 
-将 **`target/shuziyili-api.jar`** 上传到服务器 **`/opt/shuziyili/api/shuziyili-api.jar`**，例如：
+**② 本机上传：**
 
 ```bash
-scp target/shuziyili-api.jar user@your-server-ip:/opt/shuziyili/api/shuziyili-api.jar
+scp target/shuziyili-api.jar root@45.40.243.131:/opt/shuziyili/api/shuziyili-api.jar
 ```
 
-**服务器**（端口以 `api.env` 中 **`SERVER_PORT`** 为准；先 `ss -tlnp | grep java` 确认，示例 **8081**）：
+**③ 服务器重启并验收**（端口以 `api.env` 的 `SERVER_PORT` 为准，示例 8081）：
 
 ```bash
 sudo systemctl restart shuziyili-api
-# 冷启动常需 9～12 秒；固定 sleep 8 可能仍 Connection refused，建议轮询健康检查：
-for i in $(seq 1 15); do
-  curl -fsS http://127.0.0.1:8081/api/v1/health && break
-  sleep 1
-done
-curl -fsS "http://127.0.0.1:8081/api/v1/news/headlines?type=top"
+for i in $(seq 1 15); do curl -fsS http://127.0.0.1:8081/api/v1/health && break; sleep 1; done
 ```
 
-（若 `SERVER_PORT` 不是 8081，把上面 URL 端口一并改掉。）
+`api.env` 须含完整 **`SPRING_DATASOURCE_URL`**，见 [`deploy/env/api.env.example`](./env/api.env.example)。Flyway 新迁移在重启时自动执行。
 
-`api.env` 须含 **`SPRING_DATASOURCE_URL`**（见 `deploy/env/api.env.example`）；资讯路由依赖 **含该模块的 jar**。
+---
 
-### 8.4 Admin（静态）
+### 3.2 Admin（静态）
+
+**① 本机构建：**
+
+```bash
+cd /path/to/shuziyili/admin
+npm ci
+VITE_API_BASE_URL=https://shuziyili.com VITE_SITE_BASE_URL=https://shuziyili.com npm run build
+```
+
+**② 本机上传** `dist/` 内全部文件到 `/opt/shuziyili/admin/dist/`（可用 `scp -r dist/* root@45.40.243.131:/opt/shuziyili/admin/dist/`）。
+
+**③ 服务器：**
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+---
+
+### 3.3 发版排障
+
+| 现象 | 处理 |
+|------|------|
+| 发布后页面无数据 / 白屏 | 检查 `web/.env.production.local`；改后须重新 `./deploy/sync-web.sh` 再上传。 |
+| `502 Bad Gateway` | `systemctl status shuziyili-web`；`127.0.0.1:3000` 是否在监听。 |
+| 门户像「没更新」 | 强刷；确认解压目标是 `/opt/shuziyili/web`；看 `BUILD_ID` 是否变化。 |
+| 服务器 `sudo npm: command not found` | 使用：`sudo env PATH="/usr/local/bin:$PATH" /usr/local/bin/npm install --omit=dev` |
+| `Connection closed by 127.0.0.1 port 7890`（本机） | 本机代理；脚本已 `unset` 常见变量，仍异常则检查 Shell 代理。 |
+| API 刚重启 `Connection refused` | 冷启动约 **9～12 秒**；用 health 轮询，勿只 `sleep 8`。 |
+| `news/headlines` 404、`health` 正常 | 上传含该模块的新 `shuziyili-api.jar` 并重启。 |
+| 日志 `jdbcUrl, ${SPRING_DATASOURCE_URL}` | `api.env` 补全 `SPRING_DATASOURCE_URL=` 后重启。 |
+| admin 登录 CORS 报错 | `CORS_ALLOWED_ORIGINS` 含 `https://admin.shuziyili.com` |
+
+---
+
+## 4. 验收清单（发版后可选勾一遍）
+
+```bash
+curl -sS https://shuziyili.com/api/v1/health
+curl -sS -I https://shuziyili.com/travel/sayram-lake
+curl -sS -I https://admin.shuziyili.com
+systemctl is-active shuziyili-web shuziyili-api nginx
+```
+
+---
+
+## 5. 安全提醒
+
+- `api.env`、各类 Secret：**chmod 600**，泄露后在云平台轮换。
+- 公网只开 **80/443**；**不要**对公网暴露 3000、8081、3306。
+
+---
+
+## 8. 命令速查（与 §3 相同，便于复制）
+
+### 8.1 门户 Web
+
+**本机**
+
+```bash
+cd /path/to/shuziyili
+./deploy/sync-web.sh
+latest="$(ls -t deploy/shuziyili-web-dist-*.tgz | head -n 1)"
+scp "$latest" root@45.40.243.131:/tmp/
+```
+
+**服务器**
+
+```bash
+sudo mkdir -p /opt/shuziyili/web
+sudo tar xzf /tmp/shuziyili-web-dist-XXXXXXXX.tgz -C /opt/shuziyili/web
+cd /opt/shuziyili/web && sudo env PATH="/usr/local/bin:$PATH" /usr/local/bin/npm install --omit=dev
+sudo systemctl restart shuziyili-web
+sudo systemctl is-active shuziyili-web
+curl -fsSI http://127.0.0.1:3000 | head -n 5
+```
+
+### 8.2 API
+
+**本机**
+
+```bash
+cd /path/to/shuziyili/api && ./mvnw -DskipTests package
+scp target/shuziyili-api.jar root@45.40.243.131:/opt/shuziyili/api/shuziyili-api.jar
+```
+
+**服务器**
+
+```bash
+sudo systemctl restart shuziyili-api
+curl -fsS http://127.0.0.1:8081/api/v1/health
+```
+
+### 8.3 Admin
 
 **本机**
 
 ```bash
 cd /path/to/shuziyili/admin
-npm ci && npm run build
+npm ci && VITE_API_BASE_URL=https://shuziyili.com VITE_SITE_BASE_URL=https://shuziyili.com npm run build
+scp -r dist/* root@45.40.243.131:/opt/shuziyili/admin/dist/
 ```
-
-将 **`dist/`** 目录内全部文件上传到 **`/opt/shuziyili/admin/dist/`**。
 
 **服务器**
 
@@ -274,4 +233,25 @@ sudo nginx -t && sudo systemctl reload nginx
 
 ---
 
-更细的首次装机步骤仍以 [`deploy/README.md`](./README.md) 为准。
+<!-- 以下为暂不使用的发版方式，保留备查
+
+### `./deploy/sync-web.sh --push`（SSH 免密一键推送）
+
+前提：本机 `ssh-copy-id root@45.40.243.131`，且 `deploy/ssh-target.env` 中 `DEPLOY=root@45.40.243.131`。
+
+```bash
+cd /path/to/shuziyili
+./deploy/sync-web.sh --push
+```
+
+### 服务器 `git pull` 发版
+
+不参与日常发版。`/opt/shuziyili/repo` 仅可选作源码对照，运行目录始终是 `/opt/shuziyili/web`。
+
+### 从 `repo/web` 迁到 `/opt/shuziyili/web`（一次性）
+
+若 systemd 曾指向 `repo/web`：停服务 → rsync 或按 §3.0 上传覆盖 → 改 `WorkingDirectory=/opt/shuziyili/web` → `daemon-reload` → 启动。
+
+-->
+
+更细的首次装机步骤见 [`deploy/README.md`](./README.md)。

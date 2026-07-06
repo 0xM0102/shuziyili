@@ -1,12 +1,12 @@
 import { sortCheckpointsByOrder } from "@/lib/travel-spots/checkpoint-utils";
 import type { TravelCheckpoint } from "@/lib/travel-spots/types";
 
-type Props = {
+type TravelSpotCheckpointListProps = {
   checkpoints: TravelCheckpoint[];
 };
 
 /** 环湖打卡点列表（与地图点位一一对应）。 */
-export function TravelSpotCheckpointList({ checkpoints }: Props) {
+export function TravelSpotCheckpointList({ checkpoints }: TravelSpotCheckpointListProps) {
   const sorted = sortCheckpointsByOrder(checkpoints);
 
   return (
