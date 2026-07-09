@@ -39,15 +39,24 @@ export function TravelSpotMap({ config, mapKey, className }: TravelSpotMapProps)
 
     async function init() {
       const container = containerRef.current;
-      if (!container) return;
+      if (!container || disposed) return;
 
       try {
         const L = (await import("leaflet")).default;
-        if (disposed) return;
+        if (disposed || containerRef.current !== container) return;
 
         mapRef.current?.remove();
-        mapRef.current = mountTravelSpotMap(L, container, config);
-        if (!disposed) setStatus("ready");
+        mapRef.current = null;
+        if (disposed) return;
+
+        const map = mountTravelSpotMap(L, container, config);
+        if (disposed || containerRef.current !== container) {
+          map.remove();
+          return;
+        }
+
+        mapRef.current = map;
+        setStatus("ready");
       } catch {
         if (!disposed) {
           setStatus("error");

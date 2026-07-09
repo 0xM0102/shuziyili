@@ -12,6 +12,14 @@ export const PIN_SIZE_PX = 28;
 const PIN_ANCHOR = PIN_SIZE_PX / 2;
 const MAP_FIT_PADDING: [number, number] = [40, 40];
 
+/** 容器仍挂载 DOM 时才执行，避免 map.remove() 后 whenReady 回调误触。 */
+function runWhenMapMounted(map: LeafletMap, fn: () => void) {
+  map.whenReady(() => {
+    if (!map.getContainer()?.isConnected) return;
+    fn();
+  });
+}
+
 type LeafletModule = typeof import("leaflet");
 
 function createPinIcon(L: LeafletModule, order: number) {
@@ -69,12 +77,12 @@ export function mountTravelSpotMap(
 
   const markers = addCheckpointMarkers(L, map, config.checkpoints);
   if (markers.length === 0) {
-    map.whenReady(() => map.invalidateSize());
+    runWhenMapMounted(map, () => map.invalidateSize());
     return map;
   }
 
   const bounds = L.latLngBounds(markers.map((marker) => marker.getLatLng()));
-  map.whenReady(() => {
+  runWhenMapMounted(map, () => {
     map.fitBounds(bounds, { padding: MAP_FIT_PADDING, animate: false });
     map.invalidateSize();
   });
