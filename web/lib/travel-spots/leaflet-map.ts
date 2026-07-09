@@ -56,18 +56,27 @@ export function mountTravelSpotMap(
   const map = L.map(container, {
     center: config.center,
     zoom: config.zoom,
-    scrollWheelZoom: true,
+    scrollWheelZoom: false,
+    preferCanvas: true,
   });
 
   L.tileLayer(OSM_TILE_URL, {
     attribution: OSM_ATTRIBUTION,
     maxZoom: 19,
+    updateWhenIdle: true,
+    keepBuffer: 2,
   }).addTo(map);
 
   const markers = addCheckpointMarkers(L, map, config.checkpoints);
-  if (markers.length === 0) return map;
+  if (markers.length === 0) {
+    map.whenReady(() => map.invalidateSize());
+    return map;
+  }
 
   const bounds = L.latLngBounds(markers.map((marker) => marker.getLatLng()));
-  map.fitBounds(bounds, { padding: MAP_FIT_PADDING });
+  map.whenReady(() => {
+    map.fitBounds(bounds, { padding: MAP_FIT_PADDING, animate: false });
+    map.invalidateSize();
+  });
   return map;
 }

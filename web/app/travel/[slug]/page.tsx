@@ -1,39 +1,19 @@
-import type { Metadata } from "next";
-import { notFound } from "next/navigation";
-import { TravelSpotPageContent } from "@/components/travel/travel-spot-page-content";
-import { getTravelSpot, listTravelSpotSlugs } from "@/lib/travel-spots";
+import { redirect, notFound } from "next/navigation";
+import { buildTravelSpotHref, getTravelSpot, listTravelSpotSlugs } from "@/lib/travel-spots";
 
 type PageProps = {
   params: Promise<{ slug: string }>;
 };
 
+/** 兼容旧 URL `/travel/:slug` → `/travel/attractions/:slug`。 */
 export function generateStaticParams() {
   return listTravelSpotSlugs().map((slug) => ({ slug }));
 }
 
-export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
-  const { slug } = await params;
-  const spot = getTravelSpot(slug);
-  if (!spot) {
-    return { title: "景区" };
-  }
-
-  return {
-    title: spot.title,
-    description: spot.summary,
-    alternates: { canonical: `/travel/${spot.slug}` },
-    openGraph: {
-      title: `${spot.title} · 旅游`,
-      description: spot.summary,
-      url: `/travel/${spot.slug}`,
-    },
-  };
-}
-
-export default async function TravelSpotPage({ params }: PageProps) {
+export default async function LegacyTravelSpotRedirect({ params }: PageProps) {
   const { slug } = await params;
   const spot = getTravelSpot(slug);
   if (!spot) notFound();
 
-  return <TravelSpotPageContent spot={spot} />;
+  redirect(buildTravelSpotHref(spot.slug));
 }

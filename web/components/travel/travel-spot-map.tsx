@@ -1,36 +1,41 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import type { Map as LeafletMap } from "leaflet";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { joinClassNames } from "@/lib/class-names";
+import {
+  TravelSpotMapFrame,
+  TRAVEL_SPOT_MAP_FRAME_CLASS,
+} from "@/components/travel/travel-spot-map-frame";
+import { buildTravelSpotMapConfigKey } from "@/lib/travel-spots/checkpoint-utils";
 import { mountTravelSpotMap } from "@/lib/travel-spots/leaflet-map";
 import type { TravelSpotMapConfig } from "@/lib/travel-spots/types";
 import "./travel-spot-map.css";
 
 type TravelSpotMapProps = {
   config: TravelSpotMapConfig;
-  /** 地图实例缓存键，通常为景区 slug。 */
+  /** 景区 slug，与 configKey 共同决定何时重挂地图。 */
   mapKey: string;
   className?: string;
 };
 
 type MapStatus = "loading" | "ready" | "error";
 
-const DEFAULT_FRAME_CLASS =
-  "h-[min(70vh,520px)] min-h-[320px] w-full overflow-hidden rounded-2xl border border-border bg-muted";
-
 const LOAD_ERROR_MESSAGE = "地图加载失败，请检查网络后刷新页面。";
 
 /** 景区地图：Leaflet + OpenStreetMap，悬停显示打卡点说明。 */
 export function TravelSpotMap({ config, mapKey, className }: TravelSpotMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const mapRef = useRef<{ remove: () => void } | null>(null);
+  const mapRef = useRef<LeafletMap | null>(null);
+  const configKey = useMemo(() => buildTravelSpotMapConfigKey(config), [config]);
+
   const [status, setStatus] = useState<MapStatus>("loading");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const frameClass = className ?? DEFAULT_FRAME_CLASS;
+  const frameClass = className ?? TRAVEL_SPOT_MAP_FRAME_CLASS;
 
   useEffect(() => {
-    let cancelled = false;
+    let disposed = false;
 
     async function init() {
       const container = containerRef.current;
@@ -38,13 +43,13 @@ export function TravelSpotMap({ config, mapKey, className }: TravelSpotMapProps)
 
       try {
         const L = (await import("leaflet")).default;
-        if (cancelled) return;
+        if (disposed) return;
 
         mapRef.current?.remove();
         mapRef.current = mountTravelSpotMap(L, container, config);
-        setStatus("ready");
+        if (!disposed) setStatus("ready");
       } catch {
-        if (!cancelled) {
+        if (!disposed) {
           setStatus("error");
           setErrorMessage(LOAD_ERROR_MESSAGE);
         }
@@ -56,25 +61,23 @@ export function TravelSpotMap({ config, mapKey, className }: TravelSpotMapProps)
     void init();
 
     return () => {
-      cancelled = true;
+      disposed = true;
       mapRef.current?.remove();
       mapRef.current = null;
     };
-  }, [config, mapKey]);
+  }, [mapKey, configKey, config]);
 
   return (
     <div className="travel-spot-map relative">
       <div ref={containerRef} className={frameClass} role="region" aria-label="景区地图" />
       {status === "loading" ? (
-        <div
-          className={joinClassNames(
-            frameClass,
-            "absolute inset-0 z-10 flex items-center justify-center bg-muted/90 text-sm text-muted",
-          )}
+        <TravelSpotMapFrame
+          className={joinClassNames(frameClass, "pointer-events-none")}
+          overlay
           aria-live="polite"
         >
           地图加载中…
-        </div>
+        </TravelSpotMapFrame>
       ) : null}
       {status === "error" ? (
         <div

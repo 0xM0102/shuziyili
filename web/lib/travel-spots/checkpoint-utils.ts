@@ -1,7 +1,13 @@
 import { escapeHtml } from "@/lib/escape-html";
-import type { TravelCheckpoint } from "@/lib/travel-spots/types";
+import type { TravelCheckpoint, TravelSpotMapConfig } from "@/lib/travel-spots/types";
 
-/** 按环湖顺序排列打卡点（不修改原数组）。 */
+export function buildTravelSpotMapConfigKey(config: TravelSpotMapConfig): string {
+  const checkpointSig = config.checkpoints
+    .map((c) => `${c.id}:${c.order}:${c.position.join(",")}`)
+    .join("|");
+  return `${config.center.join(",")}@${config.zoom}|${checkpointSig}`;
+}
+
 export function sortCheckpointsByOrder(checkpoints: TravelCheckpoint[]): TravelCheckpoint[] {
   return [...checkpoints].sort((a, b) => a.order - b.order);
 }

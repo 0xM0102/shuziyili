@@ -6,12 +6,16 @@ const travelSpots: TravelSpotPage[] = [sayramLakeSpot];
 
 const spotBySlug = new Map(travelSpots.map((spot) => [spot.slug, spot]));
 
-export function buildTravelSpotHref(slug: string): `/travel/${string}` {
-  return `/travel/${slug}`;
+export function buildTravelSpotHref(slug: string): `/travel/attractions/${string}` {
+  return `/travel/attractions/${slug}`;
 }
 
 export function listTravelSpotSlugs(): string[] {
   return travelSpots.map((spot) => spot.slug);
+}
+
+export function listTravelSpots(): readonly TravelSpotPage[] {
+  return travelSpots;
 }
 
 export function getTravelSpot(slug: string): TravelSpotPage | undefined {

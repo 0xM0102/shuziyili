@@ -7,8 +7,8 @@ import { buildTravelSpotHref, listTravelSpotSlugs } from "@/lib/travel-spots";
 const baseStaticPaths = [
   "/",
   "/travel",
-  ...listTravelSpotSlugs().map((slug) => buildTravelSpotHref(slug)),
   "/travel/attractions",
+  ...listTravelSpotSlugs().map((slug) => buildTravelSpotHref(slug)),
   "/travel/stay",
   "/travel/food",
   "/travel/transport",
